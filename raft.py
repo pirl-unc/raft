@@ -5,10 +5,12 @@
 
 import argparse
 from git import Repo
+from glob import glob
 import json
 import os
 import random
 import re
+import shutil
 import string
 import sys
 
@@ -32,6 +34,12 @@ def get_args():
                              default=os.path.join(os.getcwd(), '.init.cfg'))
     parser_init.add_argument('-n', '--name', help="Analysis name (Default: random string)",
                              default=rndm_str_gen(5))
+
+    parser_load = subparsers.add_parser('load',
+                                        help="Loads samples and ensure FASTQs are available")
+    parser_load.add_argument('-c', '--metadata-csv', required=True)
+    parser_load.add_argument('-a', '--analysis', default='')
+
     
     return parser.parse_args()
 
@@ -152,6 +160,56 @@ def fill_dir(dir, config):
            os.mkdir(os.path.join(dir, name))
      
 
+def load(args):
+    """
+    """
+    fastqs_dir = ''
+    datasets_dir = ''
+    if args.analysis:
+        # Should probably check here and see if the specified analysis even exists...
+        raft_cfg = load_raft_cfg()
+        metadata_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
+        shutil.copyfile(args.metadata_csv, os.path.join(metadata_dir, args.metadata_csv))        
+        
+        fastqs_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'fastqs')
+        datasets_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets')
+
+    with open(args.metadata_csv) as fo:
+        hdr = fo.readline()
+        hdr = hdr.strip('\n').split(',')
+        # Will certainly need a better way to do this, but this will work for now.
+        cols_to_check = [i for i in range(len(hdr) - 1) if hdr[i] not in ['Dataset', 'Patient ID']]
+        dataset_col = hdr.index('Dataset')
+        pat_id_col = hdr.index('Patient ID')
+
+
+        for row in fo:
+            row = row.strip('\n').split(',')
+            dataset = row[dataset_col]
+            pat_id = row[pat_id_col]
+            # Probably a better way to do this.
+            try:
+                os.mkdir(os.path.join(datasets_dir, dataset))
+            except:
+                pass
+            try:
+                os.mkdir(os.path.join(datasets_dir, dataset, pat_id))
+            except:
+                pass
+            for col in cols_to_check:
+                fastq_prefix = row[col]
+                print("Checking for FASTQ prefix {} in /fastqs...".format(fastq_prefix))
+                hits = glob(os.path.join(fastqs_dir, fastq_prefix), recursive=True)
+                if hits:
+                    print("Found FASTQs for prefix {} in /fastqs!\n".format(fastq_prefix))
+                else:
+                    print("Unable to find FASTQs for prefix {} in /fastqs. Check your metadata csv!\n".format(fastq_prefix)) 
+                if len(hits) == 1 and os.path.isdir(hits[0]):
+                    os.symlink(hits[0], os.path.join(datasets_dir, dataset, pat_id, fastq_prefix))
+       
+        
+        
+
 
 def rndm_str_gen(size=5):
     """
@@ -175,11 +233,12 @@ def main():
     # I'm pretty sure .setdefaults within subparsers should handle running
     # functions, but this will work for now.
     args = get_args()
-    print(args)
     if args.command == 'setup':
         setup()
     elif args.command == 'init':
         init(args)
+    elif args.command == 'load':
+        load(args)
 
 
 if __name__=='__main__':
