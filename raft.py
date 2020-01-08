@@ -134,7 +134,8 @@ def init(args):
     """
     """
     anlys_dir = mk_anlys_dir(args.name)
-    fill_dir(anlys_dir, args.init_config)
+    bound_dirs = fill_dir(anlys_dir, args.init_config)
+    mk_mounts_cfg(anlys_dir, bound_dirs)
 
 
 def mk_anlys_dir(name):
@@ -155,6 +156,8 @@ def mk_anlys_dir(name):
 def fill_dir(dir, config):
     """
     """
+    # Getting the directories to be bound by this function as well.
+    bound_dirs = []
     raft_cfg = load_raft_cfg()
     req_sub_dirs = {}
     with open(config) as fo:
@@ -162,11 +165,30 @@ def fill_dir(dir, config):
     for name, sub_dir in req_sub_dirs.items():
         if sub_dir.upper() == 'USECFG' and name in raft_cfg['filesystem'].keys():
             os.symlink(raft_cfg['filesystem'][name], os.path.join(dir, name))
+            bound_dirs.append(os.path.join(dir, name))
         elif sub_dir:
             os.symlink(sub_dir, os.path.join(dir, name))
+            bound_dirs.append(os.path.join(dir, name))
         elif not sub_dir:
            os.mkdir(os.path.join(dir, name))
-     
+           bound_dirs.append(os.path.join(dir, name))
+    return bound_dirs
+   
+ 
+def mk_mounts_cfg(dir, bound_dirs):
+    """
+    """
+    print(bound_dirs)
+    out = []
+    out.append('singularity {\n')
+    out.append('  runOptions = "-B {}"\n'.format(','.join(bound_dirs)))
+    out.append('}')
+
+    with open(os.path.join(dir, 'workflow', 'mounts.config'), 'w') as fo:
+        for row in out:
+            fo.write(row)
+            
+
 
 def load(args):
     """
@@ -220,12 +242,15 @@ def workflow(args):
     """
     """
     raft_cfg = load_raft_cfg()
+    # This shouldn't be hard-coded, but doing it for now.
+    modules_repo = raft_cfg['nextflow_repos']['modules']
     if not args.repo:
-        args.repo = raft_cfg['nextflow_repos']['workflows']    
+        args.repo = raft_cfg['nextflow_repos']['workflows']
     if args.analysis:
         # Should probably check here and see if the specified analysis even exists...
         workflow_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
         Repo.clone_from(args.repo, os.path.join(workflow_dir, args.workflow), branch=args.workflow)
+        Repo.clone_from(modules_repo, os.path.join(workflow_dir, args.workflow, 'modules'), branch='develop')
 
  
         
