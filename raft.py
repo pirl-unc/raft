@@ -55,7 +55,7 @@ def setup():
 
     
     anlys_repo_bfr = {}
-    print("Please provide any git repositories you'd like RAFT to access.\nThese are intended for pushing RAFT packages and are not required for pulling RAFT packages from public repositories.")
+    print("Please provide any git repositories you'd like RAFT to access.\nThese are intended for pushing RAFT packages and are not required for pulling RAFT packages from public repositories\nNOTE:Please make sure you have ssh/pgp credentials in place before adding repositories.")
     repo_qry = input("Would you like to add a repository now? (Y/N)")
     while repo_qry == 'Y':
         repo_name = input("Please provide a local name for repo (e.g. public, private, johns_repo):")
@@ -93,7 +93,7 @@ def setup_run_once(master_cfg):
         try:
             Repo.clone_from(repo_url, os.path.join(master_cfg['filesystem']['repos'], name))
         except:
-            print("Unable to create repo {} from url {}. Review your configuration file (.raft.cfg) and try again.")
+            print("Unable to create repo {} from url {}. Review your configuration file (.raft.cfg) and try again.".format(name, repo_url))
 
 def main():
     """
