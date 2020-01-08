@@ -60,7 +60,7 @@ def setup():
     while repo_qry == 'Y':
         repo_name = input("Please provide a local name for repo (e.g. public, private, johns_repo):")
         repo_url = input("Please provide the git url for repo (e.g git@github.com:spvensko/raft-test.git):")
-        repo_bfr[repo_name] = repo_url
+        anlys_repo_bfr[repo_name] = repo_url
         repo_qry = input("Would you like to add an additional repository? (Y/N)")
 
 
