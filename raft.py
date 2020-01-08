@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
+# Run this *in* the RAFT directory, or bad things will happen.
+
+
 import argparse
 from git import Repo
 import json
 import os
+import random
 import re
+import string
+import sys
 
 
 def get_args():
@@ -12,22 +18,20 @@ def get_args():
     """
     parser = argparse.ArgumentParser(prog="RAFT", 
                                      description="Reproducible Analysis Framework and Tools")
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(dest='command')
 
     
     parser_setup = subparsers.add_parser('setup', 
                                          help="RAFT setup and configuration.")
-    parser_setup.set_defaults(func=setup())
 
     
     parser_init = subparsers.add_parser('init', 
                                          help="Initialize a RAFT analysis.")
     
     parser_init.add_argument('-c', '--init-config', help="init configuration file.", 
-                             default=os.path.join(os.getcwd(), '.init.cfg')
-    parser_init.add_argument('-n', '--name', help="Analysis name. Defaults to random string.",
-                             default=rndm_str_gen())
-    parser_init.set_defaults(func=init(args.init_config, args.name))
+                             default=os.path.join(os.getcwd(), '.init.cfg'))
+    parser_init.add_argument('-n', '--name', help="Analysis name (Default: random string)",
+                             default=rndm_str_gen(5))
     
     return parser.parse_args()
 
@@ -99,7 +103,10 @@ def setup_run_once(master_cfg):
     """
     """
     for dir in master_cfg['filesystem'].values():
-        os.mkdir(dir)
+        if os.direxists(dir):
+            os.symlink(dir, os.getcwd())
+        else:
+            os.mkdir(dir)
 
     for name, repo_url in master_cfg['analysis_repos'].items():
         try:
@@ -107,10 +114,43 @@ def setup_run_once(master_cfg):
         except:
             print("Unable to create repo {} from url {}. Review your configuration file (.raft.cfg) and try again.".format(name, repo_url))
 
-def init(init_config, name):
+def init(args):
     """
     """
-    pass
+    anlys_dir = mk_anlys_dir(args.name)
+    fill_dir(anlys_dir, args.init_config)
+
+
+def mk_anlys_dir(name):
+    """
+    """
+    anlys_dir = ''
+    cfg = load_raft_cfg()
+    shrd_dir = cfg['filesystem']['analyses']
+    anlys_dir = os.path.join(shrd_dir, name)
+    
+    try:
+        os.mkdir(anlys_dir)
+    except:
+        pass
+    return anlys_dir
+
+
+def fill_dir(dir, config):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    req_sub_dirs = {}
+    with open(config) as fo:
+        req_sub_dirs = json.load(fo)
+    for name, sub_dir in req_sub_dirs.items():
+        if sub_dir.upper() == 'USECFG' and name in raft_cfg['filesystem'].keys():
+            os.symlink(raft_cfg['filesystem'][name], os.path.join(dir, name))
+        elif sub_dir:
+            os.symlink(sub_dir, os.path.join(dir, name))
+        elif not sub_dir:
+           os.mkdir(os.path.join(dir, name))
+     
 
 
 def rndm_str_gen(size=5):
@@ -119,10 +159,27 @@ def rndm_str_gen(size=5):
     return ''.join(random.choice(string.ascii_uppercase + string.digits) for i in range(size)) 
 
 
+def load_raft_cfg():
+    """
+    """
+    cfg = {}
+    cfg_path = os.path.join(os.getcwd(), '.raft.cfg')
+    with open(cfg_path) as fo:
+        cfg = json.load(fo)
+    return cfg
+
+
 def main():
     """
     """
+    # I'm pretty sure .setdefaults within subparsers should handle running
+    # functions, but this will work for now.
     args = get_args()
+    print(args)
+    if args.command == 'setup':
+        setup()
+    elif args.command == 'init':
+        init(args)
 
 
 if __name__=='__main__':
