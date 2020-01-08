@@ -13,10 +13,22 @@ def get_args():
     parser = argparse.ArgumentParser(prog="RAFT", 
                                      description="Reproducible Analysis Framework and Tools")
     subparsers = parser.add_subparsers()
+
     
     parser_setup = subparsers.add_parser('setup', 
                                          help="RAFT setup and configuration.")
     parser_setup.set_defaults(func=setup())
+
+    
+    parser_init = subparsers.add_parser('init', 
+                                         help="Initialize a RAFT analysis.")
+    
+    parser_init.add_argument('-c', '--init-config', help="init configuration file.", 
+                             default=os.path.join(os.getcwd(), '.init.cfg')
+    parser_init.add_argument('-n', '--name', help="Analysis name. Defaults to random string.",
+                             default=rndm_str_gen())
+    parser_init.set_defaults(func=init(args.init_config, args.name))
+    
     return parser.parse_args()
 
 
@@ -95,11 +107,22 @@ def setup_run_once(master_cfg):
         except:
             print("Unable to create repo {} from url {}. Review your configuration file (.raft.cfg) and try again.".format(name, repo_url))
 
+def init(init_config, name):
+    """
+    """
+    pass
+
+
+def rndm_str_gen(size=5):
+    """
+    """
+    return ''.join(random.choice(string.ascii_uppercase + string.digits) for i in range(size)) 
+
+
 def main():
     """
     """
     args = get_args()
-    print(args)
 
 
 if __name__=='__main__':
