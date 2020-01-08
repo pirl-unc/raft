@@ -35,12 +35,20 @@ def get_args():
     parser_init.add_argument('-n', '--name', help="Analysis name (Default: random string)",
                              default=rndm_str_gen(5))
 
+
     parser_load = subparsers.add_parser('load',
                                         help="Loads samples and ensure FASTQs are available")
     parser_load.add_argument('-c', '--metadata-csv', required=True)
     parser_load.add_argument('-a', '--analysis', default='')
 
     
+    parser_workflow = subparsers.add_parser('workflow',
+                                        help="Shallow clone of workflow into analysis directory.")
+    parser_workflow.add_argument('-a', '--analysis', default='')
+    parser_workflow.add_argument('-r', '--repo', default='')
+    parser_workflow.add_argument('-w', '--workflow', required=True)
+   
+ 
     return parser.parse_args()
 
 
@@ -207,7 +215,19 @@ def load(args):
                 if len(hits) == 1 and os.path.isdir(hits[0]):
                     os.symlink(hits[0], os.path.join(datasets_dir, dataset, pat_id, fastq_prefix))
        
-        
+
+def workflow(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    if not args.repo:
+        args.repo = raft_cfg['nextflow_repos']['workflows']    
+    if args.analysis:
+        # Should probably check here and see if the specified analysis even exists...
+        workflow_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
+        Repo.clone_from(args.repo, os.path.join(workflow_dir, args.workflow), branch=args.workflow)
+
+ 
         
 
 
@@ -239,6 +259,9 @@ def main():
         init(args)
     elif args.command == 'load':
         load(args)
+    elif args.command == 'workflow':
+        workflow(args)
+
 
 
 if __name__=='__main__':
