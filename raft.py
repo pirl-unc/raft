@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-# Run this *in* the RAFT directory, or bad things will happen.
-
+# Run this *in* the RAFT directory, or bad things will happen (or nothing at all).
 
 import argparse
 from git import Repo
@@ -47,7 +46,21 @@ def get_args():
     parser_workflow.add_argument('-a', '--analysis', default='')
     parser_workflow.add_argument('-r', '--repo', default='')
     parser_workflow.add_argument('-w', '--workflow', required=True)
-   
+  
+ 
+    parser_run = subparsers.add_parser('run',
+                                        help="Runs specified workflow on specified sample(s)")
+    #At least one of these should be required, but should they be mutually exclusive?
+    parser_run.add_argument('-c', '--manifest-csvs',
+                            help="Comma-separated list of manifest CSV(s) of samples to process.")
+    parser_run.add_argument('-s', '--samples',
+                            help="Comma-separated list of sample(s) to process.")
+    parser_run.add_argument('-w', '--workflow',
+                            help="Workflow to run on sample(s)")
+    parser_run.add_argument('-n', '--nf-string',
+                            help="String of parameters to be passed to Nextflow workflow. Note special behaviors in documentation.")
+    parser_run.add_argument('-a', '--analysis',
+                            help="Analysis")
  
     return parser.parse_args()
 
@@ -252,9 +265,61 @@ def workflow(args):
         Repo.clone_from(args.repo, os.path.join(workflow_dir, args.workflow), branch=args.workflow)
         Repo.clone_from(modules_repo, os.path.join(workflow_dir, args.workflow, 'modules'), branch='develop')
 
- 
-        
 
+def run(args):
+    """
+    """
+    process_samps = []
+    if args.manifest_csvs:
+        args.manifest_csvs = [i for i in args.manifest_csvs.split(',')]
+    if args.samples:
+        args.samples = [i for i in args.samples.split(',')]
+    # Should probably check that the workflow exists within the analysis...
+    # Thought process here, get string, figure out map between csv columns and workflow params
+    # Best thing to do here is to take the manifest CSVs and convert them to a list of strings
+    for samp_id in args.samples:
+        samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
+        print(samp_mani_info)
+        samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
+ 
+
+def get_samp_mani_info(analysis, samp_id):
+    """
+    """
+    # This is kinda gross, clean it up.
+    samp_mani_info = {}
+    raft_cfg = load_raft_cfg()
+    manifest_dir = os.path.join(raft_cfg['filesystem']['analyses'], analysis, 'metadata')
+    manifest_csvs = glob(os.path.join(manifest_dir, '*csv'))
+    for manifest_csv in manifest_csvs:
+        with open(manifest_csv) as fo:
+            hdr = fo.readline().rstrip('\n').split(',')
+            pat_idx = hdr.index("Patient ID")
+            for line in fo:
+                line = line.rstrip('\n').split(',')
+                if line[pat_idx] == samp_id:
+                   print("Found it!")
+                   samp_mani_info = {hdr[idx]: line[idx] for idx in range(len(line))}
+    return samp_mani_info
+
+
+def get_samp_nf_cmd(args, samp_mani_info):
+    """
+    """
+    print("Original: {}".format(args.nf_string))
+    #Deconstruct the string, see where raft parameters are, replace them
+    cmd = args.nf_string.split(' ')
+    new_cmd = [] 
+    for component in cmd:
+        if re.match('META:', component):
+            component = component.replace('META:', '')
+            #Need a uniqueness test here to ensure variable specific enough.
+            for k, v in samp_mani_info.items():
+                if re.search(component, k):
+                    new_cmd.append(v)
+        else:
+            new_cmd.append(component)
+    print(new_cmd)
 
 def rndm_str_gen(size=5):
     """
@@ -286,6 +351,8 @@ def main():
         load(args)
     elif args.command == 'workflow':
         workflow(args)
+    elif args.command == 'run':
+        run(args)
 
 
 
