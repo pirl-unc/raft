@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # Run this *in* the RAFT directory, or bad things will happen (or nothing at all).
 
@@ -11,6 +11,7 @@ import random
 import re
 import shutil
 import string
+import subprocess
 import sys
 
 
@@ -248,7 +249,10 @@ def load(args):
                 else:
                     print("Unable to find FASTQs for prefix {} in /fastqs. Check your metadata csv!\n".format(fastq_prefix)) 
                 if len(hits) == 1 and os.path.isdir(hits[0]):
-                    os.symlink(hits[0], os.path.join(datasets_dir, dataset, pat_id, fastq_prefix))
+                    try:
+                        os.symlink(hits[0], os.path.join(datasets_dir, dataset, pat_id, fastq_prefix))
+                    except:
+                        pass
        
 
 def workflow(args):
@@ -262,14 +266,14 @@ def workflow(args):
     if args.analysis:
         # Should probably check here and see if the specified analysis even exists...
         workflow_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
-        Repo.clone_from(args.repo, os.path.join(workflow_dir, args.workflow), branch=args.workflow)
+        Repo.clone_from(args.repo,os.path.join(workflow_dir, args.workflow), branch=args.workflow)
         Repo.clone_from(modules_repo, os.path.join(workflow_dir, args.workflow, 'modules'), branch='develop')
 
 
 def run(args):
     """
     """
-    process_samps = []
+    processed_samp_ids = []
     if args.manifest_csvs:
         args.manifest_csvs = [i for i in args.manifest_csvs.split(',')]
     if args.samples:
@@ -278,9 +282,16 @@ def run(args):
     # Thought process here, get string, figure out map between csv columns and workflow params
     # Best thing to do here is to take the manifest CSVs and convert them to a list of strings
     for samp_id in args.samples:
-        samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
-        print(samp_mani_info)
-        samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
+        if samp_id not in processed_samp_ids:
+            samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
+            print(samp_mani_info)
+            samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
+            final_samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
+            print("Runnning:\n{}".format(final_samp_nf_cmd))
+            subprocess.run(final_samp_nf_cmd, shell=True, check=True)
+            print("Started process...")
+            processed_samp_ids.append(samp_id)
+         
  
 
 def get_samp_mani_info(analysis, samp_id):
@@ -302,11 +313,23 @@ def get_samp_mani_info(analysis, samp_id):
                    samp_mani_info = {hdr[idx]: line[idx] for idx in range(len(line))}
     return samp_mani_info
 
+def prepend_nf_cmd(args, samp_nf_cmd):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    workflow_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.workflow)
+    print(workflow_dir)
+    #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
+    discovered_nf = glob(os.path.join(workflow_dir, '*.nf'))[0]
+    print(discovered_nf)
+    cmd = ' '.join(['./nextflow', discovered_nf, samp_nf_cmd])
+    return cmd
 
 def get_samp_nf_cmd(args, samp_mani_info):
     """
     """
     print("Original: {}".format(args.nf_string))
+
     #Deconstruct the string, see where raft parameters are, replace them
     cmd = args.nf_string.split(' ')
     new_cmd = [] 
@@ -319,7 +342,14 @@ def get_samp_nf_cmd(args, samp_mani_info):
                     new_cmd.append(v)
         else:
             new_cmd.append(component)
-    print(new_cmd)
+
+    # Should this be in its own additional function?
+    if not re.search('--analysis_dir', args.nf_string):
+        raft_cfg = load_raft_cfg()
+        analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
+        new_cmd.append("--analysis_dir {}".format(analysis_dir))
+
+    return ' '.join(new_cmd)
 
 def rndm_str_gen(size=5):
     """
