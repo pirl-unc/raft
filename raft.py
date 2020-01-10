@@ -5,6 +5,7 @@
 import argparse
 from git import Repo
 from glob import glob
+import hashlib
 import json
 import os
 import random
@@ -153,7 +154,16 @@ def init(args):
     anlys_dir = mk_anlys_dir(args.name)
     bound_dirs = fill_dir(anlys_dir, args.init_config)
     mk_mounts_cfg(anlys_dir, bound_dirs)
+    mk_auto_raft(args)
 
+
+def mk_auto_raft(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    auto_raft_path = os.path.join(raft_cfg['filesystem']['analyses'], args.name, '.raft', 'auto.raft')
+    with open(auto_raft_path, 'w') as fo:
+        fo.write("{}\n".format(' '.join(sys.argv)))
 
 def mk_anlys_dir(name):
     """
@@ -376,13 +386,26 @@ def load_raft_cfg():
         cfg = json.load(fo)
     return cfg
 
+def dump_to_auto_raft(args):
+    """
+    """
+    if args.command not in ['init', 'auto']:
+        raft_cfg = load_raft_cfg()
+        auto_raft_path = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', 'auto.raft')
+        with open(auto_raft_path, 'a') as fo:
+            fo.write("{}\n".format(' '.join(sys.argv)))
+            
+
 
 def main():
     """
     """
+    args = get_args()
+
+    dump_to_auto_raft(args)
+
     # I'm pretty sure .setdefaults within subparsers should handle running
     # functions, but this will work for now.
-    args = get_args()
     if args.command == 'setup':
         setup()
     elif args.command == 'init':
