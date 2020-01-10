@@ -105,7 +105,7 @@ def setup():
     repo_qry = input("Would you like to add a repository now? (Y/N)")
     while repo_qry == 'Y':
         repo_name = input("Please provide a local name for repo (e.g. public, private, johns_repo):")
-        repo_url = input("Please provide the git url for repo (e.g git@github.com:spvensko/raft-test.git):")
+        repo_url = input("Please provide the git url for repo (e.g git@github.com:spvensko/raft-test.git, <ENTER> for local init):")
         anlys_repo_bfr[repo_name] = repo_url
         repo_qry = input("Would you like to add an additional repository? (Y/N)")
 
@@ -139,10 +139,13 @@ def setup_run_once(master_cfg):
             os.mkdir(dir)
 
     for name, repo_url in master_cfg['analysis_repos'].items():
-        try:
-            Repo.clone_from(repo_url, os.path.join(master_cfg['filesystem']['repos'], name))
-        except:
-            print("Unable to create repo {} from url {}. Review your configuration file (.raft.cfg) and try again.".format(name, repo_url))
+        if repo_url:
+            try:
+                Repo.clone_from(repo_url, os.path.join(master_cfg['filesystem']['repos'], name))
+            except:
+                print("Unable to create repo {} from url {}. Review your configuration file (.raft.cfg) and try again.".format(name, repo_url))
+        else:
+            Repo.init(os.path.join(master_cfg['filesystem']['repos'], name))
 
 def init(args):
     """
@@ -222,7 +225,7 @@ def load(args):
         hdr = fo.readline()
         hdr = hdr.strip('\n').split(',')
         # Will certainly need a better way to do this, but this will work for now.
-        cols_to_check = [i for i in range(len(hdr) - 1) if hdr[i] not in ['Dataset', 'Patient ID']]
+        cols_to_check = [i for i in range(len(hdr)) if hdr[i] not in ['Dataset', 'Patient ID']]
         dataset_col = hdr.index('Dataset')
         pat_id_col = hdr.index('Patient ID')
 
@@ -232,14 +235,20 @@ def load(args):
             dataset = row[dataset_col]
             pat_id = row[pat_id_col]
             # Probably a better way to do this.
-            try:
-                os.mkdir(os.path.join(datasets_dir, dataset))
-            except:
-                pass
-            try:
-                os.mkdir(os.path.join(datasets_dir, dataset, pat_id))
-            except:
-                pass
+            #try:
+            print("Making local dataset directory")
+            os.makedirs(os.path.join(datasets_dir, dataset), exist_ok=True)
+            print("Making shared dataset directory")
+            os.makedirs(os.path.join(raft_cfg['filesystem']['datasets'], dataset), exist_ok=True)
+            print("Making shared dataset/pat_id directory")
+            os.makedirs(os.path.join(raft_cfg['filesystem']['datasets'], dataset, pat_id), exist_ok=True)
+            print("Symlinking pat_id dir to analysis/datasets")
+            os.symlink(os.path.join(raft_cfg['filesystem']['datasets'], dataset, pat_id), os.path.join(datasets_dir, dataset, pat_id))
+        #    except:
+        #        print("Oops!") 
+        #        pass
+
+
             for col in cols_to_check:
                 fastq_prefix = row[col]
                 print("Checking for FASTQ prefix {} in /fastqs...".format(fastq_prefix))
@@ -273,6 +282,7 @@ def workflow(args):
 def run(args):
     """
     """
+    raft_cfg = load_raft_cfg()
     processed_samp_ids = []
     if args.manifest_csvs:
         args.manifest_csvs = [i for i in args.manifest_csvs.split(',')]
@@ -284,10 +294,10 @@ def run(args):
     for samp_id in args.samples:
         if samp_id not in processed_samp_ids:
             samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
-            print(samp_mani_info)
             samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
+            # Need to add work dir parameter here, -w
             final_samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
-            print("Runnning:\n{}".format(final_samp_nf_cmd))
+            print("Running:\n{}".format(final_samp_nf_cmd))
             subprocess.run(final_samp_nf_cmd, shell=True, check=True)
             print("Started process...")
             processed_samp_ids.append(samp_id)
@@ -343,9 +353,9 @@ def get_samp_nf_cmd(args, samp_mani_info):
         else:
             new_cmd.append(component)
 
+    raft_cfg = load_raft_cfg()
     # Should this be in its own additional function?
     if not re.search('--analysis_dir', args.nf_string):
-        raft_cfg = load_raft_cfg()
         analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
         new_cmd.append("--analysis_dir {}".format(analysis_dir))
 
