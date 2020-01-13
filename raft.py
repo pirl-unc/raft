@@ -148,7 +148,7 @@ def setup_run_once(master_cfg):
         else:
             Repo.init(os.path.join(master_cfg['filesystem']['repos'], name))
 
-def init(args):
+def init_analysis(args):
     """
     """
     anlys_dir = mk_anlys_dir(args.name)
@@ -216,7 +216,7 @@ def mk_mounts_cfg(dir, bound_dirs):
             
 
 
-def load(args):
+def load_samples(args):
     """
     """
     fastqs_dir = ''
@@ -227,7 +227,7 @@ def load(args):
         metadata_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
         shutil.copyfile(args.metadata_csv, os.path.join(metadata_dir, args.metadata_csv))        
         
-        fastqs_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'fastqs')
+        fastqs_dir = os.path.join(raft_cfg['filesystem']['fastqs'])
         datasets_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets')
 
     with open(args.metadata_csv) as fo:
@@ -251,8 +251,8 @@ def load(args):
             os.makedirs(os.path.join(raft_cfg['filesystem']['datasets'], dataset), exist_ok=True)
             print("Making shared dataset/pat_id directory")
             os.makedirs(os.path.join(raft_cfg['filesystem']['datasets'], dataset, pat_id), exist_ok=True)
-            print("Symlinking pat_id dir to analysis/datasets")
-            os.symlink(os.path.join(raft_cfg['filesystem']['datasets'], dataset, pat_id), os.path.join(datasets_dir, dataset, pat_id))
+#            print("Symlinking pat_id dir to analysis/datasets")
+#            os.symlink(os.path.join(raft_cfg['filesystem']['datasets'], dataset, pat_id), os.path.join(datasets_dir, dataset, pat_id))
         #    except:
         #        print("Oops!") 
         #        pass
@@ -273,7 +273,7 @@ def load(args):
                         pass
        
 
-def workflow(args):
+def load_workflow(args):
     """
     """
     raft_cfg = load_raft_cfg()
@@ -288,7 +288,7 @@ def workflow(args):
         Repo.clone_from(modules_repo, os.path.join(workflow_dir, args.workflow, 'modules'), branch='develop')
 
 
-def run(args):
+def run_workflow(args):
     """
     """
     raft_cfg = load_raft_cfg()
@@ -303,14 +303,24 @@ def run(args):
     for samp_id in args.samples:
         if samp_id not in processed_samp_ids:
             samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
+            work_dir = os.path.join(raft_cfg['filesystem']['datasets'], samp_mani_info['Dataset'], samp_mani_info['Patient ID'], 'work')
+            local_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets', samp_mani_info['Dataset'], samp_mani_info['Patient ID'])
+            os.makedirs(work_dir, exist_ok=True)
+            os.makedirs(local_dir, exist_ok=True)
             samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
             # Need to add work dir parameter here, -w
-            final_samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
-            print("Running:\n{}".format(final_samp_nf_cmd))
-            subprocess.run(final_samp_nf_cmd, shell=True, check=True)
+            samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
+            samp_nf_cmd = add_nf_wd(work_dir, samp_nf_cmd)
+            print("Running:\n{}".format(samp_nf_cmd))
+            subprocess.run(samp_nf_cmd, shell=True, check=True)
             print("Started process...")
             processed_samp_ids.append(samp_id)
          
+
+def add_nf_wd(work_dir, samp_nf_cmd):
+    """
+    """
+    return ' '.join([samp_nf_cmd, '-w {}'.format(work_dir), '-resume'])
  
 
 def get_samp_mani_info(analysis, samp_id):
@@ -407,14 +417,14 @@ def main():
     # functions, but this will work for now.
     if args.command == 'setup':
         setup()
-    elif args.command == 'init':
-        init(args)
-    elif args.command == 'load':
-        load(args)
-    elif args.command == 'workflow':
-        workflow(args)
-    elif args.command == 'run':
-        run(args)
+    elif args.command == 'init-analysis':
+        init_analysis(args)
+    elif args.command == 'load-samples':
+        load_samples(args)
+    elif args.command == 'load-workflow':
+        load_workflow(args)
+    elif args.command == 'run-workflow':
+        run_workflow(args)
 
 
 
