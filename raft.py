@@ -205,7 +205,6 @@ def fill_dir(dir, config):
 def mk_mounts_cfg(dir, bound_dirs):
     """
     """
-    print(bound_dirs)
     out = []
     out.append('singularity {\n')
     out.append('  runOptions = "-B {}"\n'.format(','.join(bound_dirs)))
