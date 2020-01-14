@@ -315,11 +315,8 @@ def load_samples(args):
             pat_id = row[pat_id_col]
             # Probably a better way to do this.
             #try:
-            print("Making local dataset directory")
             os.makedirs(os.path.join(datasets_dir, dataset), exist_ok=True)
-            print("Making shared dataset directory")
             os.makedirs(os.path.join(raft_cfg['filesystem']['datasets'], dataset), exist_ok=True)
-            print("Making shared dataset/pat_id directory")
             os.makedirs(os.path.join(raft_cfg['filesystem']['datasets'], dataset, pat_id), exist_ok=True)
 #            print("Symlinking pat_id dir to analysis/datasets")
 #            os.symlink(os.path.join(raft_cfg['filesystem']['datasets'], dataset, pat_id), os.path.join(datasets_dir, dataset, pat_id))
@@ -330,8 +327,10 @@ def load_samples(args):
 
             for col in cols_to_check:
                 fastq_prefix = row[col]
+                if fastq_prefix == 'NA':
+                    continue
                 print("Checking for FASTQ prefix {} in /fastqs...".format(fastq_prefix))
-                hits = glob(os.path.join(fastqs_dir, fastq_prefix), recursive=True)
+                hits = glob(pjoin(fastqs_dir, fastq_prefix), recursive=True)
                 if hits:
                     print("Found FASTQs for prefix {} in /fastqs!".format(fastq_prefix))
                 else:
