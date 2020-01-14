@@ -361,15 +361,20 @@ def run_workflow(args):
     """
     """
     raft_cfg = load_raft_cfg()
+    all_samp_ids = []
     processed_samp_ids = []
     if args.manifest_csvs:
-        args.manifest_csvs = [i for i in args.manifest_csvs.split(',')]
+        manifest_csvs = [i for i in args.manifest_csvs.split(',')]
+        for manifest_csv in manifest_csvs:
+            all_samp_ids.append(extract_samp_ids(manifest_csv))
+      
     if args.samples:
-        args.samples = [i for i in args.samples.split(',')]
+        all_samp_ids.append([i for i in args.samples.split(',')])
     # Should probably check that the workflow exists within the analysis...
     # Thought process here, get string, figure out map between csv columns and workflow params
     # Best thing to do here is to take the manifest CSVs and convert them to a list of strings
-    for samp_id in args.samples:
+    for samp_id in all_samp_ids:
+        print("Processing sample {}".format(samp_id))
         if samp_id not in processed_samp_ids:
             samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
             work_dir = os.path.join(raft_cfg['filesystem']['datasets'], samp_mani_info['Dataset'], samp_mani_info['Patient ID'], 'work')
@@ -386,6 +391,18 @@ def run_workflow(args):
             print("Started process...")
             processed_samp_ids.append(samp_id)
          
+
+def exract_samp_ids(manifest_csv):
+    """
+    """
+    samp_ids = []
+    with open(manifest_csv) as fo:
+        hdr = fo.readline().rstrip('\n').split(',')
+        pat_idx = hdr.index("Patient ID")
+        for line in fo:
+            samp_ids.append(line[pat_idx])
+    return samp_ids
+    
 
 def add_log_dir(samp_id, args, samp_nf_cmd):
     """
@@ -416,8 +433,10 @@ def get_samp_mani_info(analysis, samp_id):
             for line in fo:
                 line = line.rstrip('\n').split(',')
                 if line[pat_idx] == samp_id:
+                   print(line)
                    print("Found it!")
                    samp_mani_info = {hdr[idx]: line[idx] for idx in range(len(line))}
+                   break
     return samp_mani_info
 
 def prepend_nf_cmd(args, samp_nf_cmd):
