@@ -20,74 +20,99 @@ import tarfile
 def get_args():
     """
     """
-    parser = argparse.ArgumentParser(prog="RAFT", 
+    parser = argparse.ArgumentParser(prog="RAFT",
                                      description="Reproducible Analysis Framework and Tools")
-    subparsers = parser.add_subparsers(dest='command')
 
-    
-    parser_setup = subparsers.add_parser('setup', 
+
+    subparsers = parser.add_subparsers(dest='command', required=True)
+
+
+    # Subparser for initial RAFT setup. Utilizies user prompts to produce config file.
+    parser_setup = subparsers.add_parser('setup',
                                          help="RAFT setup and configuration.")
 
-    
-    parser_init_analysis = subparsers.add_parser('init-analysis', 
-                                         help="Initialize a RAFT analysis.")
-    
-    parser_init_analysis.add_argument('-c', '--init-config', help="init configuration file.", 
-                             default=os.path.join(os.getcwd(), '.init.cfg'))
-    parser_init_analysis.add_argument('-n', '--name', help="Analysis name (Default: random string)",
-                             default=rndm_str_gen(5))
+
+    # Subparser for initializing an analysis.
+    parser_init_analysis = subparsers.add_parser('init-analysis',
+                                                 help="Initialize a RAFT analysis.")
+    parser_init_analysis.add_argument('-c', '--init-config',
+                                      help="Analysis config file.",
+                                      default=os.path.join(os.getcwd(), '.init.cfg'))
+    parser_init_analysis.add_argument('-n', '--name',
+                                      help="Analysis name.",
+                                      required=True)
 
 
+    # Subparser for loading samples into an analysis.
     parser_load_samples = subparsers.add_parser('load-samples',
-                                        help="Loads samples and ensure FASTQs are available")
-    parser_load_samples.add_argument('-c', '--metadata-csv', required=True)
-    parser_load_samples.add_argument('-a', '--analysis', default='')
+                                                help="Loads samples into an analysis.")
+    parser_load_samples.add_argument('-c', '--manifest-csv',
+                                     help="Manifest CSV. Check docs for more info.",
+                                     required=True)
 
-    
+    parser_load_samples.add_argument('-a', '--analysis',
+                                     help="Analysis to add samples to.",
+                                     required=True)
+
+    # Subparser for loading workflow into an analysis.
     parser_load_workflow = subparsers.add_parser('load-workflow',
-                                        help="Shallow clone of workflow into analysis directory.")
-    parser_load_workflow.add_argument('-a', '--analysis', default='')
-    parser_load_workflow.add_argument('-r', '--repo', default='')
-    parser_load_workflow.add_argument('-w', '--workflow', required=True)
-  
- 
+                                        help="Clones Nextflow workflow into analysis.")
+    parser_load_workflow.add_argument('-a', '--analysis',
+                                      help="Analysis to add workflow to.",
+                                      required=True)
+    parser_load_workflow.add_argument('-r', '--repo', # Defaults to BGV NF workflow repo.
+                                      help="Repo to fetch workflow from.",
+                                      default='')
+    parser_load_workflow.add_argument('-w', '--workflow',
+                                      help="Workflow to add to analysis.",
+                                      required=True)
+
+
+    # Subparser for running workflow on samples.
     parser_run_workflow = subparsers.add_parser('run-workflow',
-                                        help="Runs specified workflow on specified sample(s)")
-    #At least one of these should be required, but should they be mutually exclusive?
+                                                help="Runs workflow on sample(s)")
+    # At least one of these should be required, but should they be mutually exclusive?
     parser_run_workflow.add_argument('-c', '--manifest-csvs',
-                            help="Comma-separated list of manifest CSV(s) of samples to process.")
+                                     help="Comma-separated list of manifest CSVs")
     parser_run_workflow.add_argument('-s', '--samples',
-                            help="Comma-separated list of sample(s) to process.")
+                                     help="Comma-separated list of sample(s).")
     parser_run_workflow.add_argument('-w', '--workflow',
-                            help="Workflow to run on sample(s)")
-    parser_run_workflow.add_argument('-n', '--nf-string',
-                            help="String of parameters to be passed to Nextflow workflow. Note special behaviors in documentation.")
+                                     help="Workflow to run.")
+    parser_run_workflow.add_argument('-n', '--nf-params',
+                                     help="Param string passed to NF. Check docs for more info.")
     parser_run_workflow.add_argument('-a', '--analysis',
-                            help="Analysis")
+                                     help="Analysis",
+                                     required=True)
 
-
+    # Subparser for packaging analysis (to generate sharable rftpkg tar file)
     parser_package_analysis = subparsers.add_parser('package-analysis',
                                                     help="Package analysis for distribution.")
-    parser_package_analysis.add_argument('-a', '--analysis', help="Specified analysis.")
-    parser_package_analysis.add_argument('-o', '--output', help="Output file.", default='')
+    parser_package_analysis.add_argument('-a', '--analysis',
+                                         help="Analysis to package.")
+    parser_package_analysis.add_argument('-o', '--output',
+                                         help="Output file.",
+                                         default='')
 
+
+    # Subparser for loading analysis (after receiving rftpkg tar file)
     parser_load_analysis = subparsers.add_parser('load-analysis',
-                                                 help="Load an analysis from a rftpkg file.") 
+                                                 help="Load an analysis from a rftpkg file.")
     parser_load_analysis.add_argument('-a', '--analysis', help="Analysis name.")
     parser_load_analysis.add_argument('-r', '--rftpkg', help="rftpkg file.")
-    
-    
- 
+
+
     return parser.parse_args()
 
 
 def setup():
     """
     """
+    # Ideally, users should be able to specify where .raft.cfg lives.
     cfg_path = os.path.join(os.getcwd(), '.raft.cfg')
     if os.path.isfile(cfg_path):
         bkup_cfg_path = cfg_path + '.orig'
-        print("A configuration file already exists. Copying to {}.".format(bkup_cfg_path)) 
+        print("A configuration file already exists.")
+        print("Copying original to {}.".format(bkup_cfg_path))
         os.rename(cfg_path, bkup_cfg_path)
 
 
@@ -325,11 +350,20 @@ def run_workflow(args):
             # Need to add work dir parameter here, -w
             samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
             samp_nf_cmd = add_nf_wd(work_dir, samp_nf_cmd)
+            samp_nf_cmd = add_log_dir(samp_id, args, samp_nf_cmd)
             print("Running:\n{}".format(samp_nf_cmd))
-            subprocess.run(samp_nf_cmd, shell=True, check=True)
+            subprocess.run(samp_nf_cmd, shell=True, check=False)
             print("Started process...")
             processed_samp_ids.append(samp_id)
          
+
+def add_log_dir(samp_id, args, samp_nf_cmd):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    
+    log_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'logs', '{}.log'.format(samp_id))
+    return ' '.join([samp_nf_cmd, '> {} 2>&1'.format(log_dir)])
 
 def add_nf_wd(work_dir, samp_nf_cmd):
     """
@@ -476,12 +510,24 @@ def file_as_bytes(file):
 def load_analysis(args):
     """
     """
+    raft_cfg = load_raft_cfg()
     #Should really be using .init.cfg from package here...
-    parser = argparse.ArgumentParser()
-    init_args = parser.parse_args(['init_config', os.path.join(os.getcwd(), '.init.cfg'),
-                 'name', args.analysis])
-    init_analysis(init_args)
-                
+    fixt_args = {'init_config': os.path.join(os.getcwd(), '.init.cfg'),
+                 'name': args.analysis}
+    fixt_args = argparse.Namespace(**fixt_args)
+    
+    # Initialize analysis
+    init_analysis(fixt_args)
+
+    # Copy rftpkg into analysis
+    shutil.copyfile(args.rftpkg, os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', os.path.basename(args.rftpkg)))
+    tarball = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', os.path.basename(args.rftpkg))
+   
+    # Extract and distribute tarball contents
+    tar = tarfile.open(tarball)
+    tar.extractall(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft'))
+    tar.close()
+    
 
 
 def main():
