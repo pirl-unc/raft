@@ -15,6 +15,7 @@ import string
 import subprocess
 import sys
 import tarfile
+import time
 
 # These are repeatedly called, so trying to make life easier.
 from os.path import join as pjoin
@@ -266,6 +267,8 @@ def fill_dir(dir, init_cfg):
             os.mkdir(pjoin(dir, name))
             bound_dirs.append(pjoin(dir, name))
 
+    bound_dirs.append(getcwd())
+
     # Bound directories are returned so they can be used to generate
     # mounts.config which allows Singularity (and presumably Docker) to bind
     # (and access) these directories.
@@ -393,6 +396,8 @@ def run_workflow(args):
             subprocess.run(samp_nf_cmd, shell=True, check=False)
             print("Started process...")
             processed_samp_ids.append(samp_id)
+            print("Waiting 10 seconds before sending next request.")
+            time.sleep(10)
          
 
 def extract_samp_ids(args, manifest_csv):
@@ -451,7 +456,7 @@ def prepend_nf_cmd(args, samp_nf_cmd):
     #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
     discovered_nf = glob(os.path.join(workflow_dir, '*.nf'))[0]
     print(discovered_nf)
-    cmd = ' '.join(['./nextflow', discovered_nf, samp_nf_cmd])
+    cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd])
     return cmd
 
 def get_samp_nf_cmd(args, samp_mani_info):
