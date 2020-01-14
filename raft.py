@@ -14,6 +14,7 @@ import shutil
 import string
 import subprocess
 import sys
+import tarfile
 
 
 def get_args():
@@ -28,41 +29,54 @@ def get_args():
                                          help="RAFT setup and configuration.")
 
     
-    parser_init = subparsers.add_parser('init', 
+    parser_init_analysis = subparsers.add_parser('init-analysis', 
                                          help="Initialize a RAFT analysis.")
     
-    parser_init.add_argument('-c', '--init-config', help="init configuration file.", 
+    parser_init_analysis.add_argument('-c', '--init-config', help="init configuration file.", 
                              default=os.path.join(os.getcwd(), '.init.cfg'))
-    parser_init.add_argument('-n', '--name', help="Analysis name (Default: random string)",
+    parser_init_analysis.add_argument('-n', '--name', help="Analysis name (Default: random string)",
                              default=rndm_str_gen(5))
 
 
-    parser_load = subparsers.add_parser('load',
+    parser_load_samples = subparsers.add_parser('load-samples',
                                         help="Loads samples and ensure FASTQs are available")
-    parser_load.add_argument('-c', '--metadata-csv', required=True)
-    parser_load.add_argument('-a', '--analysis', default='')
+    parser_load_samples.add_argument('-c', '--metadata-csv', required=True)
+    parser_load_samples.add_argument('-a', '--analysis', default='')
 
     
-    parser_workflow = subparsers.add_parser('workflow',
+    parser_load_workflow = subparsers.add_parser('load-workflow',
                                         help="Shallow clone of workflow into analysis directory.")
-    parser_workflow.add_argument('-a', '--analysis', default='')
-    parser_workflow.add_argument('-r', '--repo', default='')
-    parser_workflow.add_argument('-w', '--workflow', required=True)
+    parser_load_workflow.add_argument('-a', '--analysis', default='')
+    parser_load_workflow.add_argument('-r', '--repo', default='')
+    parser_load_workflow.add_argument('-w', '--workflow', required=True)
   
  
-    parser_run = subparsers.add_parser('run',
+    parser_run_workflow = subparsers.add_parser('run-workflow',
                                         help="Runs specified workflow on specified sample(s)")
     #At least one of these should be required, but should they be mutually exclusive?
-    parser_run.add_argument('-c', '--manifest-csvs',
+    parser_run_workflow.add_argument('-c', '--manifest-csvs',
                             help="Comma-separated list of manifest CSV(s) of samples to process.")
-    parser_run.add_argument('-s', '--samples',
+    parser_run_workflow.add_argument('-s', '--samples',
                             help="Comma-separated list of sample(s) to process.")
-    parser_run.add_argument('-w', '--workflow',
+    parser_run_workflow.add_argument('-w', '--workflow',
                             help="Workflow to run on sample(s)")
-    parser_run.add_argument('-n', '--nf-string',
+    parser_run_workflow.add_argument('-n', '--nf-string',
                             help="String of parameters to be passed to Nextflow workflow. Note special behaviors in documentation.")
-    parser_run.add_argument('-a', '--analysis',
+    parser_run_workflow.add_argument('-a', '--analysis',
                             help="Analysis")
+
+
+    parser_package_analysis = subparsers.add_parser('package-analysis',
+                                                    help="Package analysis for distribution.")
+    parser_package_analysis.add_argument('-a', '--analysis', help="Specified analysis.")
+    parser_package_analysis.add_argument('-o', '--output', help="Output file.", default='')
+
+    parser_load_analysis = subparsers.add_parser('load-analysis',
+                                                 help="Load an analysis from a rftpkg file.") 
+    parser_load_analysis.add_argument('-a', '--analysis', help="Analysis name.")
+    parser_load_analysis.add_argument('-r', '--rftpkg', help="rftpkg file.")
+    
+    
  
     return parser.parse_args()
 
@@ -263,7 +277,7 @@ def load_samples(args):
                 print("Checking for FASTQ prefix {} in /fastqs...".format(fastq_prefix))
                 hits = glob(os.path.join(fastqs_dir, fastq_prefix), recursive=True)
                 if hits:
-                    print("Found FASTQs for prefix {} in /fastqs!\n".format(fastq_prefix))
+                    print("Found FASTQs for prefix {} in /fastqs!".format(fastq_prefix))
                 else:
                     print("Unable to find FASTQs for prefix {} in /fastqs. Check your metadata csv!\n".format(fastq_prefix)) 
                 if len(hits) == 1 and os.path.isdir(hits[0]):
@@ -398,12 +412,76 @@ def load_raft_cfg():
 def dump_to_auto_raft(args):
     """
     """
-    if args.command not in ['init', 'auto']:
+    if args.command not in ['init-analysis', 'run-auto', 'package-analysis', 'load-analysis']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', 'auto.raft')
         with open(auto_raft_path, 'a') as fo:
             fo.write("{}\n".format(' '.join(sys.argv)))
-            
+
+
+def package_analysis(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    anlys_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
+    foo = rndm_str_gen()
+    anlys_tmp_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'tmp', foo)
+    
+    os.mkdir(anlys_tmp_dir)
+    for dir in os.listdir(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)):
+        # These directories should be hidden (at least optionally so) in the future
+        if dir in ['references', 'indices', 'fastqs', 'repos', 'tmp']:
+            continue
+        print(dir)
+
+    # Copying metadata directory. Should probably perform some size checks here.
+    shutil.copytree(os.path.join(anlys_dir, 'metadata'), os.path.join(anlys_tmp_dir, 'metadata'))
+
+    # Getting required checksums. Currently only doing /datasets, but should
+    # probably do other directories produced by workflow as well.
+    with open(os.path.join(anlys_tmp_dir, 'datasets.md5'), 'w') as fo:
+        files = glob(os.path.join('analyses', args.analysis, 'datasets', '**'), recursive=True)
+        hashes = {file: hashlib.md5(file_as_bytes(open(file, 'rb'))).hexdigest() for file in files if os.path.isfile(file)}
+        json.dump(hashes, fo, indent=4)
+     
+    # Get Nextflow configs, etc.
+    os.mkdir(os.path.join(anlys_tmp_dir, 'workflow'))
+    for dir in glob(os.path.join(anlys_dir, 'workflow', '*')):
+        if os.path.isdir(dir):
+            shutil.copytree(os.path.join(dir), os.path.join(anlys_tmp_dir, 'workflow', os.path.basename(dir)))
+
+    # Get auto.raft
+    shutil.copyfile(os.path.join(anlys_dir, '.raft', 'auto.raft'), os.path.join(anlys_dir, '.raft', 'snapshot.raft'))
+    shutil.copyfile(os.path.join(anlys_dir, '.raft', 'snapshot.raft'), os.path.join(anlys_tmp_dir, 'snapshot.raft'))
+
+    rftpkg = ''
+    if args.output:
+        rftpkg = args.output
+    else:
+        rftpkg = os.path.join(anlys_dir, '.raft', 'default.rftpkg')
+    with tarfile.open(rftpkg, 'w') as taro:
+        for i in os.listdir(anlys_tmp_dir):
+            print(i)
+            taro.add(os.path.join(anlys_tmp_dir, i), arcname = i)
+
+        
+    #shutil.rmtree(anlys_tmp_dir) 
+   
+
+#https://stackoverflow.com/a/3431835
+def file_as_bytes(file):
+    with file:
+        return file.read() 
+
+def load_analysis(args):
+    """
+    """
+    #Should really be using .init.cfg from package here...
+    parser = argparse.ArgumentParser()
+    init_args = parser.parse_args(['init_config', os.path.join(os.getcwd(), '.init.cfg'),
+                 'name', args.analysis])
+    init_analysis(init_args)
+                
 
 
 def main():
@@ -425,6 +503,13 @@ def main():
         load_workflow(args)
     elif args.command == 'run-workflow':
         run_workflow(args)
+    elif args.command == 'run-auto':
+        run_auto(args)
+    elif args.command == 'package-analysis':
+        package_analysis(args)
+    elif args.command == 'load-analysis':
+        load_analysis(args)
+    
 
 
 
