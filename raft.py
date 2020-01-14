@@ -225,39 +225,52 @@ def mk_anlys_dir(name):
     """
     """
     anlys_dir = ''
-    cfg = load_raft_cfg()
-    shrd_dir = cfg['filesystem']['analyses']
-    anlys_dir = os.path.join(shrd_dir, name)
-    
+    raft_cfg = load_raft_cfg()
+    global_dir = raft_cfg['filesystem']['analyses']
+    anlys_dir = pjoin(global_dir, name)
+
     try:
         os.mkdir(anlys_dir)
     except:
-        pass
+        sys.exit("Analysis directory already exists. Please try another.")
+
     return anlys_dir
 
 
-def fill_dir(dir, config):
+def fill_dir(dir, init_cfg):
     """
     """
     # Getting the directories to be bound by this function as well.
     bound_dirs = []
     raft_cfg = load_raft_cfg()
     req_sub_dirs = {}
-    with open(config) as fo:
+    with open(init_cfg) as fo:
         req_sub_dirs = json.load(fo)
-    for name, sub_dir in req_sub_dirs.items():
-        if sub_dir.upper() == 'USECFG' and name in raft_cfg['filesystem'].keys():
-            os.symlink(raft_cfg['filesystem'][name], os.path.join(dir, name))
-            bound_dirs.append(os.path.join(dir, name))
-        elif sub_dir:
-            os.symlink(sub_dir, os.path.join(dir, name))
-            bound_dirs.append(os.path.join(dir, name))
-        elif not sub_dir:
-           os.mkdir(os.path.join(dir, name))
-           bound_dirs.append(os.path.join(dir, name))
+    for name, sdir in req_sub_dirs.items():
+        # If the desired directory has a "USECFG" value and has a default in
+        # the global raft configuration file, then symlink the default global
+        # directory within the analysis directory.
+        if sdir.upper() == 'USECFG' and name in raft_cfg['filesystem'].keys():
+            os.symlink(raft_cfg['filesystem'][name], pjoin(dir, name))
+            bound_dirs.append(pjoin(dir, name))
+        # Else if the desired directory has an included path, link that path to
+        # within the analysis directory. This should include some sanity
+        # checking to ensure the sub_dir directory even exists.
+        elif sdir:
+            os.symlink(sdir, pjoin(dir, name))
+            bound_dirs.append(pjoin(dir, name))
+        # Else if the desired directory doesn't have an included path, simply
+        # make a directory by that name within the analysis directory.
+        elif not sdir:
+            os.mkdir(pjoin(dir, name))
+            bound_dirs.append(pjoin(dir, name))
+
+    # Bound directories are returned so they can be used to generate
+    # mounts.config which allows Singularity (and presumably Docker) to bind
+    # (and access) these directories.
     return bound_dirs
-   
- 
+
+
 def mk_mounts_cfg(dir, bound_dirs):
     """
     """
@@ -266,10 +279,9 @@ def mk_mounts_cfg(dir, bound_dirs):
     out.append('  runOptions = "-B {}"\n'.format(','.join(bound_dirs)))
     out.append('}')
 
-    with open(os.path.join(dir, 'workflow', 'mounts.config'), 'w') as fo:
+    with open(pjoin(dir, 'workflow', 'mounts.config'), 'w') as fo:
         for row in out:
             fo.write(row)
-            
 
 
 def load_samples(args):
