@@ -221,6 +221,7 @@ def mk_auto_raft(args):
     with open(auto_raft_path, 'w') as fo:
         fo.write("{}\n".format(' '.join(sys.argv)))
 
+
 def mk_anlys_dir(name):
     """
     """
@@ -289,16 +290,17 @@ def load_samples(args):
     """
     fastqs_dir = ''
     datasets_dir = ''
-    if args.analysis:
-        # Should probably check here and see if the specified analysis even exists...
-        raft_cfg = load_raft_cfg()
-        metadata_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
-        shutil.copyfile(args.metadata_csv, os.path.join(metadata_dir, args.metadata_csv))        
-        
-        fastqs_dir = os.path.join(raft_cfg['filesystem']['fastqs'])
-        datasets_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets')
+    raft_cfg = load_raft_cfg()
+    if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
+        # If the specified analysis doesn't exist, then should it be created automatically?
+        metadata_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
+        shutil.copyfile(args.manifest_csv,
+                        pjoin(metadata_dir, args.manifest_csv))
+        # This is checking the global, shared FASTQ directory for FASTQs.
+        fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
+        datasets_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets')
 
-    with open(args.metadata_csv) as fo:
+    with open(args.manifest_csv) as fo:
         hdr = fo.readline()
         hdr = hdr.strip('\n').split(',')
         # Will certainly need a better way to do this, but this will work for now.
@@ -392,7 +394,7 @@ def add_log_dir(samp_id, args, samp_nf_cmd):
     raft_cfg = load_raft_cfg()
     
     log_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'logs', '{}.log'.format(samp_id))
-    return ' '.join([samp_nf_cmd, '> {} 2>&1'.format(log_dir)])
+    return ' '.join([samp_nf_cmd, '> {} 2>&1 &'.format(log_dir)])
 
 def add_nf_wd(work_dir, samp_nf_cmd):
     """
@@ -434,10 +436,10 @@ def prepend_nf_cmd(args, samp_nf_cmd):
 def get_samp_nf_cmd(args, samp_mani_info):
     """
     """
-    print("Original: {}".format(args.nf_string))
+    print("Original: {}".format(args.nf_params))
 
     #Deconstruct the string, see where raft parameters are, replace them
-    cmd = args.nf_string.split(' ')
+    cmd = args.nf_params.split(' ')
     new_cmd = [] 
     for component in cmd:
         if re.match('META:', component):
@@ -451,7 +453,7 @@ def get_samp_nf_cmd(args, samp_mani_info):
 
     raft_cfg = load_raft_cfg()
     # Should this be in its own additional function?
-    if not re.search('--analysis_dir', args.nf_string):
+    if not re.search('--analysis_dir', args.nf_params):
         analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
         new_cmd.append("--analysis_dir {}".format(analysis_dir))
 
