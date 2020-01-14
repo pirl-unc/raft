@@ -16,6 +16,10 @@ import subprocess
 import sys
 import tarfile
 
+# These are repeatedly called, so trying to make life easier.
+from os.path import join as pjoin
+from os import getcwd
+
 
 def get_args():
     """
@@ -37,7 +41,7 @@ def get_args():
                                                  help="Initialize a RAFT analysis.")
     parser_init_analysis.add_argument('-c', '--init-config',
                                       help="Analysis config file.",
-                                      default=os.path.join(os.getcwd(), '.init.cfg'))
+                                      default=pjoin(getcwd(), '.init.cfg'))
     parser_init_analysis.add_argument('-n', '--name',
                                       help="Analysis name.",
                                       required=True)
@@ -108,7 +112,9 @@ def setup():
     """
     """
     # Ideally, users should be able to specify where .raft.cfg lives.
-    cfg_path = os.path.join(os.getcwd(), '.raft.cfg')
+    cfg_path = pjoin(getcwd(), '.raft.cfg')
+
+    # Make backup of previous configuration file.
     if os.path.isfile(cfg_path):
         bkup_cfg_path = cfg_path + '.orig'
         print("A configuration file already exists.")
@@ -116,47 +122,56 @@ def setup():
         os.rename(cfg_path, bkup_cfg_path)
 
 
-    # Setting up filesystem paths
-    cfg_bfr = {'datasets': os.path.join(os.getcwd(), 'datasets'),
-               'analyses': os.path.join(os.getcwd(), 'analyses'),
-               'indices': os.path.join(os.getcwd(), 'indices'),
-               'references': os.path.join(os.getcwd(), 'references'),
-               'fastqs': os.path.join(os.getcwd(), 'fastqs'),
-               'repos': os.path.join(os.getcwd(), 'repos')}
-    for path, default in cfg_bfr.items():
-        actual_path = input("Please provide a shared directory for {} (Default: {}): ".format(path, default))
-        #Should be doing some sanity checking here to ensure the path can exist...
-        if actual_path:
-            cfg_bfr[path] = actual_path
+    # Setting up filesystem paths. Initialized with defaults, then prompts user for input.
+    raft_paths = {'datasets': pjoin(getcwd(), 'datasets'),
+                  'analyses': pjoin(getcwd(), 'analyses'),
+                  'indices': pjoin(getcwd(), 'indices'),
+                  'references': pjoin(getcwd(), 'references'),
+                  'fastqs': pjoin(getcwd(), 'fastqs'),
+                  'repos': pjoin(getcwd(), 'repos')}
 
-    # Setting up Nextflow workflow/module repositories
-    nf_repo_bfr = {'workflows': 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow/nextflow-workflows.git',
-                   'modules': 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow/nextflow-modules.git'}
+    for raft_path, default in raft_paths.items():
+        user_spec_path = input("Please provide a shared directory for {} (Default: {}): "
+                               .format(raft_path, default))
 
-    for path, default in nf_repo_bfr.items():
-        actual_repo = input("Please provide a repository for Nextflow {}\n(Default: {})\n".format(path, default))
-        if actual_repo:
-            nf_repo_bfr[path] = actual_repo
+        # Should be doing some sanity checking here to ensure the path can exist...
+        if user_spec_path:
+            rath_paths[raft_path] = user_spec_path
+
+    # Setting up Nextflow workflow/module repositories.
+    nf_repos = {'workflows':
+                'git@sc.unc.edu:benjamin-vincent-lab/Nextflow/nextflow-workflows.git',
+                'modules': 
+                'git@sc.unc.edu:benjamin-vincent-lab/Nextflow/nextflow-modules.git'}
+
+    # Allow users to specify their own Nextflow workflows and modules repos.
+    for nf_repo, default in nf_repos.items():
+        user_spec_repo = input("Provide a repository for Nextflow {}\n(Default: {}):"
+                               .format(nf_repo, default))
+        if user_spec_repo:
+            nf_repos[nf_repo] = user_spec_repo
 
 
-    
-    anlys_repo_bfr = {}
-    print("Please provide any git repositories you'd like RAFT to access.\nThese are intended for pushing RAFT packages and are not required for pulling RAFT packages from public repositories\nNOTE:Please make sure you have ssh/pgp credentials in place before adding repositories.")
+
+    raft_repos = {}
+    message = ["Provide any git repositories you'd like RAFT to access.",
+               "These are for pushing RAFT packages and are not required",
+               "for pulling RAFT packages from public repositories.",
+               "NOTE: Make sure ssh/pgp credentials in place before using these repositories."]
+    print('\n'.join(message))
     repo_qry = input("Would you like to add a repository now? (Y/N)")
     while repo_qry == 'Y':
-        repo_name = input("Please provide a local name for repo (e.g. public, private, johns_repo):")
-        repo_url = input("Please provide the git url for repo (e.g git@github.com:spvensko/raft-test.git, <ENTER> for local init):")
-        anlys_repo_bfr[repo_name] = repo_url
+        repo_name = input("Provide a local name for repo (e.g. public, private, repo1):")
+        repo_url = input("Provide the git url for repo (or hit <ENTER> for local init):")
+        raft_repos[repo_name] = repo_url
         repo_qry = input("Would you like to add an additional repository? (Y/N)")
 
 
+    # Would like to have master_cfg constructed in its own function eventually.
+    master_cfg = {'filesystem': raft_paths,
+                  'nextflow_repos': nf_repos,
+                  'analysis_repos': raft_repos}
 
-    #Would like to have master_cfg constructed in its own function eventually.
-    master_cfg = {'filesystem': cfg_bfr,
-                  'nextflow_repos': nf_repo_bfr,
-                  'analysis_repos': anlys_repo_bfr}
-
-   
     dump_cfg(cfg_path, master_cfg)
 
     setup_run_once(master_cfg)
@@ -173,19 +188,21 @@ def setup_run_once(master_cfg):
     """
     """
     for dir in master_cfg['filesystem'].values():
-        if os.direxists(dir):
-            os.symlink(dir, os.getcwd())
+        if os.path.isdir(dir):
+            os.symlink(dir, getcwd())
         else:
             os.mkdir(dir)
 
     for name, repo_url in master_cfg['analysis_repos'].items():
         if repo_url:
             try:
-                Repo.clone_from(repo_url, os.path.join(master_cfg['filesystem']['repos'], name))
+                Repo.clone_from(repo_url, pjoin(master_cfg['filesystem']['repos'], name))
             except:
-                print("Unable to create repo {} from url {}. Review your configuration file (.raft.cfg) and try again.".format(name, repo_url))
+                print("Unable to create repo {} from url {}. Review your .raft.cfg."
+                      .format(name, repo_url))
         else:
-            Repo.init(os.path.join(master_cfg['filesystem']['repos'], name))
+            Repo.init(pjoin(master_cfg['filesystem']['repos'], name))
+
 
 def init_analysis(args):
     """
@@ -446,7 +463,7 @@ def load_raft_cfg():
 def dump_to_auto_raft(args):
     """
     """
-    if args.command not in ['init-analysis', 'run-auto', 'package-analysis', 'load-analysis']:
+    if args.command not in ['init-analysis', 'run-auto', 'package-analysis', 'load-analysis', 'setup']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', 'auto.raft')
         with open(auto_raft_path, 'a') as fo:
