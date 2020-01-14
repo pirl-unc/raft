@@ -365,14 +365,17 @@ def run_workflow(args):
     processed_samp_ids = []
     if args.manifest_csvs:
         manifest_csvs = [i for i in args.manifest_csvs.split(',')]
+        print(manifest_csvs)
         for manifest_csv in manifest_csvs:
-            all_samp_ids.append(extract_samp_ids(manifest_csv))
+            print(manifest_csv)
+            all_samp_ids.extend(extract_samp_ids(args, manifest_csv))
       
     if args.samples:
-        all_samp_ids.append([i for i in args.samples.split(',')])
+        all_samp_ids.extend([i for i in args.samples.split(',')])
     # Should probably check that the workflow exists within the analysis...
     # Thought process here, get string, figure out map between csv columns and workflow params
     # Best thing to do here is to take the manifest CSVs and convert them to a list of strings
+    print(all_samp_ids)
     for samp_id in all_samp_ids:
         print("Processing sample {}".format(samp_id))
         if samp_id not in processed_samp_ids:
@@ -392,14 +395,16 @@ def run_workflow(args):
             processed_samp_ids.append(samp_id)
          
 
-def exract_samp_ids(manifest_csv):
+def extract_samp_ids(args, manifest_csv):
     """
     """
+    raft_cfg = load_raft_cfg()
     samp_ids = []
-    with open(manifest_csv) as fo:
+    with open(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata', manifest_csv)) as fo:
         hdr = fo.readline().rstrip('\n').split(',')
         pat_idx = hdr.index("Patient ID")
         for line in fo:
+            line = line.rstrip('\n').split(',')
             samp_ids.append(line[pat_idx])
     return samp_ids
     
@@ -433,8 +438,6 @@ def get_samp_mani_info(analysis, samp_id):
             for line in fo:
                 line = line.rstrip('\n').split(',')
                 if line[pat_idx] == samp_id:
-                   print(line)
-                   print("Found it!")
                    samp_mani_info = {hdr[idx]: line[idx] for idx in range(len(line))}
                    break
     return samp_mani_info
