@@ -294,7 +294,7 @@ def load_samples(args):
     if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
         # If the specified analysis doesn't exist, then should it be created automatically?
         metadata_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
-        shutil.copyfile(args.manifest_csv,
+        shutil.copyfile(os.path.basename(args.manifest_csv),
                         pjoin(metadata_dir, args.manifest_csv))
         # This is checking the global, shared FASTQ directory for FASTQs.
         fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
