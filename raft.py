@@ -285,6 +285,7 @@ def mk_mounts_cfg(dir, bound_dirs):
     out.append('singularity {\n')
     out.append('  runOptions = "-B {}"\n'.format(','.join(bound_dirs)))
     out.append('  cacheDir = "{}".format(imgs_dir))
+    out.append("  autoMount = 'true'")
     out.append('}')
 
     with open(pjoin(dir, 'workflow', 'mounts.config'), 'w') as fo:
