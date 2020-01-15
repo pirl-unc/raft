@@ -129,6 +129,7 @@ def setup():
                   'indices': pjoin(getcwd(), 'indices'),
                   'references': pjoin(getcwd(), 'references'),
                   'fastqs': pjoin(getcwd(), 'fastqs'),
+                  'imgs': pjoin(getcwd(), 'imgs'),
                   'repos': pjoin(getcwd(), 'repos')}
 
     for raft_path, default in raft_paths.items():
@@ -278,9 +279,12 @@ def fill_dir(dir, init_cfg):
 def mk_mounts_cfg(dir, bound_dirs):
     """
     """
+    raft_cfg = load_raft_cfg()
+    imgs_dir = raft_cfg['filesystem']['imgs']
     out = []
     out.append('singularity {\n')
     out.append('  runOptions = "-B {}"\n'.format(','.join(bound_dirs)))
+    out.append('  cacheDir = "{}".format(imgs_dir))
     out.append('}')
 
     with open(pjoin(dir, 'workflow', 'mounts.config'), 'w') as fo:
@@ -363,6 +367,7 @@ def load_workflow(args):
 def run_workflow(args):
     """
     """
+    init_dir = getcwd()
     raft_cfg = load_raft_cfg()
     all_samp_ids = []
     processed_samp_ids = []
@@ -383,21 +388,28 @@ def run_workflow(args):
         print("Processing sample {}".format(samp_id))
         if samp_id not in processed_samp_ids:
             samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
-            work_dir = os.path.join(raft_cfg['filesystem']['datasets'], samp_mani_info['Dataset'], samp_mani_info['Patient ID'], 'work')
-            local_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets', samp_mani_info['Dataset'], samp_mani_info['Patient ID'])
+            work_dir = pjoin(raft_cfg['filesystem']['datasets'], samp_mani_info['Dataset'], samp_mani_info['Patient ID'], 'work')
+            local_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets', samp_mani_info['Dataset'], samp_mani_info['Patient ID'])
+            tmp_dir =  pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'tmp', samp_mani_info['Patient ID'], str(time.time()))
+
             os.makedirs(work_dir, exist_ok=True)
             os.makedirs(local_dir, exist_ok=True)
+            os.makedirs(tmp_dir, exist_ok=True)
+
             samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
-            # Need to add work dir parameter here, -w
             samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
             samp_nf_cmd = add_nf_wd(work_dir, samp_nf_cmd)
             samp_nf_cmd = add_log_dir(samp_id, args, samp_nf_cmd)
+
+            os.chdir(tmp_dir)
+            print("Currently in: {}".format(getcwd()))
             print("Running:\n{}".format(samp_nf_cmd))
             subprocess.run(samp_nf_cmd, shell=True, check=False)
             print("Started process...")
             processed_samp_ids.append(samp_id)
             print("Waiting 10 seconds before sending next request.")
             time.sleep(10)
+            os.chdir(init_dir)
          
 
 def extract_samp_ids(args, manifest_csv):
@@ -405,7 +417,7 @@ def extract_samp_ids(args, manifest_csv):
     """
     raft_cfg = load_raft_cfg()
     samp_ids = []
-    with open(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata', manifest_csv)) as fo:
+    with open(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata', os.path.basename(manifest_csv))) as fo:
         hdr = fo.readline().rstrip('\n').split(',')
         pat_idx = hdr.index("Patient ID")
         for line in fo:
