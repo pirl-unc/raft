@@ -58,6 +58,18 @@ def get_args():
     parser_load_samples.add_argument('-a', '--analysis',
                                      help="Analysis to add samples to.",
                                      required=True)
+    
+    
+    # Subparser for loading metadata into an analysis.
+    parser_load_samples = subparsers.add_parser('load-metadata',
+                                                help="Loads metadata for an analysis.")
+    parser_load_samples.add_argument('-c', '--metadata-csv',
+                                     help="Metadata CSV. Check docs for more info.",
+                                     required=True)
+    parser_load_samples.add_argument('-a', '--analysis',
+                                     help="Analysis to add metadata to.",
+                                     required=True)
+
 
     # Subparser for loading workflow into an analysis.
     parser_load_workflow = subparsers.add_parser('load-workflow',
@@ -71,6 +83,34 @@ def get_args():
     parser_load_workflow.add_argument('-w', '--workflow',
                                       help="Workflow to add to analysis.",
                                       required=True)
+    # Need support for commits and tags here as well.
+    parser_load_workflow.add_argument('-b', '--branch',
+                                      help="Branch to checkout. Defaults to 'develop'.",
+                                      default='develop')
+    parser_load_workflow.add_argument('-n', '--no-modules',
+                                      help="Do not load any common modules.",
+                                      default=False)
+    
+
+    # Subparser for loading private modules into an analysis.
+    parser_load_private_module = subparsers.add_parser('load-private-module',
+                                        help="Clones private module into analysis.")
+    parser_load_private_module.add_argument('-a', '--analysis',
+                                      help="Analysis to add workflow to.",
+                                      required=True)
+    parser_load_private_module.add_argument('-w', '--workflow',
+                                      help="Workflow to add to analysis.",
+                                      required=True)
+    parser_load_private_module.add_argument('-r', '--repo', # Default = BGV NF priv module repo.
+                                      help="Repo to fetch workflow from.",
+                                      default='')
+    parser_load_private_module.add_argument('-m', '--module',
+                                      help="Module to add to analysis.",
+                                      required=True)
+    # Need support for commits and tags here as well.
+    parser_load_private_module.add_argument('-b', '--branch',
+                                      help="Branch to checkout. Defaults to 'develop'.",
+                                      default='develop')
 
 
     # Subparser for running workflow on samples.
@@ -141,8 +181,8 @@ def setup():
             rath_paths[raft_path] = user_spec_path
 
     # Setting up Nextflow workflow/module repositories.
-    nf_repos = {'workflows':
-                'git@sc.unc.edu:benjamin-vincent-lab/Nextflow/nextflow-workflows.git',
+    nf_repos = {'workflow-subgroup':
+                'git@sc.unc.edu:benjamin-vincent-lab/Nextflow/nextflow-workflows',
                 'modules': 
                 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow/nextflow-modules.git'}
 
@@ -348,7 +388,30 @@ def load_samples(args):
                         os.symlink(hits[0], os.path.join(datasets_dir, dataset, pat_id, fastq_prefix))
                     except:
                         pass
-       
+
+def load_samples(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
+        # If the specified analysis doesn't exist, then should it be created automatically?
+        metadata_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
+        shutil.copyfile(args.manifest_csv,
+                        pjoin(metadata_dir, os.path.basename(args.metadata_csv)))
+
+def load_private_module(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    # This shouldn't be hard-coded, but doing it for now.
+    if not args.repo:
+        args.repo = raft_cfg['nextflow_repos']['modules_private_subgroup']
+    if args.analysis:
+        # Should probably check here and see if the specified analysis even exists...
+        workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.workflow, 'pmodules')
+        Repo.clone_from(pjoin(args.repo, args.module), pjoin(workflow_dir, args.module), branch=args.branch)
+
+
 
 def load_workflow(args):
     """
@@ -357,11 +420,12 @@ def load_workflow(args):
     # This shouldn't be hard-coded, but doing it for now.
     modules_repo = raft_cfg['nextflow_repos']['modules']
     if not args.repo:
-        args.repo = raft_cfg['nextflow_repos']['workflows']
+        args.repo = raft_cfg['nextflow_repos']['workflows_subgroup']
     if args.analysis:
         # Should probably check here and see if the specified analysis even exists...
-        workflow_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
-        Repo.clone_from(args.repo,os.path.join(workflow_dir, args.workflow), branch=args.workflow)
+        workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
+        Repo.clone_from(pjoin(args.repo, args.workflow), pjoin(workflow_dir, args.workflow), branch=args.branch)
+    if not args.no_modules:
         Repo.clone_from(modules_repo, os.path.join(workflow_dir, args.workflow, 'modules'), branch='develop')
 
 
@@ -385,32 +449,37 @@ def run_workflow(args):
     # Thought process here, get string, figure out map between csv columns and workflow params
     # Best thing to do here is to take the manifest CSVs and convert them to a list of strings
     print(all_samp_ids)
-    for samp_id in all_samp_ids:
-        print("Processing sample {}".format(samp_id))
-        if samp_id not in processed_samp_ids:
-            samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
-            work_dir = pjoin(raft_cfg['filesystem']['datasets'], samp_mani_info['Dataset'], samp_mani_info['Patient ID'], 'work')
-            local_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets', samp_mani_info['Dataset'], samp_mani_info['Patient ID'])
-            tmp_dir =  pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'tmp', samp_mani_info['Patient ID'], str(time.time()))
-
-            os.makedirs(work_dir, exist_ok=True)
-            os.makedirs(local_dir, exist_ok=True)
-            os.makedirs(tmp_dir, exist_ok=True)
-
-            samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
-            samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
-            samp_nf_cmd = add_nf_wd(work_dir, samp_nf_cmd)
-            samp_nf_cmd = add_log_dir(samp_id, args, samp_nf_cmd)
-
-            os.chdir(tmp_dir)
-            print("Currently in: {}".format(getcwd()))
-            print("Running:\n{}".format(samp_nf_cmd))
-            subprocess.run(samp_nf_cmd, shell=True, check=False)
-            print("Started process...")
-            processed_samp_ids.append(samp_id)
-            print("Waiting 10 seconds before sending next request.")
-            time.sleep(10)
-            os.chdir(init_dir)
+    if not all_samp_ids:
+        generic_nf_cmd = get_generic_nf_cmd(args)
+        generic_nf_cmd = prepend_nf_cmd(args, generic_nf_cmd)
+        # Going to update with work dir and log dir later.
+    else:
+        for samp_id in all_samp_ids:
+            print("Processing sample {}".format(samp_id))
+            if samp_id not in processed_samp_ids:
+                samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
+                work_dir = pjoin(raft_cfg['filesystem']['datasets'], samp_mani_info['Dataset'], samp_mani_info['Patient ID'], 'work')
+                local_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets', samp_mani_info['Dataset'], samp_mani_info['Patient ID'])
+                tmp_dir =  pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'tmp', samp_mani_info['Patient ID'], str(time.time()))
+    
+                os.makedirs(work_dir, exist_ok=True)
+                os.makedirs(local_dir, exist_ok=True)
+                os.makedirs(tmp_dir, exist_ok=True)
+    
+                samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
+                samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
+                samp_nf_cmd = add_nf_wd(work_dir, samp_nf_cmd)
+                samp_nf_cmd = add_log_dir(samp_id, args, samp_nf_cmd)
+    
+                os.chdir(tmp_dir)
+                print("Currently in: {}".format(getcwd()))
+                print("Running:\n{}".format(samp_nf_cmd))
+                subprocess.run(samp_nf_cmd, shell=True, check=False)
+                print("Started process...")
+                processed_samp_ids.append(samp_id)
+                print("Waiting 10 seconds before sending next request.")
+                time.sleep(10)
+                os.chdir(init_dir)
          
 
 def extract_samp_ids(args, manifest_csv):
@@ -483,9 +552,11 @@ def get_samp_nf_cmd(args, samp_mani_info):
     for component in cmd:
         if re.match('META:', component):
             component = component.replace('META:', '')
-            #Need a uniqueness test here to ensure variable specific enough.
+            # Need a uniqueness test here to ensure variable specific enough.
+            # Going to allow comma-separated for now.
+            components = [i for i in component.split(',')]
             for k, v in samp_mani_info.items():
-                if re.search(component, k):
+                if all([re.search(component, k) for component in components]):
                     new_cmd.append(v)
         else:
             new_cmd.append(component)
@@ -497,6 +568,20 @@ def get_samp_nf_cmd(args, samp_mani_info):
         new_cmd.append("--analysis_dir {}".format(analysis_dir))
 
     return ' '.join(new_cmd)
+
+
+def get_generic_nf_cmd(args):
+    """
+    """
+    cmd = args.nf_params.split(' ')
+    new_cmd = [] 
+    raft_cfg = load_raft_cfg()
+    # Should this be in its own additional function?
+    if not re.search('--analysis_dir', args.nf_params):
+        analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
+        new_cmd.append("--analysis_dir {}".format(analysis_dir))
+    return ' '.join(new_cmd)
+    
 
 def rndm_str_gen(size=5):
     """
@@ -615,6 +700,8 @@ def main():
         init_analysis(args)
     elif args.command == 'load-samples':
         load_samples(args)
+    elif args.command == 'load-metadata':
+        load_metadata(args)
     elif args.command == 'load-workflow':
         load_workflow(args)
     elif args.command == 'run-workflow':
