@@ -95,6 +95,10 @@ def get_args():
     parser_load_workflow.add_argument('-n', '--no-modules',
                                       help="Do not load any common modules.",
                                       default=False)
+    parser_load_workflow.add_argument('-p', '--private',
+                                      help="Load workflow from private subgroup.",
+                                      action="store_true",
+                                      default=False)
     
 
     # Subparser for loading private modules into an analysis.
@@ -450,14 +454,16 @@ def load_private_module(args):
 
 
 
-def load_workflow(args):
+def load_workflow(args, private):
     """
     """
     raft_cfg = load_raft_cfg()
     # This shouldn't be hard-coded, but doing it for now.
     modules_repo = raft_cfg['nextflow_repos']['modules']
-    if not args.repo:
-        args.repo = raft_cfg['nextflow_repos']['workflows_subgroup']
+    if not args.repo and not args.private:
+        args.repo = raft_cfg['nextflow_repos']['workflows_common_subgroup']
+    elif not args.repo and args.private:
+        args.repo = raft_cfg['nextflow_repos']['workflows_private_subgroup']
     if args.analysis:
         # Should probably check here and see if the specified analysis even exists...
         workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
