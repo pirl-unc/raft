@@ -35,6 +35,10 @@ def get_args():
     # Subparser for initial RAFT setup. Utilizies user prompts to produce config file.
     parser_setup = subparsers.add_parser('setup',
                                          help="RAFT setup and configuration.")
+    parser_setup.add_argument('-d', '--default',
+                              help="Use default paths for setup.",
+                              default=False)
+                               
 
 
     # Subparser for initializing an analysis.
@@ -129,6 +133,7 @@ def get_args():
                                      help="Analysis",
                                      required=True)
 
+
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
     parser_package_analysis = subparsers.add_parser('package-analysis',
                                                     help="Package analysis for distribution.")
@@ -149,9 +154,31 @@ def get_args():
     return parser.parse_args()
 
 
-def setup():
+def setup(args):
     """
     """
+    # DEFAULTS
+    raft_paths = {'datasets': pjoin(getcwd(), 'datasets'),
+                  'analyses': pjoin(getcwd(), 'analyses'),
+                  'indices': pjoin(getcwd(), 'indices'),
+                  'references': pjoin(getcwd(), 'references'),
+                  'fastqs': pjoin(getcwd(), 'fastqs'),
+                  'imgs': pjoin(getcwd(), 'imgs'),
+                  'repos': pjoin(getcwd(), 'repos')}
+    
+    # This prefix should probably be user configurable
+    git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
+    nf_repos = {'workflow-common-subgroup':
+                pjoin(git_prefix, 'nextflow-workflows---common'),
+                'workflow-private-subgroup':
+                pjoin(git_prefix, 'nextflow-workflows---private'),
+                'modules-private-subgroup':
+                pjoin(git_prefix, 'nextflow-modules---private'),
+                'modules': 
+                pjoin(git_prefix, 'nextflow-modules.git')}
+
+    raft_repos = {}
+
     # Ideally, users should be able to specify where .raft.cfg lives.
     cfg_path = pjoin(getcwd(), '.raft.cfg')
 
@@ -163,51 +190,17 @@ def setup():
         os.rename(cfg_path, bkup_cfg_path)
 
 
-    # Setting up filesystem paths. Initialized with defaults, then prompts user for input.
-    raft_paths = {'datasets': pjoin(getcwd(), 'datasets'),
-                  'analyses': pjoin(getcwd(), 'analyses'),
-                  'indices': pjoin(getcwd(), 'indices'),
-                  'references': pjoin(getcwd(), 'references'),
-                  'fastqs': pjoin(getcwd(), 'fastqs'),
-                  'imgs': pjoin(getcwd(), 'imgs'),
-                  'repos': pjoin(getcwd(), 'repos')}
-
-    for raft_path, default in raft_paths.items():
-        user_spec_path = input("Please provide a shared directory for {} (Default: {}): "
-                               .format(raft_path, default))
-
-        # Should be doing some sanity checking here to ensure the path can exist...
-        if user_spec_path:
-            rath_paths[raft_path] = user_spec_path
+    # Setting up filesystem paths.
+    if not args.default:
+        raft_paths = get_user_raft_paths(raft_paths)
 
     # Setting up Nextflow workflow/module repositories.
-    nf_repos = {'workflow-subgroup':
-                'git@sc.unc.edu:benjamin-vincent-lab/Nextflow/nextflow-workflows',
-                'modules': 
-                'git@sc.unc.edu:benjamin-vincent-lab/Nextflow/nextflow-modules.git'}
+    if not args.default:
+        nf_repos = get_user_nf_repos(nf_repos)
 
-    # Allow users to specify their own Nextflow workflows and modules repos.
-    for nf_repo, default in nf_repos.items():
-        user_spec_repo = input("Provide a repository for Nextflow {}\n(Default: {}):"
-                               .format(nf_repo, default))
-        if user_spec_repo:
-            nf_repos[nf_repo] = user_spec_repo
-
-
-
-    raft_repos = {}
-    message = ["Provide any git repositories you'd like RAFT to access.",
-               "These are for pushing RAFT packages and are not required",
-               "for pulling RAFT packages from public repositories.",
-               "NOTE: Make sure ssh/pgp credentials in place before using these repositories."]
-    print('\n'.join(message))
-    repo_qry = input("Would you like to add a repository now? (Y/N)")
-    while repo_qry == 'Y':
-        repo_name = input("Provide a local name for repo (e.g. public, private, repo1):")
-        repo_url = input("Provide the git url for repo (or hit <ENTER> for local init):")
-        raft_repos[repo_name] = repo_url
-        repo_qry = input("Would you like to add an additional repository? (Y/N)")
-
+    # Setting any RAFT repositories
+    if not args.default:
+   
 
     # Would like to have master_cfg constructed in its own function eventually.
     master_cfg = {'filesystem': raft_paths,
@@ -217,6 +210,48 @@ def setup():
     dump_cfg(cfg_path, master_cfg)
 
     setup_run_once(master_cfg)
+
+
+def setup_get_user_raft_paths(raft_paths):
+    """
+    """
+    for raft_path, default in raft_paths.items():
+        user_spec_path = input("Provide a shared directory for {} (Default: {}): "
+                               .format(raft_path, default))
+        # Should be doing some sanity checking here to ensure the path can exist...
+        if user_spec_path:
+            rath_paths[raft_path] = user_spec_path
+    return raft_paths
+    
+
+def setup_get_user_nf_repos(nf_repos):
+    """
+    """
+    # Allow users to specify their own Nextflow workflows and modules repos.
+    for nf_repo, default in nf_repos.items():
+        user_spec_repo = input("Provide a repository for Nextflow {}\n(Default: {}):"
+                               .format(nf_repo, default))
+        if user_spec_repo:
+            nf_repos[nf_repo] = user_spec_repo
+    return nf_repos
+
+
+def setup_get_user_raft_repos(raft_repos):
+    """
+    """
+    message = ["Provide any git repositories you'd like RAFT to access.",
+               "These are for pushing RAFT packages and are not required",
+               "for pulling RAFT packages from public repositories.",
+               "!!!Make sure ssh/pgp credentials in place before using these repos!!!"]
+    print('\n'.join(message))
+    repo_qry = input("Would you like to add a repository now? (Y/N)")
+    while repo_qry == 'Y':
+        repo_name = input("Provide local name (e.g. public, private, repo1):")
+        repo_url = input("Provide git url (or hit <ENTER> for local init):")
+        raft_repos[repo_name] = repo_url
+        repo_qry = input("Would you like to add an additional repository? (Y/N)")
+    return raft_repos
+    
 
 
 def dump_cfg(cfg_path, master_cfg):
