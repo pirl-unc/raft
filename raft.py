@@ -389,14 +389,14 @@ def load_samples(args):
                     except:
                         pass
 
-def load_samples(args):
+def load_metadata(args):
     """
     """
     raft_cfg = load_raft_cfg()
     if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
         # If the specified analysis doesn't exist, then should it be created automatically?
         metadata_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
-        shutil.copyfile(args.manifest_csv,
+        shutil.copyfile(args.metadata_csv,
                         pjoin(metadata_dir, os.path.basename(args.metadata_csv)))
 
 def load_private_module(args):
@@ -453,6 +453,9 @@ def run_workflow(args):
         generic_nf_cmd = get_generic_nf_cmd(args)
         generic_nf_cmd = prepend_nf_cmd(args, generic_nf_cmd)
         # Going to update with work dir and log dir later.
+        print("Running:\n{}".format(generic_nf_cmd))
+        subprocess.run(generic_nf_cmd, shell=True, check=False)
+        print("Started process...")
     else:
         for samp_id in all_samp_ids:
             print("Processing sample {}".format(samp_id))
@@ -577,9 +580,13 @@ def get_generic_nf_cmd(args):
     new_cmd = [] 
     raft_cfg = load_raft_cfg()
     # Should this be in its own additional function?
+    for component in cmd:
+        # Do any processing here.
+        new_cmd.append(component)
     if not re.search('--analysis_dir', args.nf_params):
         analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
         new_cmd.append("--analysis_dir {}".format(analysis_dir))
+    print(new_cmd)
     return ' '.join(new_cmd)
     
 
@@ -704,6 +711,8 @@ def main():
         load_metadata(args)
     elif args.command == 'load-workflow':
         load_workflow(args)
+    elif args.command == 'load-private-module':
+        load_private_module(args)
     elif args.command == 'run-workflow':
         run_workflow(args)
     elif args.command == 'run-auto':
