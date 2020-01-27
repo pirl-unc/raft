@@ -200,6 +200,7 @@ def setup(args):
 
     # Setting any RAFT repositories
     if not args.default:
+        raft_repos = get_user_raft_repos(raft_repos)
    
 
     # Would like to have master_cfg constructed in its own function eventually.
