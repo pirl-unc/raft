@@ -739,7 +739,7 @@ def main():
     # I'm pretty sure .setdefaults within subparsers should handle running
     # functions, but this will work for now.
     if args.command == 'setup':
-        setup()
+        setup(args)
     elif args.command == 'init-analysis':
         init_analysis(args)
     elif args.command == 'load-samples':
