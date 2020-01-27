@@ -37,6 +37,7 @@ def get_args():
                                          help="RAFT setup and configuration.")
     parser_setup.add_argument('-d', '--default',
                               help="Use default paths for setup.",
+                              action="store_true",
                               default=False)
                                
 
