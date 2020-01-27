@@ -454,7 +454,7 @@ def load_private_module(args):
 
 
 
-def load_workflow(args, private):
+def load_workflow(args):
     """
     """
     raft_cfg = load_raft_cfg()
