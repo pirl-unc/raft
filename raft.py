@@ -173,9 +173,9 @@ def setup(args):
     
     # This prefix should probably be user configurable
     git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
-    nf_repos = {'workflow-common-subgroup':
+    nf_repos = {'workflows-common-subgroup':
                 pjoin(git_prefix, 'nextflow-workflows---common'),
-                'workflow-private-subgroup':
+                'workflows-private-subgroup':
                 pjoin(git_prefix, 'nextflow-workflows---private'),
                 'modules-private-subgroup':
                 pjoin(git_prefix, 'nextflow-modules---private'),
