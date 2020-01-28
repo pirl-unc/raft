@@ -243,7 +243,7 @@ def setup(args):
                   'nextflow_repos': nf_repos,
                   'analysis_repos': raft_repos}
 
-    print("Saving configuration file to {}...").format(cfg_path)
+    print("Saving configuration file to {}...".format(cfg_path))
     dump_cfg(cfg_path, master_cfg)
 
     print("Executing configuration file...")
