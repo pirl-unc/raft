@@ -26,20 +26,24 @@ def get_args():
     """
     """
     parser = argparse.ArgumentParser(prog="RAFT",
-                                     description="Reproducible Analysis Framework and Tools")
+                                     description="""Reproducible
+                                                    Analysis
+                                                    Framework
+                                                    and
+                                                    Tools""")
 
 
     subparsers = parser.add_subparsers(dest='command', required=True)
 
 
-    # Subparser for initial RAFT setup. Utilizies user prompts to produce config file.
+    # Subparser for initial RAFT setup.
     parser_setup = subparsers.add_parser('setup',
-                                         help="RAFT setup and configuration.")
+                                         help="""RAFT setup
+                                                 and configuration.""")
     parser_setup.add_argument('-d', '--default',
                               help="Use default paths for setup.",
                               action="store_true",
                               default=False)
-                               
 
 
     # Subparser for initializing an analysis.
@@ -57,14 +61,14 @@ def get_args():
     parser_load_samples = subparsers.add_parser('load-samples',
                                                 help="Loads samples into an analysis.")
     parser_load_samples.add_argument('-c', '--manifest-csv',
-                                     help="Manifest CSV. Check docs for more info.",
+                                     help="""Manifest CSV. Check documentation 
+                                             for more information.""",
+                                     required=True)
+    parser_load_samples.add_argument('-a', '--analysis',
+                                     help="Analysis requiring samples.",
                                      required=True)
 
-    parser_load_samples.add_argument('-a', '--analysis',
-                                     help="Analysis to add samples to.",
-                                     required=True)
-    
-    
+
     # Subparser for loading metadata into an analysis.
     parser_load_samples = subparsers.add_parser('load-metadata',
                                                 help="Loads metadata for an analysis.")
@@ -82,20 +86,21 @@ def get_args():
     parser_load_workflow.add_argument('-a', '--analysis',
                                       help="Analysis to add workflow to.",
                                       required=True)
-    parser_load_workflow.add_argument('-r', '--repo', # Defaults to BGV NF workflow repo.
-                                      help="Repo to fetch workflow from.",
+     # Default=BGV NF workflow repo.
+    parser_load_workflow.add_argument('-r', '--repo',
+                                      help="Repo for workflow.",
                                       default='')
     parser_load_workflow.add_argument('-w', '--workflow',
                                       help="Workflow to add to analysis.",
                                       required=True)
     # Need support for commits and tags here as well.
     parser_load_workflow.add_argument('-b', '--branch',
-                                      help="Branch to checkout. Defaults to 'develop'.",
+                                      help="Branch to checkout. Default='develop'.",
                                       default='develop')
     parser_load_workflow.add_argument('-n', '--no-modules',
                                       help="Do not load any common modules.",
                                       default=False)
-    
+
 
     # Subparser for loading private modules into an analysis.
     parser_load_private_module = subparsers.add_parser('load-private-module',
@@ -106,30 +111,33 @@ def get_args():
     parser_load_private_module.add_argument('-w', '--workflow',
                                       help="Workflow to add to analysis.",
                                       required=True)
-    parser_load_private_module.add_argument('-r', '--repo', # Default = BGV NF priv module repo.
-                                      help="Repo to fetch workflow from.",
-                                      default='')
+    # Default=BGV NF priv module repo.
+    parser_load_private_module.add_argument('-r', '--repo', help="Repo for module.",
+                                            default='')
     parser_load_private_module.add_argument('-m', '--module',
-                                      help="Module to add to analysis.",
-                                      required=True)
+                                            help="Module to add to analysis.",
+                                            required=True)
     # Need support for commits and tags here as well.
     parser_load_private_module.add_argument('-b', '--branch',
-                                      help="Branch to checkout. Defaults to 'develop'.",
+                                      help="Branch to checkout. Default='develop'.",
                                       default='develop')
 
 
     # Subparser for running workflow on samples.
     parser_run_workflow = subparsers.add_parser('run-workflow',
-                                                help="Runs workflow on sample(s)")
+                                                help="Runs workflow")
     # At least one of these should be required, but should they be mutually exclusive?
     parser_run_workflow.add_argument('-c', '--manifest-csvs',
-                                     help="Comma-separated list of manifest CSVs")
+                                     help="Comma-separated list of manifest CSV(s)")
     parser_run_workflow.add_argument('-s', '--samples',
                                      help="Comma-separated list of sample(s).")
     parser_run_workflow.add_argument('-w', '--workflow',
-                                     help="Workflow to run.")
+                                     help="Workflow to run.",
+                                     required=True)
     parser_run_workflow.add_argument('-n', '--nf-params',
-                                     help="Param string passed to NF. Check docs for more info.")
+                                     help="""Param string passed to Nextflow.
+                                             Check documentation for 
+                                             more information.""")
     parser_run_workflow.add_argument('-a', '--analysis',
                                      help="Analysis",
                                      required=True)
@@ -137,7 +145,8 @@ def get_args():
 
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
     parser_package_analysis = subparsers.add_parser('package-analysis',
-                                                    help="Package analysis for distribution.")
+                                                    help="""Package analysis 
+                                                            for distribution.""")
     parser_package_analysis.add_argument('-a', '--analysis',
                                          help="Analysis to package.")
     parser_package_analysis.add_argument('-o', '--output',
@@ -147,7 +156,8 @@ def get_args():
 
     # Subparser for loading analysis (after receiving rftpkg tar file)
     parser_load_analysis = subparsers.add_parser('load-analysis',
-                                                 help="Load an analysis from a rftpkg file.")
+                                                 help="""Load an analysis 
+                                                         from a rftpkg file.""")
     parser_load_analysis.add_argument('-a', '--analysis', help="Analysis name.")
     parser_load_analysis.add_argument('-r', '--rftpkg', help="rftpkg file.")
 
@@ -157,7 +167,36 @@ def get_args():
 
 def setup(args):
     """
+    Installs RAFT into current working directory.
+    Installation consists of: 
+
+        - Moving any previouls generated RAFT configuration files.
+
+        #Paths
+        - Prompting user for paths for paths shared amongst analyses.
+
+        #NF Repos
+        - Prompting user for git urls for workflow- and module-level repositories.
+
+        #RAFT Repos
+        - Prompting user for git urls for RAFT-specific repositories (storing rftpkgs).
+
+        #Saving
+        - Saving these urls in a JSON format in ${PWD}/.raft.cfg
+
+        #Executing
+        - Making the required shared paths.
+        - Checking out RAFT-specific repositories to repos directory specific in cfg.
+
+    Args:
+        args (Namespace object): User-provided arguments.
+
+    Returns:
+        None 
     """
+    print("Setting up RAFT...")
+    if args.default:
+        print("Using defaults due to -d/--default flag...")
     # DEFAULTS
     raft_paths = {'datasets': pjoin(getcwd(), 'datasets'),
                   'analyses': pjoin(getcwd(), 'analyses'),
@@ -169,14 +208,10 @@ def setup(args):
     
     # This prefix should probably be user configurable
     git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
-    nf_repos = {'workflow-common-subgroup':
-                pjoin(git_prefix, 'nextflow-workflows---common'),
-                'workflow-private-subgroup':
-                pjoin(git_prefix, 'nextflow-workflows---private'),
-                'modules-private-subgroup':
-                pjoin(git_prefix, 'nextflow-modules---private'),
-                'modules': 
-                pjoin(git_prefix, 'nextflow-modules.git')}
+    nf_repos = {'workflow-common-subgroup': pjoin(git_prefix, 'nextflow-workflows---common'),
+                'workflow-private-subgroup': pjoin(git_prefix, 'nextflow-workflows---private'),
+                'modules-private-subgroup': pjoin(git_prefix, 'nextflow-modules---private'),
+                'modules': pjoin(git_prefix, 'nextflow-modules.git')}
 
     raft_repos = {}
 
@@ -189,7 +224,6 @@ def setup(args):
         print("A configuration file already exists.")
         print("Copying original to {}.".format(bkup_cfg_path))
         os.rename(cfg_path, bkup_cfg_path)
-
 
     # Setting up filesystem paths.
     if not args.default:
@@ -209,9 +243,13 @@ def setup(args):
                   'nextflow_repos': nf_repos,
                   'analysis_repos': raft_repos}
 
+    print("Saving configuration file to {}...").format(cfg_path)
     dump_cfg(cfg_path, master_cfg)
 
+    print("Executing configuration file...")
     setup_run_once(master_cfg)
+
+    print("Setup complete.")
 
 
 def setup_get_user_raft_paths(raft_paths):
