@@ -208,7 +208,7 @@ def setup(args):
                   'fastqs': pjoin(getcwd(), 'fastqs'),
                   'imgs': pjoin(getcwd(), 'imgs'),
                   'repos': pjoin(getcwd(), 'repos')}
-    
+
     # This prefix should probably be user configurable
     git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
     nf_repos = {'workflow-common-subgroup': pjoin(git_prefix, 'nextflow-workflows---common'),
@@ -239,7 +239,7 @@ def setup(args):
     # Setting any RAFT repositories
     if not args.default:
         raft_repos = get_user_raft_repos(raft_repos)
-   
+
 
     # Would like to have master_cfg constructed in its own function eventually.
     master_cfg = {'filesystem': raft_paths,
@@ -323,7 +323,7 @@ def setup_get_user_raft_repos(raft_repos):
     Returns:
         Dictionary containing user-specified repo names as keys and
         user-specific git urls (or null) as values. Null values are intended to
-        be used to generate local repositories. 
+        be used to generate local repositories.
     """
     message = ["Provide any git repositories you'd like RAFT to access.",
                "These are for pushing RAFT packages and are not required",
@@ -337,7 +337,7 @@ def setup_get_user_raft_repos(raft_repos):
         raft_repos[repo_name] = repo_url
         repo_qry = input("Would you like to add an additional repository? (Y/N)")
     return raft_repos
-    
+
 
 
 def dump_cfg(cfg_path, master_cfg):
@@ -408,8 +408,8 @@ def mk_auto_raft(args):
     Part of the init-analysis mode.
 
     Makes auto.raft file (within Analysis .raft directory). auto.raft keeps
-    track of RAFT commands executed within an analysis. 
- 
+    track of RAFT commands executed within an analysis.
+
     Args:
         args (Namespace object): User-provided arguments
     """
@@ -596,7 +596,7 @@ def load_samples(args):
                     print("Found FASTQs for prefix {} in /fastqs!".format(fastq_prefix))
                 else:
                     print("""Unable to find FASTQs for prefix {} in /fastqs.
-                             Check your metadata csv!\n""".format(fastq_prefix)) 
+                             Check your metadata csv!\n""".format(fastq_prefix))
                 if len(hits) == 1 and os.path.isdir(hits[0]):
                     try:
                         os.symlink(hits[0], pjoin(datasets_dir, dataset, pat_id, fastq_prefix))
@@ -647,7 +647,7 @@ def load_private_module(args):
                              'workflow',
                              args.workflow,
                              'pmodules')
-        Repo.clone_from(pjoin(args.repo, args.module), 
+        Repo.clone_from(pjoin(args.repo, args.module),
                         pjoin(workflow_dir, args.module),
                         branch=args.branch)
 
@@ -675,11 +675,11 @@ def load_workflow(args):
     if args.analysis:
         # Should probably check here and see if the specified analysis even exists...
         workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
-        Repo.clone_from(pjoin(args.repo, args.workflow), 
+        Repo.clone_from(pjoin(args.repo, args.workflow),
                         pjoin(workflow_dir, args.workflow),
                         branch=args.branch)
     if not args.no_modules:
-        Repo.clone_from(modules_repo, 
+        Repo.clone_from(modules_repo,
                         pjoin(workflow_dir, args.workflow, 'modules'),
                         branch='develop')
 
@@ -706,7 +706,7 @@ def run_workflow(args):
         for manifest_csv in manifest_csvs:
             print(manifest_csv)
             all_samp_ids.extend(extract_samp_ids(args, manifest_csv))
-      
+
     if args.samples:
         all_samp_ids.extend([i for i in args.samples.split(',')])
     # Should probably check that the workflow exists within the analysis...
@@ -744,17 +744,17 @@ def run_workflow(args):
                                  'tmp',
                                  samp_mani_info['Patient ID'],
                                  str(time.time()))
-    
+ 
                 os.makedirs(work_dir, exist_ok=True)
                 os.makedirs(local_dir, exist_ok=True)
                 os.makedirs(tmp_dir, exist_ok=True)
 
-                # Constructing a sample-level Nextflow command. 
+                # Constructing a sample-level Nextflow command.
                 samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
                 samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
                 samp_nf_cmd = add_nf_wd(work_dir, samp_nf_cmd)
                 samp_nf_cmd = add_log_dir(samp_id, args, samp_nf_cmd)
-    
+
                 os.chdir(tmp_dir)
                 print("Currently in: {}".format(getcwd()))
                 print("Running:\n{}".format(samp_nf_cmd))
@@ -767,7 +767,7 @@ def run_workflow(args):
                 print("Waiting 10 seconds before sending next request.")
                 time.sleep(10)
                 os.chdir(init_dir)
-         
+ 
 
 def extract_samp_ids(args, manifest_csv):
     """
@@ -784,9 +784,9 @@ def extract_samp_ids(args, manifest_csv):
     """
     raft_cfg = load_raft_cfg()
     samp_ids = []
-    with open(pjoin(raft_cfg['filesystem']['analyses'], 
+    with open(pjoin(raft_cfg['filesystem']['analyses'],
                     args.analysis,
-                    'metadata', 
+                    'metadata',
                     os.path.basename(manifest_csv))) as fo:
         hdr = fo.readline().rstrip('\n').split(',')
         pat_idx = hdr.index("Patient ID")
@@ -794,7 +794,7 @@ def extract_samp_ids(args, manifest_csv):
             line = line.rstrip('\n').split(',')
             samp_ids.append(line[pat_idx])
     return samp_ids
-    
+ 
 
 def add_log_dir(samp_id, args, samp_nf_cmd):
     """
@@ -811,7 +811,7 @@ def add_log_dir(samp_id, args, samp_nf_cmd):
         Str containing the modified Nextflow command with logging functionality.
     """
     raft_cfg = load_raft_cfg()
-    
+ 
     log_dir = pjoin(raft_cfg['filesystem']['analyses'],
                     args.analysis,
                     'logs',
@@ -822,18 +822,43 @@ def add_log_dir(samp_id, args, samp_nf_cmd):
 
 def add_nf_wd(work_dir, samp_nf_cmd):
     """
+    Part of run-workflow mode.
+
+    Appends working directory to Nextflow command.
+
+    Args:
+        work_dir (str): Work directory path to be appended.
+        samp_nf_cmd (str): Sample-specific Nextflow command.
+
+    Returns:
+        Str containing the modified Nextflow command with a working directory.
     """
     return ' '.join([samp_nf_cmd, '-w {}'.format(work_dir), '-resume'])
- 
+
 
 def get_samp_mani_info(analysis, samp_id):
     """
+    Part of run-workflow mode.
+
+    Part of the "META:" functionality within run-workflow. This function
+    attempts to create a sample-level dictionary where the key is a description
+    of a FASTQ prefix (e.g. "WES Tumor") and the value is the FASTQ prefix from
+    the manifest csv.
+
+    Args: 
+        analysis (str): Analysis name.
+        samp_id (str): Sample identifer (as defined within manifest csv).
+
+    Returns:
+        Dict where keys are descriptors of FASTQ prefixes (e.g. "WES Tumor")
+        and values are the FASTQ prefixes.
+
     """
     # This is kinda gross, clean it up.
     samp_mani_info = {}
     raft_cfg = load_raft_cfg()
-    manifest_dir = os.path.join(raft_cfg['filesystem']['analyses'], analysis, 'metadata')
-    manifest_csvs = glob(os.path.join(manifest_dir, '*csv'))
+    manifest_dir = pjoin(raft_cfg['filesystem']['analyses'], analysis, 'metadata')
+    manifest_csvs = glob(pjoin(manifest_dir, '*csv'))
     for manifest_csv in manifest_csvs:
         with open(manifest_csv) as fo:
             hdr = fo.readline().rstrip('\n').split(',')
@@ -845,26 +870,58 @@ def get_samp_mani_info(analysis, samp_id):
                    break
     return samp_mani_info
 
+
 def prepend_nf_cmd(args, samp_nf_cmd):
     """
+    Part of run-workflow mode.
+
+    Prepends the actual Nextflow execution portion to Nextflow command prior to
+    execution. This currently globs for a *.nf file within the specified
+    workflow directory (so workflow Nextflow files do NOT have to be named the
+    same as the workflow repo).
+
+    Args:
+        args (Namespace object): User-specific arguments.
+        samp_nf_cmd (str): Nextflow command.
+
+    Returns:
+        Str containing modified Nextflow command with execution portion.
     """
     raft_cfg = load_raft_cfg()
-    workflow_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.workflow)
+    workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.workflow)
     print(workflow_dir)
     #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
-    discovered_nf = glob(os.path.join(workflow_dir, '*.nf'))[0]
+    discovered_nf = glob(pjoin(workflow_dir, '*.nf'))[0]
     print(discovered_nf)
     cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd])
     return cmd
 
+
 def get_samp_nf_cmd(args, samp_mani_info):
     """
+    Part of run-workflow mode.
+
+    Given a nextflow command (from args), parse the command and replace any
+    instances with "META:<PATTERN>" with the correct sample-level information
+    from the manifest csv. This is primarily performed when replacing the
+    "META:" pattern with a FASTQ prefix. This allows users to execut Nextflow
+    on several samples without having to manually construct individual sample
+    commands.
+
+    Args:
+        args (Namespace object): User-specific arguments.
+        samp_mani_info (dict): Dictionary where keys are FASTQ prefix
+                               descriptors and values are FASTQ prefixes.
+
+    Returns:
+        Str containing modified Nextflow command with appropriate sample-level
+        information.
     """
     print("Original: {}".format(args.nf_params))
 
     #Deconstruct the string, see where raft parameters are, replace them
     cmd = args.nf_params.split(' ')
-    new_cmd = [] 
+    new_cmd = []
     for component in cmd:
         if re.match('META:', component):
             component = component.replace('META:', '')
@@ -888,9 +945,20 @@ def get_samp_nf_cmd(args, samp_mani_info):
 
 def get_generic_nf_cmd(args):
     """
+    Part of run-workflow mode.
+
+    Generates a generic Nextflow command. This is intended for running Nextflow
+    commands that do not operate on single samples. This specifically adds the
+    --analysis_dir parameter.
+
+    Args:
+        args (Namespace object): User-provided arguments.
+
+    Return:
+        Str containing modified Nextflow command.
     """
     cmd = args.nf_params.split(' ')
-    new_cmd = [] 
+    new_cmd = []
     raft_cfg = load_raft_cfg()
     # Should this be in its own additional function?
     for component in cmd:
@@ -901,16 +969,24 @@ def get_generic_nf_cmd(args):
         new_cmd.append("--analysis_dir {}".format(analysis_dir))
     print(new_cmd)
     return ' '.join(new_cmd)
-    
+
 
 def rndm_str_gen(size=5):
     """
+    Creates a random 5mer.
     """
-    return ''.join(random.choice(string.ascii_uppercase + string.digits) for i in range(size)) 
+    return ''.join(random.choice(string.ascii_uppercase + string.digits) for i in range(size))
 
 
 def load_raft_cfg():
     """
+    Part of several modes.
+
+    This function reads the RAFT configuration file and provides a dictionary
+    with configuration information.
+
+    Returns:
+        Dictionary with configuration information.
     """
     cfg = {}
     cfg_path = os.path.join(os.getcwd(), '.raft.cfg')
@@ -918,24 +994,37 @@ def load_raft_cfg():
         cfg = json.load(fo)
     return cfg
 
+
 def dump_to_auto_raft(args):
     """
+    Part of several modes.
+
+    Called anytime RAFT is called with non-administrative commands. This copies
+    commands to auto.raft file.
+
+    Args:
+        args (Namespace object): User-specified arguments.
     """
-    if args.command not in ['init-analysis', 'run-auto', 'package-analysis', 'load-analysis', 'setup']:
+    if args.command not in ['init-analysis', 'run-auto', 'package-analysis',
+                            'load-analysis', 'setup']:
         raft_cfg = load_raft_cfg()
-        auto_raft_path = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', 'auto.raft')
+        auto_raft_path = pjoin(raft_cfg['filesystem']['analyses'],
+                               args.analysis,
+                               '.raft',
+                               'auto.raft')
         with open(auto_raft_path, 'a') as fo:
             fo.write("{}\n".format(' '.join(sys.argv)))
 
 
 def package_analysis(args):
     """
+    Part of package-analysis mode.
     """
     raft_cfg = load_raft_cfg()
     anlys_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
     foo = rndm_str_gen()
     anlys_tmp_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'tmp', foo)
-    
+
     os.mkdir(anlys_tmp_dir)
     for dir in os.listdir(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)):
         # These directories should be hidden (at least optionally so) in the future
@@ -952,7 +1041,7 @@ def package_analysis(args):
         files = glob(os.path.join('analyses', args.analysis, 'datasets', '**'), recursive=True)
         hashes = {file: hashlib.md5(file_as_bytes(open(file, 'rb'))).hexdigest() for file in files if os.path.isfile(file)}
         json.dump(hashes, fo, indent=4)
-     
+ 
     # Get Nextflow configs, etc.
     os.mkdir(os.path.join(anlys_tmp_dir, 'workflow'))
     for dir in glob(os.path.join(anlys_dir, 'workflow', '*')):
@@ -973,37 +1062,34 @@ def package_analysis(args):
             print(i)
             taro.add(os.path.join(anlys_tmp_dir, i), arcname = i)
 
-        
-    #shutil.rmtree(anlys_tmp_dir) 
-   
 
 #https://stackoverflow.com/a/3431835
 def file_as_bytes(file):
     with file:
-        return file.read() 
+        return file.read()
 
 def load_analysis(args):
     """
+    Part of load-analysis mode.
     """
     raft_cfg = load_raft_cfg()
     #Should really be using .init.cfg from package here...
     fixt_args = {'init_config': os.path.join(os.getcwd(), '.init.cfg'),
                  'name': args.analysis}
     fixt_args = argparse.Namespace(**fixt_args)
-    
+
     # Initialize analysis
     init_analysis(fixt_args)
 
     # Copy rftpkg into analysis
     shutil.copyfile(args.rftpkg, os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', os.path.basename(args.rftpkg)))
     tarball = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', os.path.basename(args.rftpkg))
-   
+
     # Extract and distribute tarball contents
     tar = tarfile.open(tarball)
     tar.extractall(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft'))
     tar.close()
-    
-
+ 
 
 def main():
     """
@@ -1034,7 +1120,7 @@ def main():
         package_analysis(args)
     elif args.command == 'load-analysis':
         load_analysis(args)
-    
+ 
 
 
 
