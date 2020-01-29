@@ -668,7 +668,7 @@ def load_workflow(args):
     # This shouldn't be hard-coded, but doing it for now.
     modules_repo = raft_cfg['nextflow_repos']['modules']
     if not args.repo:
-        if not args.private
+        if not args.private:
             args.repo = raft_cfg['nextflow_repos']['workflows_common_subgroup']
         else:
             args.repo = raft_cfg['nextflow_repos']['workflows_private_subgroup']
