@@ -33,7 +33,7 @@ def get_args():
                                                     Tools""")
 
 
-    subparsers = parser.add_subparsers(dest='command', required=True)
+    subparsers = parser.add_subparsers(dest='command')
 
 
     # Subparser for initial RAFT setup.
