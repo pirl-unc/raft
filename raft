@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+singularity exec raft.simg /opt/raft.py ${@}

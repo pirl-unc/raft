@@ -1,0 +1,16 @@
+Bootstrap: docker
+From: ubuntu:16.04
+
+%post
+    apt-get -y update
+    apt-get -y install openjdk-8-jre python3-git curl python3
+    curl -s https://get.nextflow.io | bash
+    ls
+    chmod +x nextflow
+    ./nextflow
+
+%files
+    raft.py /opt
+
+%runscript
+    raft.py "$@" 
