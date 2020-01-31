@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Run this *in* the RAFT directory, or bad things will happen (or nothing at all).
 
@@ -893,7 +893,7 @@ def prepend_nf_cmd(args, samp_nf_cmd):
     #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
     discovered_nf = glob(pjoin(workflow_dir, '*.nf'))[0]
     print(discovered_nf)
-    cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd])
+    cmd = ' '.join(['/opt/nextflow', discovered_nf, samp_nf_cmd])
     return cmd
 
 
