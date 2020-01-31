@@ -5,9 +5,10 @@ From: ubuntu:16.04
     apt-get -y update
     apt-get -y install openjdk-8-jre python3-git curl python3
     curl -s https://get.nextflow.io | bash
-    ls
-    chmod +x nextflow
-    ./nextflow
+    mv nextflow /opt/nextflow
+    chmod +x /opt/nextflow
+    chmod 777 /opt/nextflow
+    /opt/nextflow
 
 %files
     raft.py /opt
