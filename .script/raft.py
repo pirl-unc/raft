@@ -3,7 +3,7 @@
 # Run this *in* the RAFT directory, or bad things will happen (or nothing at all).
 
 import argparse
-from git import Repo
+#from git import Repo
 from glob import glob
 import hashlib
 import json

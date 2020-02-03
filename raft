@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
-SING_DIR=`which singularity`
+#SING_DIR=`which singularity`
 
-singularity exec --bind ${SING_DIR} --bind ${PWD}  --pwd ${PWD} .singularity/raft.simg /opt/raft.py "${@}"
+#singularity exec --bind ${SING_DIR} --bind ${PWD}  --pwd ${PWD} .singularity/raft.simg /opt/raft.py "${@}"
+.script/raft.py "${@}"
