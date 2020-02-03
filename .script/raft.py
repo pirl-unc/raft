@@ -893,7 +893,7 @@ def prepend_nf_cmd(args, samp_nf_cmd):
     #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
     discovered_nf = glob(pjoin(workflow_dir, '*.nf'))[0]
     print(discovered_nf)
-    cmd = ' '.join(['/opt/nextflow', discovered_nf, samp_nf_cmd])
+    cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd])
     return cmd
 
 
