@@ -580,7 +580,7 @@ def load_samples(args):
                 if fastq_prefix == 'NA':
                     continue
                 print("Checking for FASTQ prefix {} in global /fastqs...".format(fastq_prefix))
-                hits = glob(pjoin(fastqs_dir, fastq_prefix), recursive=True)
+                hits = glob(pjoin(global_fastqs_dir, fastq_prefix), recursive=True)
                 #Check here to ensure that these FASTQs actually belong to the same sample.
                 if hits:
                     print("Found FASTQs for prefix {} in /fastqs!".format(fastq_prefix))
