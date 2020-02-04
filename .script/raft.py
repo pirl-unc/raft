@@ -538,12 +538,12 @@ def load_samples(args):
     Args:
         args (Namespace object): User-provided arguments.
     """
+    raft_cfg = load_raft_cfg()
     print("Loading samples in analysis {}...".format(args.analysis))
     # This is checking the global, shared FASTQ directory for FASTQs.
     global_fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
     local_fastqs_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'fastqs')
     datasets_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets')
-    raft_cfg = load_raft_cfg()
 
     print("Copying metadata file into analysis metadata directory...")
     if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
