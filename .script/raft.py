@@ -27,7 +27,7 @@ def get_args():
     """
     parser = argparse.ArgumentParser(prog="RAFT",
                                      description="""Reproducible
-                                                    Analysis
+                                                    Analyses
                                                     Framework
                                                     and
                                                     Tools""")
@@ -456,11 +456,6 @@ def fill_dir(dir, init_cfg):
     a list of directories to be included in the mounts.config file for the
     analysis.
 
-    NOTE: The string "USECFG" as a value within the JSON file results in the
-    directory being symlinked to the RAFT shared directory of the same name.
-    For example, 'indexes':'USECFG' means the analysis indexes directory will
-    be symlinked to the RAFT indexes directory.
-
     Args:
         dir (str): Analysis path.
         init_cfg (str): Initialization configuration path. File should be in
@@ -478,16 +473,10 @@ def fill_dir(dir, init_cfg):
     with open(init_cfg) as fo:
         req_sub_dirs = json.load(fo)
     for name, sdir in req_sub_dirs.items():
-        # If the desired directory has a "USECFG" value and has a default in
-        # the global raft configuration file, then symlink the default global
-        # directory within the analysis directory.
-        if sdir.upper() == 'USECFG' and name in raft_cfg['filesystem'].keys():
-            os.symlink(raft_cfg['filesystem'][name], pjoin(dir, name))
-            bound_dirs.append(pjoin(dir, name))
-        # Else if the desired directory has an included path, link that path to
+        # If the desired directory has an included path, link that path to
         # within the analysis directory. This should include some sanity
         # checking to ensure the sub_dir directory even exists.
-        elif sdir:
+        if sdir:
             os.symlink(sdir, pjoin(dir, name))
             bound_dirs.append(pjoin(dir, name))
         # Else if the desired directory doesn't have an included path, simply
@@ -550,18 +539,18 @@ def load_samples(args):
         args (Namespace object): User-provided arguments.
     """
     print("Loading samples in analysis {}...".format(args.analysis))
-    fastqs_dir = ''
-    datasets_dir = ''
+    # This is checking the global, shared FASTQ directory for FASTQs.
+    global_fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
+    local_fastqs_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'fastqs')
+    datasets_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets')
     raft_cfg = load_raft_cfg()
+
     print("Copying metadata file into analysis metadata directory...")
     if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
         # If the specified analysis doesn't exist, then should it be created automatically?
         metadata_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
         shutil.copyfile(args.manifest_csv,
                         pjoin(metadata_dir, os.path.basename(args.manifest_csv)))
-        # This is checking the global, shared FASTQ directory for FASTQs.
-        fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
-        datasets_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'datasets')
 
     print("Checking contents of manifest csv...")
     with open(args.manifest_csv) as fo:
@@ -590,18 +579,18 @@ def load_samples(args):
                 fastq_prefix = row[col]
                 if fastq_prefix == 'NA':
                     continue
-                print("Checking for FASTQ prefix {} in /fastqs...".format(fastq_prefix))
+                print("Checking for FASTQ prefix {} in global /fastqs...".format(fastq_prefix))
                 hits = glob(pjoin(fastqs_dir, fastq_prefix), recursive=True)
+                #Check here to ensure that these FASTQs actually belong to the same sample.
                 if hits:
                     print("Found FASTQs for prefix {} in /fastqs!".format(fastq_prefix))
+                    try:
+                        os.symlink(hits[0], local_fastqs_dir)
+                    except:
+                        pass
                 else:
                     print("""Unable to find FASTQs for prefix {} in /fastqs.
                              Check your metadata csv!\n""".format(fastq_prefix))
-                if len(hits) == 1 and os.path.isdir(hits[0]):
-                    try:
-                        os.symlink(hits[0], pjoin(datasets_dir, dataset, pat_id, fastq_prefix))
-                    except:
-                        pass
 
 
 def load_metadata(args):
