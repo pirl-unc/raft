@@ -588,7 +588,7 @@ def load_manifest(args):
                 prefix = row[col]
                 if prefix == 'NA':
                     continue
-                reconfiged_mani.append(','.join(samp_id, dataset, tissue, prefix)
+                reconfiged_mani.append(','.join(samp_id, dataset, tissue, prefix))
                 print("Checking for FASTQ prefix {} in global /fastqs...".format(fastq_prefix))
                 hits = glob(pjoin(global_fastqs_dir, fastq_prefix), recursive=True)
                 #Check here to ensure that these FASTQs actually belong to the same sample.
