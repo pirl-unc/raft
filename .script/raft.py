@@ -3,7 +3,7 @@
 # Run this *in* the RAFT directory, or bad things will happen (or nothing at all).
 
 import argparse
-#from git import Repo
+from git import Repo
 from glob import glob
 import hashlib
 import json
@@ -594,10 +594,10 @@ def load_manifest(args):
                 #Check here to ensure that these FASTQs actually belong to the same sample.
                 if hits:
                     print("Found FASTQs for prefix {} in /fastqs!".format(prefix))
-                    try:
-                        os.symlink(hits[0], local_fastqs_dir)
-                    except:
-                        pass
+#                    try:
+                    os.symlink(hits[0], pjoin(local_fastqs_dir, os.path.basename(hits[0])))
+#                    except:
+#                        pass
                 else:
                     print("""Unable to find FASTQs for prefix {} in /fastqs.
                              Check your metadata csv!\n""".format(prefix))
