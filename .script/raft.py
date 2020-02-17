@@ -1109,8 +1109,8 @@ def main():
         setup(args)
     elif args.command == 'init-analysis':
         init_analysis(args)
-    elif args.command == 'load-samples':
-        load_samples(args)
+    elif args.command == 'load-manifest':
+        load_manifest(args)
     elif args.command == 'load-metadata':
         load_metadata(args)
     elif args.command == 'load-workflow':
