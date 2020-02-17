@@ -540,7 +540,7 @@ def load_manifest(args):
     """
     raft_cfg = load_raft_cfg()
     print("Loading samples in analysis {}...".format(args.analysis))
-    overall_mani = pjoin(raft_cfg['filesystem']['analysis'],
+    overall_mani = pjoin(raft_cfg['filesystem']['analyses'],
                          args.analysis,
                          'metadata',
                          args.analsysis + '_manifest.csv') 
