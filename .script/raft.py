@@ -557,7 +557,7 @@ def load_manifest(args):
         shutil.copyfile(args.manifest_csv,
                         pjoin(metadata_dir, os.path.basename(args.manifest_csv)))
 
-    reconfiged_hdr = ['samp_id,dataset,tissue,prefix'] 
+    reconfiged_hdr = 'samp_id,dataset,tissue,prefix\n'
     reconfiged_mani = []
 
     print("Checking contents of manifest csv...")
@@ -566,14 +566,14 @@ def load_manifest(args):
         hdr = hdr.strip('\n').split(',')
         # Will certainly need a better way to do this, but this will work for now.
         cols_to_check = [i for i in range(len(hdr)) if hdr[i] not in ['dataset', 'samp_id']]
-        dataset_col = hdr.index('datset')
-        pat_id_col = hdr.index('samp_id')
+        dataset_col = hdr.index('dataset')
+        samp_id_col = hdr.index('samp_id')
 
 
         for row in fo:
             row = row.strip('\n').split(',')
             dataset = row[dataset_col]
-            pat_id = row[pat_id_col]
+            samp_id = row[samp_id_col]
             # Probably a better way to do this.
             #try:
             os.makedirs(pjoin(datasets_dir, dataset), exist_ok=True)
@@ -583,30 +583,34 @@ def load_manifest(args):
 #                              exist_ok=True)
 
 
-            for col, col_idx in enumerate(cols_to_check):
+            for col in cols_to_check:
                 tissue = hdr[col] #This is where translation will happen, if needed!
                 prefix = row[col]
                 if prefix == 'NA':
                     continue
-                reconfiged_mani.append(','.join(samp_id, dataset, tissue, prefix))
-                print("Checking for FASTQ prefix {} in global /fastqs...".format(fastq_prefix))
-                hits = glob(pjoin(global_fastqs_dir, fastq_prefix), recursive=True)
+                reconfiged_mani.append(','.join([samp_id, dataset, tissue, prefix]))
+                print("Checking for FASTQ prefix {} in global /fastqs...".format(prefix))
+                hits = glob(pjoin(global_fastqs_dir, prefix), recursive=True)
                 #Check here to ensure that these FASTQs actually belong to the same sample.
                 if hits:
-                    print("Found FASTQs for prefix {} in /fastqs!".format(fastq_prefix))
+                    print("Found FASTQs for prefix {} in /fastqs!".format(prefix))
                     try:
                         os.symlink(hits[0], local_fastqs_dir)
                     except:
                         pass
                 else:
                     print("""Unable to find FASTQs for prefix {} in /fastqs.
-                             Check your metadata csv!\n""".format(fastq_prefix))
+                             Check your metadata csv!\n""".format(prefix))
 
     with open(overall_mani, 'w') as mfo:
-        contents = mfo.readlines()
+        contents = ''
+        try:
+            contents = mfo.readlines()
+        except:
+            pass
         if reconfiged_hdr not in contents:
             mfo.write(reconfiged_hdr)
-        mfo.write('\n'.join(reconfiged_mani))
+        mfo.write('\n'.join([row for row in reconfiged_mani if row not in contents]))
 
      
       
