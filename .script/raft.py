@@ -58,13 +58,13 @@ def get_args():
 
 
     # Subparser for loading samples into an analysis.
-    parser_load_samples = subparsers.add_parser('load-samples',
-                                                help="Loads samples into an analysis.")
-    parser_load_samples.add_argument('-c', '--manifest-csv',
+    parser_load_manifest = subparsers.add_parser('load-manifest',
+                                                help="Loads manifest into an analysis.")
+    parser_load_manifest.add_argument('-c', '--manifest-csv',
                                      help="""Manifest CSV. Check documentation 
                                              for more information.""",
                                      required=True)
-    parser_load_samples.add_argument('-a', '--analysis',
+    parser_load_manifest.add_argument('-a', '--analysis',
                                      help="Analysis requiring samples.",
                                      required=True)
 
@@ -201,7 +201,7 @@ def setup(args):
     if args.default:
         print("Using defaults due to -d/--default flag...")
     # DEFAULTS
-    raft_paths = {'datasets': pjoin(getcwd(), 'datasets'),
+    raft_paths = {'work': pjoin(getcwd(), 'work'),
                   'analyses': pjoin(getcwd(), 'analyses'),
                   'indices': pjoin(getcwd(), 'indices'),
                   'references': pjoin(getcwd(), 'references'),
@@ -520,7 +520,7 @@ def mk_mounts_cfg(dir, bound_dirs):
             fo.write(row)
 
 
-def load_samples(args):
+def load_manifest(args):
     """
     Part of the load-samples mode.
 
@@ -540,6 +540,11 @@ def load_samples(args):
     """
     raft_cfg = load_raft_cfg()
     print("Loading samples in analysis {}...".format(args.analysis))
+    overall_mani = pjoin(raft_cfg['filesystem']['analysis'],
+                         args.analysis,
+                         'metadata',
+                         args.analsysis + '_manifest.csv') 
+    
     # This is checking the global, shared FASTQ directory for FASTQs.
     global_fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
     local_fastqs_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'fastqs')
@@ -552,14 +557,17 @@ def load_samples(args):
         shutil.copyfile(args.manifest_csv,
                         pjoin(metadata_dir, os.path.basename(args.manifest_csv)))
 
+    reconfiged_hdr = ['samp_id,dataset,tissue,prefix'] 
+    reconfiged_mani = []
+
     print("Checking contents of manifest csv...")
     with open(args.manifest_csv) as fo:
         hdr = fo.readline()
         hdr = hdr.strip('\n').split(',')
         # Will certainly need a better way to do this, but this will work for now.
-        cols_to_check = [i for i in range(len(hdr)) if hdr[i] not in ['Dataset', 'Patient ID']]
-        dataset_col = hdr.index('Dataset')
-        pat_id_col = hdr.index('Patient ID')
+        cols_to_check = [i for i in range(len(hdr)) if hdr[i] not in ['dataset', 'samp_id']]
+        dataset_col = hdr.index('datset')
+        pat_id_col = hdr.index('samp_id')
 
 
         for row in fo:
@@ -569,16 +577,18 @@ def load_samples(args):
             # Probably a better way to do this.
             #try:
             os.makedirs(pjoin(datasets_dir, dataset), exist_ok=True)
-            os.makedirs(pjoin(raft_cfg['filesystem']['datasets'], dataset),
-                              exist_ok=True)
-            os.makedirs(pjoin(raft_cfg['filesystem']['datasets'], dataset, pat_id),
-                              exist_ok=True)
+#            os.makedirs(pjoin(raft_cfg['filesystem']['datasets'], dataset),
+#                              exist_ok=True)
+#            os.makedirs(pjoin(raft_cfg['filesystem']['datasets'], dataset, pat_id),
+#                              exist_ok=True)
 
 
-            for col in cols_to_check:
-                fastq_prefix = row[col]
-                if fastq_prefix == 'NA':
+            for col, col_idx in enumerate(cols_to_check):
+                tissue = hdr[col] #This is where translation will happen, if needed!
+                prefix = row[col]
+                if prefix == 'NA':
                     continue
+                reconfiged_mani.append(','.join(samp_id, dataset, tissue, prefix)
                 print("Checking for FASTQ prefix {} in global /fastqs...".format(fastq_prefix))
                 hits = glob(pjoin(global_fastqs_dir, fastq_prefix), recursive=True)
                 #Check here to ensure that these FASTQs actually belong to the same sample.
@@ -591,6 +601,15 @@ def load_samples(args):
                 else:
                     print("""Unable to find FASTQs for prefix {} in /fastqs.
                              Check your metadata csv!\n""".format(fastq_prefix))
+
+    with open(overall_mani, 'w') as mfo:
+        contents = mfo.readlines()
+        if reconfiged_hdr not in contents:
+            mfo.write(reconfiged_hdr)
+        mfo.write('\n'.join(reconfiged_mani))
+
+     
+      
 
 
 def load_metadata(args):
@@ -719,10 +738,7 @@ def run_workflow(args):
             if samp_id not in processed_samp_ids:
                 samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
                 # Work directory should probably just be RAFT/work.
-                work_dir = pjoin(raft_cfg['filesystem']['datasets'],
-                                 samp_mani_info['Dataset'],
-                                 samp_mani_info['Patient ID'],
-                                 'work')
+                work_dir = raft_cfg['filesystem']['work']
                 local_dir = pjoin(raft_cfg['filesystem']['analyses'],
                                   args.analysis,
                                   'datasets',
