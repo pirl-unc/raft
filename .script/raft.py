@@ -543,7 +543,7 @@ def load_manifest(args):
     overall_mani = pjoin(raft_cfg['filesystem']['analyses'],
                          args.analysis,
                          'metadata',
-                         args.analsysis + '_manifest.csv') 
+                         args.analysis + '_manifest.csv') 
     
     # This is checking the global, shared FASTQ directory for FASTQs.
     global_fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
