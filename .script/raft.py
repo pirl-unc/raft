@@ -70,61 +70,54 @@ def get_args():
 
 
     # Subparser for loading metadata into an analysis.
-    parser_load_samples = subparsers.add_parser('load-metadata',
-                                                help="Loads metadata for an analysis.")
-    parser_load_samples.add_argument('-c', '--metadata-csv',
-                                     help="Metadata CSV. Check docs for more info.",
-                                     required=True)
-    parser_load_samples.add_argument('-a', '--analysis',
-                                     help="Analysis to add metadata to.",
-                                     required=True)
+    parser_load_metadata = subparsers.add_parser('load-metadata',
+                                                 help="Loads metadata for an analysis.")
+    parser_load_metadata.add_argument('-c', '--metadata-csv',
+                                      help="Metadata CSV. Check docs for more info.",
+                                      required=True)
+    parser_load_metadata.add_argument('-a', '--analysis',
+                                      help="Analysis to add metadata to.",
+                                      required=True)
 
 
     # Subparser for loading workflow into an analysis.
-    parser_load_workflow = subparsers.add_parser('load-workflow',
-                                        help="Clones Nextflow workflow into analysis.")
-    parser_load_workflow.add_argument('-a', '--analysis',
-                                      help="Analysis to add workflow to.",
-                                      required=True)
-     # Default=BGV NF workflow repo.
-    parser_load_workflow.add_argument('-r', '--repo',
-                                      help="Repo for workflow.",
-                                      default='')
-    parser_load_workflow.add_argument('-w', '--workflow',
-                                      help="Workflow to add to analysis.",
-                                      required=True)
+    parser_load_module = subparsers.add_parser('load-module',
+                                                  help="Clones Nextflow component into analysis.")
+    parser_load_module.add_argument('-a', '--analysis',
+                                    help="Analysis to add workflow to.",
+                                    required=True)
+    parser_load_module.add_argument('-r', '--repo',
+                                    help="Repo for workflow.",
+                                    default='')
+    parser_load_module.add_argument('-m', '--module',
+                                    help="Workflow to add to analysis.",
+                                    required=True)
     # Need support for commits and tags here as well.
-    parser_load_workflow.add_argument('-b', '--branch',
-                                      help="Branch to checkout. Default='develop'.",
-                                      default='develop')
-    parser_load_workflow.add_argument('-p', '--private',
-                                      help="Clones from private subgroup.",
-                                      action='store_true',
-                                      default=False)
-    parser_load_workflow.add_argument('-n', '--no-modules',
-                                      help="Do not load any common modules.",
-                                      default=False)
+    parser_load_module.add_argument('-b', '--branch',
+                                    help="Branch to checkout. Default='develop'.",
+                                    default='develop')
+    parser_load_module.add_argument('-p', '--private',
+                                    help="Clones from private subgroup.",
+                                    action='store_true',
+                                    default=False)
+    parser_load_module.add_argument('-n', '--no-modules',
+                                    help="Do not load any common modules.",
+                                    default=False)
 
 
-    # Subparser for loading private modules into an analysis.
-    parser_load_private_module = subparsers.add_parser('load-private-module',
-                                        help="Clones private module into analysis.")
-    parser_load_private_module.add_argument('-a', '--analysis',
-                                      help="Analysis to add workflow to.",
-                                      required=True)
-    parser_load_private_module.add_argument('-w', '--workflow',
-                                      help="Workflow to add to analysis.",
-                                      required=True)
+    # Subparser for adding a step into workflow step of an analysis.
+    parser_add_step = subparsers.add_parser('add-step',
+                                          help="Clones private module into analysis.")
+    parser_add_step.add_argument('-a', '--analysis',
+                                 help="Analysis to add workflow to.",
+                                 required=True)
+    parser_add_step.add_argument('-w', '--workflow',
+                                 help="Workflow to add step to.",
+                                 default='main')
     # Default=BGV NF priv module repo.
-    parser_load_private_module.add_argument('-r', '--repo', help="Repo for module.",
-                                            default='')
-    parser_load_private_module.add_argument('-m', '--module',
-                                            help="Module to add to analysis.",
-                                            required=True)
-    # Need support for commits and tags here as well.
-    parser_load_private_module.add_argument('-b', '--branch',
-                                      help="Branch to checkout. Default='develop'.",
-                                      default='develop')
+    parser_add_step.add_argument('-n', '--no-populate'
+                                 help="Load step without placeholder variables."
+                                 action='storetrue')
 
 
     # Subparser for running workflow on samples.
