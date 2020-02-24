@@ -386,6 +386,7 @@ def init_analysis(args):
           init_config file.
         - Make a mounts.config file to allow Singularity to access RAFT directories.
         - Make auto.raft file (which records steps taken within RAFT).
+        - Create workflow/modules/ directory and <analysis>.nf overall workflow.
 
     Args:
         args (Namespace object): User-provided arguments
@@ -394,6 +395,7 @@ def init_analysis(args):
     bound_dirs = fill_dir(anlys_dir, args.init_config)
     mk_mounts_cfg(anlys_dir, bound_dirs)
     mk_auto_raft(args)
+    
 
 
 def mk_auto_raft(args):
@@ -1111,10 +1113,10 @@ def main():
         load_manifest(args)
     elif args.command == 'load-metadata':
         load_metadata(args)
-    elif args.command == 'load-workflow':
-        load_workflow(args)
-    elif args.command == 'load-private-module':
-        load_private_module(args)
+    elif args.command == 'load-component':
+        load_component(args)
+    elif args.command == 'add-step':
+        add_step(args)
     elif args.command == 'run-workflow':
         run_workflow(args)
     elif args.command == 'run-auto':
