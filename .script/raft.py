@@ -72,36 +72,38 @@ def get_args():
     # Subparser for loading metadata into an analysis.
     parser_load_metadata = subparsers.add_parser('load-metadata',
                                                  help="Loads metadata for an analysis.")
-    parser_load_metadata.add_argument('-c', '--metadata-csv',
-                                      help="Metadata CSV. Check docs for more info.",
+    parser_load_metadata.add_argument('-f', '--metadata-file',
+                                      help="Metadata file. Check docs for more info.",
                                       required=True)
+    parser_load_metadata.add_argument('-s', '--sub-dir',
+                                      help="Subdirectory for metadata file.", default='')
     parser_load_metadata.add_argument('-a', '--analysis',
                                       help="Analysis to add metadata to.",
                                       required=True)
 
 
     # Subparser for loading workflow into an analysis.
-    parser_load_module = subparsers.add_parser('load-module',
+    parser_load_component = subparsers.add_parser('load-component',
                                                help="Clones Nextflow component into analysis.")
-    parser_load_module.add_argument('-a', '--analysis',
+    parser_load_component.add_argument('-a', '--analysis',
                                     help="Analysis to add workflow to.",
                                     required=True)
-    parser_load_module.add_argument('-r', '--repo',
+    parser_load_component.add_argument('-r', '--repo',
                                     help="Repo for workflow.",
                                     default='')
-    parser_load_module.add_argument('-m', '--module',
-                                    help="Workflow to add to analysis.",
+    parser_load_component.add_argument('-c', '--component',
+                                    help="Component to add to analysis.",
                                     required=True)
     # Need support for commits and tags here as well.
-    parser_load_module.add_argument('-b', '--branch',
+    parser_load_component.add_argument('-b', '--branch',
                                     help="Branch to checkout. Default='develop'.",
                                     default='develop')
-    parser_load_module.add_argument('-p', '--private',
+    parser_load_component.add_argument('-p', '--private',
                                     help="Clones from private subgroup.",
                                     action='store_true',
                                     default=False)
-    parser_load_module.add_argument('-n', '--no-modules',
-                                    help="Do not load any common modules.",
+    parser_load_component.add_argument('-n', '--no-deps',
+                                    help="Do not automatically load dependencies.",
                                     default=False)
 
 
@@ -205,7 +207,7 @@ def setup(args):
     # This prefix should probably be user configurable
     git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
     #nextflow-components is a subgroup, not a repo.
-    nf_repos = {'workflows_components': pjoin(git_prefix, 'nextflow-components')}
+    nf_repos = {'nextflow_components': pjoin(git_prefix, 'nextflow-components')}
 
     raft_repos = {}
 
@@ -530,6 +532,31 @@ def mk_mounts_cfg(dir, bound_dirs):
             fo.write(row)
 
 
+def update_mounts_cfg(mounts_cfg, bound_dirs):
+    """
+    Part of load-manifest mode.
+
+    Updates a mount.config file for an analysis.
+
+    This is primarily intended to update the mount.config file with absolute
+    paths for symlinked FASTQs, but can also be used generally.
+
+    Args:
+        mount_cfg (str): Path to mounts.config file to update.
+        bound_dirs (list): Directories to be included in mounts.config file.
+    """
+    out = []
+    with open(mounts_cfg, 'r') as ifo:
+        for line in ifo:
+            if re.search('runOptions', line):
+                line = line.strip('"\n') + ',{}'.format(','.join(bound_dirs)) + '\n'
+            out.append(line)
+
+    with open(mounts_cfg, 'w') as fo:
+        for row in out:
+            fo.write(row)
+
+
 def load_manifest(args):
     """
     Part of the load-samples mode.
@@ -570,6 +597,8 @@ def load_manifest(args):
     reconfiged_hdr = 'samp_id,dataset,tissue,prefix\n'
     reconfiged_mani = []
 
+    bound_dirs = [] #Stores directories containing absolute path to FASTQs.
+
     print("Checking contents of manifest csv...")
     with open(args.manifest_csv) as fo:
         hdr = fo.readline()
@@ -579,19 +608,10 @@ def load_manifest(args):
         dataset_col = hdr.index('dataset')
         samp_id_col = hdr.index('samp_id')
 
-
         for row in fo:
             row = row.strip('\n').split(',')
             dataset = row[dataset_col]
             samp_id = row[samp_id_col]
-            # Probably a better way to do this.
-            #try:
-            os.makedirs(pjoin(datasets_dir, dataset), exist_ok=True)
-#            os.makedirs(pjoin(raft_cfg['filesystem']['datasets'], dataset),
-#                              exist_ok=True)
-#            os.makedirs(pjoin(raft_cfg['filesystem']['datasets'], dataset, pat_id),
-#                              exist_ok=True)
-
 
             for col in cols_to_check:
                 tissue = hdr[col] #This is where translation will happen, if needed!
@@ -600,17 +620,21 @@ def load_manifest(args):
                     continue
                 reconfiged_mani.append(','.join([samp_id, dataset, tissue, prefix]))
                 print("Checking for FASTQ prefix {} in global /fastqs...".format(prefix))
-                hits = glob(pjoin(global_fastqs_dir, prefix), recursive=True)
+                hits = glob(pjoin(global_fastqs_dir, prefix + '*'), recursive=True)
                 #Check here to ensure that these FASTQs actually belong to the same sample.
                 if hits:
                     print("Found FASTQs for prefix {} in /fastqs!".format(prefix))
-#                    try:
-                    os.symlink(hits[0], pjoin(local_fastqs_dir, os.path.basename(hits[0])))
-#                    except:
-#                        pass
+                    for hit in hits:
+                        os.symlink(os.path.realpath(hit), pjoin(local_fastqs_dir, os.path.basename(hit)))
+                        #Just adding each file individually for now...
+                        bound_dirs.append(os.path.dirname(os.path.realpath(hit)))
                 else:
                     print("""Unable to find FASTQs for prefix {} in /fastqs.
                              Check your metadata csv!\n""".format(prefix))
+
+    bound_dirs = list(set(bound_dirs))
+
+    update_mounts_cfg(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'), bound_dirs)
 
     with open(overall_mani, 'w') as mfo:
         contents = ''
@@ -621,6 +645,8 @@ def load_manifest(args):
         if reconfiged_hdr not in contents:
             mfo.write(reconfiged_hdr)
         mfo.write('\n'.join([row for row in reconfiged_mani if row not in contents]))
+
+    #Need to udpate mounts.config with the symlinks for these FASTQs.
 
 
 
@@ -644,9 +670,43 @@ def load_metadata(args):
     if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
         # If the specified analysis doesn't exist, then should it be created automatically?
         metadata_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
-        shutil.copyfile(args.metadata_csv,
-                        pjoin(metadata_dir, os.path.basename(args.metadata_csv)))
+        if args.sub_dir:
+            os.mkdir(pjoin(metadata_dir, args.sub_dir))
+        shutil.copyfile(args.metadata_file,
+                        pjoin(metadata_dir, args.sub_dir, os.path.basename(args.metadata_file)))
 
+
+def recurs_load_components(args):
+    """
+    Recurively loads Nextflow components. This occurs in multiple waves such that each time a dependencies is loaded/cloned, another wave is initated. This continues until a wave in which no new dependencies are loaded/cloned. There's probably a more intelligent way of doing this, but this should be able to handle the multiple layers of dependencies we're working with. A notable blind spot is the ability to specify the branch to use for each tool (defaults to develop).
+
+    Args:
+        args (Namespace object): User-provided arguments.
+
+    """
+    raft_cfg = load_raft_cfg()
+    wf_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
+    new_deps = 1
+    while new_deps == 1:
+        new_deps = 0
+        nfs = glob(pjoin(wf_dir, '**', '*.nf'), recursive=True)
+        for nf in nfs:
+            base = nf.strip('.nf')
+            deps = []
+            with open(nf) as nffo:
+                for line in nffo:
+                    if re.search('^include', line):
+                        dep = line.split()[-1].replace("'", '').split('/')[1]
+                        if dep not in deps:
+                            deps.append(dep)
+#                deps.append([re.search('.nf', line).group() for line in nffo if re.search('^include', line)])
+        for dep in deps:
+            if dep not in glob(pjoin(wf_dir)):
+                new_deps = 1
+                spoofed_args = args
+                spoofed_args.component = dep
+                load_component(spoofed_args)
+             
 
 def load_private_module(args):
     """
@@ -675,11 +735,11 @@ def load_private_module(args):
 
 
 
-def load_workflow(args):
+def load_component(args):
     """
-    Part of the load-workflow mode.
+    Part of the load-component mode.
 
-    Loads a workflow into an analysis.
+    Loads a Nextflow component (e.g. module) into an analysis.
     Allows users to specify a specific branch to checkout.
     Automatically loads 'develop' branch of modules repo unless specified by user.
 
@@ -687,23 +747,16 @@ def load_workflow(args):
         args (Namespace object): User-provided arguments.
     """
     raft_cfg = load_raft_cfg()
-    # This shouldn't be hard-coded, but doing it for now.
-    modules_repo = raft_cfg['nextflow_repos']['modules']
     if not args.repo:
-        if not args.private:
-            args.repo = raft_cfg['nextflow_repos']['workflows_common_subgroup']
-        else:
-            args.repo = raft_cfg['nextflow_repos']['workflows_private_subgroup']
+        args.repo = raft_cfg['nextflow_repos']['nextflow_components']
     if args.analysis:
         # Should probably check here and see if the specified analysis even exists...
         workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
-        Repo.clone_from(pjoin(args.repo, args.workflow),
-                        pjoin(workflow_dir, args.workflow),
+        Repo.clone_from(pjoin(args.repo, args.component),
+                        pjoin(workflow_dir, args.component),
                         branch=args.branch)
-    if not args.no_modules:
-        Repo.clone_from(modules_repo,
-                        pjoin(workflow_dir, args.workflow, 'modules'),
-                        branch='develop')
+        recurs_load_components(args)
+    # Need to add config info to nextflow.config.
 
 
 def run_workflow(args):
