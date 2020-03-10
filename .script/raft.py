@@ -105,6 +105,20 @@ def get_args():
     parser_load_component.add_argument('-n', '--no-deps',
                                     help="Do not automatically load dependencies.",
                                     default=False)
+    
+    # Subparser for listing available processes and workflows from a component.
+    parser_load_component = subparsers.add_parser('list-steps',
+                                               help="Lists process and workflows from a component.")
+    parser_load_component.add_argument('-a', '--analysis',
+                                    help="Analysis to add workflow to.",
+                                    required=True)
+    parser_load_component.add_argument('-c', '--component',
+                                    help="Component to add to analysis.",
+                                    required=True)
+    # Need support for commits and tags here as well.
+    parser_load_component.add_argument('-b', '--branch',
+                                    help="Branch to checkout. Default='develop'.",
+                                    default='develop')
 
 
     # Subparser for adding a step into workflow step of an analysis.
@@ -410,7 +424,7 @@ def mk_main_wf_and_cfg(args):
     anlys_wf_path = pjoin(raft_cfg['filesystem']['analyses'],                                      
                                    args.name,
                                    'workflow')
-    shutil.copyfile(template_wf_path, pjoin(anlys_wf_path, 'main.wf'))
+    shutil.copyfile(template_wf_path, pjoin(anlys_wf_path, 'main.nf'))
     shutil.copyfile(template_nfcfg_path, pjoin(anlys_wf_path, 'nextflow.config'))
 
     
@@ -701,12 +715,26 @@ def recurs_load_components(args):
                             deps.append(dep)
 #                deps.append([re.search('.nf', line).group() for line in nffo if re.search('^include', line)])
         for dep in deps:
-            if dep not in glob(pjoin(wf_dir)):
+            curr_deps = [i.split('/')[-1] for i in glob(pjoin(wf_dir, '*'))]
+            if dep not in curr_deps:
                 new_deps = 1
                 spoofed_args = args
                 spoofed_args.component = dep
                 load_component(spoofed_args)
              
+
+def list_steps(args):
+    """
+    List the process and workflows available from a Nextflow component. Requires analysis since it assumes users may modify componenets in an analysis-specific manner.
+
+    Args:
+       args (Namespace object): User-provided arguments
+    """
+    raft_cfg = load_raft_cfg()
+    with open(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.component, args.component + '.nf')) as fo:
+        for line in fo:
+            if re.search('^workflow|^process', line):
+                print(line.split(' ')[1])
 
 def load_private_module(args):
     """
@@ -1183,6 +1211,8 @@ def main():
         load_metadata(args)
     elif args.command == 'load-component':
         load_component(args)
+    elif args.command == 'list-steps':
+        list_steps(args)
     elif args.command == 'add-step':
         add_step(args)
     elif args.command == 'run-workflow':
