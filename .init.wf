@@ -8,3 +8,6 @@ nextflow.preview.dsl=2
 /*Inclusions*/
 
 /*Workflows*/
+
+workflow {
+}
