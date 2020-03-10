@@ -59,14 +59,14 @@ def get_args():
 
     # Subparser for loading samples into an analysis.
     parser_load_manifest = subparsers.add_parser('load-manifest',
-                                                help="Loads manifest into an analysis.")
+                                                 help="Loads manifest into an analysis.")
     parser_load_manifest.add_argument('-c', '--manifest-csv',
-                                     help="""Manifest CSV. Check documentation 
-                                             for more information.""",
+                                      help="""Manifest CSV. Check documentation
+                                              for more information.""",
                                      required=True)
     parser_load_manifest.add_argument('-a', '--analysis',
-                                     help="Analysis requiring samples.",
-                                     required=True)
+                                      help="Analysis requiring samples.",
+                                      required=True)
 
 
     # Subparser for loading metadata into an analysis.
@@ -82,7 +82,7 @@ def get_args():
 
     # Subparser for loading workflow into an analysis.
     parser_load_module = subparsers.add_parser('load-module',
-                                                  help="Clones Nextflow component into analysis.")
+                                               help="Clones Nextflow component into analysis.")
     parser_load_module.add_argument('-a', '--analysis',
                                     help="Analysis to add workflow to.",
                                     required=True)
@@ -107,7 +107,7 @@ def get_args():
 
     # Subparser for adding a step into workflow step of an analysis.
     parser_add_step = subparsers.add_parser('add-step',
-                                          help="Clones private module into analysis.")
+                                            help="Clones private module into analysis.")
     parser_add_step.add_argument('-a', '--analysis',
                                  help="Analysis to add workflow to.",
                                  required=True)
@@ -133,7 +133,7 @@ def get_args():
                                      required=True)
     parser_run_workflow.add_argument('-n', '--nf-params',
                                      help="""Param string passed to Nextflow.
-                                             Check documentation for 
+                                             Check documentation for
                                              more information.""")
     parser_run_workflow.add_argument('-a', '--analysis',
                                      help="Analysis",
@@ -142,7 +142,7 @@ def get_args():
 
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
     parser_package_analysis = subparsers.add_parser('package-analysis',
-                                                    help="""Package analysis 
+                                                    help="""Package analysis
                                                             for distribution.""")
     parser_package_analysis.add_argument('-a', '--analysis',
                                          help="Analysis to package.")
@@ -153,7 +153,7 @@ def get_args():
 
     # Subparser for loading analysis (after receiving rftpkg tar file)
     parser_load_analysis = subparsers.add_parser('load-analysis',
-                                                 help="""Load an analysis 
+                                                 help="""Load an analysis
                                                          from a rftpkg file.""")
     parser_load_analysis.add_argument('-a', '--analysis', help="Analysis name.")
     parser_load_analysis.add_argument('-r', '--rftpkg', help="rftpkg file.")
@@ -167,7 +167,7 @@ def setup(args):
     Part of the setup mode.
 
     Installs RAFT into current working directory.
-    Installation consists of: 
+    Installation consists of:
 
         - Moving any previouls generated RAFT configuration files.
 
@@ -204,10 +204,8 @@ def setup(args):
 
     # This prefix should probably be user configurable
     git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
-    nf_repos = {'workflows_common_subgroup': pjoin(git_prefix, 'nextflow-workflows---common'),
-                'workflows_private_subgroup': pjoin(git_prefix, 'nextflow-workflows---private'),
-                'modules_private_subgroup': pjoin(git_prefix, 'nextflow-modules---private'),
-                'modules': pjoin(git_prefix, 'nextflow-modules.git')}
+    #nextflow-components is a subgroup, not a repo.
+    nf_repos = {'workflows_components': pjoin(git_prefix, 'nextflow-components')}
 
     raft_repos = {}
 
@@ -284,9 +282,7 @@ def setup_get_user_nf_repos(nf_repos):
 
     Prompts user for desired Nextflow reposities.
     Examples include:
-        nextflow-workflows-public
-        nextflow-workflows-private
-        modules
+        nextflow-components
 
     Args:
         nf_repos (dict): Dictionary containing repo names as keys and git url as values.
@@ -330,7 +326,6 @@ def setup_get_user_raft_repos(raft_repos):
         raft_repos[repo_name] = repo_url
         repo_qry = input("Would you like to add an additional repository? (Y/N)")
     return raft_repos
-
 
 
 def dump_cfg(cfg_path, master_cfg):
@@ -395,8 +390,28 @@ def init_analysis(args):
     bound_dirs = fill_dir(anlys_dir, args.init_config)
     mk_mounts_cfg(anlys_dir, bound_dirs)
     mk_auto_raft(args)
-    
+    mk_main_wf_and_cfg(args)
 
+
+def mk_main_wf_and_cfg(args)
+    """
+    Part of the init-analysis mode.
+
+    Copies default main.nf template and creates sparse nextflow.config.
+
+    Args:
+        args (Namespace object): User-provided arguments
+    """
+    raft_cfg = load_raft_cfg()
+    template_wf_path = os.path.join(os.getcwd(), '.init.wf')
+    template_nfcfg_path = os.path.join(os.getcwd(), '.nextflow.config')
+    anlys_wf_path = pjoin(raft_cfg['filesystem']['analyses'],                                      
+                                   args.name,
+                                   'workflow')
+    shutil.copyfile(template_wf_path, pjoin(main_wf_path, 'main.wf'))
+    shutil.copyfile(template_nfcfg_path, pjoin(main_wf_path, 'nextflow.config'))
+
+    
 
 def mk_auto_raft(args):
     """
@@ -538,8 +553,8 @@ def load_manifest(args):
     overall_mani = pjoin(raft_cfg['filesystem']['analyses'],
                          args.analysis,
                          'metadata',
-                         args.analysis + '_manifest.csv') 
-    
+                         args.analysis + '_manifest.csv')
+
     # This is checking the global, shared FASTQ directory for FASTQs.
     global_fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
     local_fastqs_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'fastqs')
@@ -607,8 +622,8 @@ def load_manifest(args):
             mfo.write(reconfiged_hdr)
         mfo.write('\n'.join([row for row in reconfiged_mani if row not in contents]))
 
-     
-      
+
+
 
 
 def load_metadata(args):
@@ -748,7 +763,7 @@ def run_workflow(args):
                                  'tmp',
                                  samp_mani_info['Patient ID'],
                                  str(time.time()))
- 
+
                 os.makedirs(work_dir, exist_ok=True)
                 os.makedirs(local_dir, exist_ok=True)
                 os.makedirs(tmp_dir, exist_ok=True)
@@ -771,7 +786,7 @@ def run_workflow(args):
                 print("Waiting 10 seconds before sending next request.")
                 time.sleep(10)
                 os.chdir(init_dir)
- 
+
 
 def extract_samp_ids(args, manifest_csv):
     """
@@ -798,7 +813,7 @@ def extract_samp_ids(args, manifest_csv):
             line = line.rstrip('\n').split(',')
             samp_ids.append(line[pat_idx])
     return samp_ids
- 
+
 
 def add_log_dir(samp_id, args, samp_nf_cmd):
     """
@@ -815,7 +830,7 @@ def add_log_dir(samp_id, args, samp_nf_cmd):
         Str containing the modified Nextflow command with logging functionality.
     """
     raft_cfg = load_raft_cfg()
- 
+
     log_dir = pjoin(raft_cfg['filesystem']['analyses'],
                     args.analysis,
                     'logs',
@@ -849,7 +864,7 @@ def get_samp_mani_info(analysis, samp_id):
     of a FASTQ prefix (e.g. "WES Tumor") and the value is the FASTQ prefix from
     the manifest csv.
 
-    Args: 
+    Args:
         analysis (str): Analysis name.
         samp_id (str): Sample identifer (as defined within manifest csv).
 
@@ -1046,7 +1061,7 @@ def package_analysis(args):
         files = glob(os.path.join('analyses', args.analysis, 'datasets', '**'), recursive=True)
         hashes = {file: hashlib.md5(file_as_bytes(open(file, 'rb'))).hexdigest() for file in files if os.path.isfile(file)}
         json.dump(hashes, fo, indent=4)
- 
+
     # Get Nextflow configs, etc.
     os.mkdir(os.path.join(anlys_tmp_dir, 'workflow'))
     for dir in glob(os.path.join(anlys_dir, 'workflow', '*')):
@@ -1094,7 +1109,7 @@ def load_analysis(args):
     tar = tarfile.open(tarball)
     tar.extractall(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft'))
     tar.close()
- 
+
 
 def main():
     """
@@ -1125,7 +1140,7 @@ def main():
         package_analysis(args)
     elif args.command == 'load-analysis':
         load_analysis(args)
- 
+
 
 
 
