@@ -115,9 +115,9 @@ def get_args():
                                  help="Workflow to add step to.",
                                  default='main')
     # Default=BGV NF priv module repo.
-    parser_add_step.add_argument('-n', '--no-populate'
-                                 help="Load step without placeholder variables."
-                                 action='storetrue')
+    parser_add_step.add_argument('-n', '--no-populate',
+                                 help="Load step without placeholder variables.",
+                                 action='store_true')
 
 
     # Subparser for running workflow on samples.
@@ -393,7 +393,7 @@ def init_analysis(args):
     mk_main_wf_and_cfg(args)
 
 
-def mk_main_wf_and_cfg(args)
+def mk_main_wf_and_cfg(args):
     """
     Part of the init-analysis mode.
 
@@ -408,8 +408,8 @@ def mk_main_wf_and_cfg(args)
     anlys_wf_path = pjoin(raft_cfg['filesystem']['analyses'],                                      
                                    args.name,
                                    'workflow')
-    shutil.copyfile(template_wf_path, pjoin(main_wf_path, 'main.wf'))
-    shutil.copyfile(template_nfcfg_path, pjoin(main_wf_path, 'nextflow.config'))
+    shutil.copyfile(template_wf_path, pjoin(anlys_wf_path, 'main.wf'))
+    shutil.copyfile(template_nfcfg_path, pjoin(anlys_wf_path, 'nextflow.config'))
 
     
 
