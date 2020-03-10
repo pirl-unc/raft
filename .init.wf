@@ -1,0 +1,10 @@
+#!/usr/bin/env nextflow
+nextflow.preview.dsl=2
+
+/*General Parameters*/
+
+/*Fine-tuned Parameters*/
+
+/*Inclusions*/
+
+/*Workflows*/
