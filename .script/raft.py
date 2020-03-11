@@ -82,7 +82,7 @@ def get_args():
                                       required=True)
 
 
-    # Subparser for loading workflow into an analysis.
+    # Subparser for loading component into an analysis.
     parser_load_component = subparsers.add_parser('load-component',
                                                help="Clones Nextflow component into analysis.")
     parser_load_component.add_argument('-a', '--analysis',
@@ -119,6 +119,18 @@ def get_args():
     parser_load_component.add_argument('-b', '--branch',
                                     help="Branch to checkout. Default='develop'.",
                                     default='develop')
+   
+ 
+    # Subparser for listing available processes and workflows from a component.
+    parser_update_mounts = subparsers.add_parser('update-mounts',
+                                                 help="Updates mounts.config file with symlinks found in a directory.")
+    parser_update_mounts.add_argument('-a', '--analysis',
+                                      help="Analysis required mounts.config update.",
+                                      required=True)
+    parser_update_mounts.add_argument('-d', '--dir',
+                                      help="Directory containing symlinks for mounts.config.",
+                                      required=True)
+    # Need support for commits and tags here as well.
 
 
     # Subparser for adding a step into workflow step of an analysis.
@@ -127,8 +139,11 @@ def get_args():
     parser_add_step.add_argument('-a', '--analysis',
                                  help="Analysis to add workflow to.",
                                  required=True)
-    parser_add_step.add_argument('-w', '--workflow',
-                                 help="Workflow to add step to.",
+    parser_add_step.add_argument('-s', '--step',
+                                 help="Proces/workflow to add.",
+                                 required=True)
+    parser_add_step.add_argument('-S', '--subworkflow',
+                                 help="Subworkflow to add to..",
                                  default='main')
     # Default=BGV NF priv module repo.
     parser_add_step.add_argument('-n', '--no-populate',
@@ -146,7 +161,7 @@ def get_args():
                                      help="Comma-separated list of sample(s).")
     parser_run_workflow.add_argument('-w', '--workflow',
                                      help="Workflow to run.",
-                                     required=True)
+                                     default='main')
     parser_run_workflow.add_argument('-n', '--nf-params',
                                      help="""Param string passed to Nextflow.
                                              Check documentation for
@@ -571,6 +586,28 @@ def update_mounts_cfg(mounts_cfg, bound_dirs):
             fo.write(row)
 
 
+def update_mounts(args):
+    """
+    Part of the update-mounts mode.
+
+    This functions finds the real paths of all symlinks within the specified
+    directory and adds them the the analysis-specific mounts.config file.
+
+    Args:
+        args (Namespace object)
+    """
+    raft_cfg = load_raft_cfg()
+    bound_dirs = []
+    to_check = glob(pjoin(os.path.abspath(args.dir), "**", "*"), recursive=True)
+    for fle in to_check:
+        bound_dirs.append(os.path.dirname(os.path.realpath(fle)))
+
+    bound_dirs = list(set(bound_dirs))                                                              
+   
+     if bound_dirs:                                                                                                
+        update_mounts_cfg(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'), bound_dirs)
+
+
 def load_manifest(args):
     """
     Part of the load-samples mode.
@@ -784,8 +821,13 @@ def load_component(args):
             Repo.clone_from(pjoin(args.repo, args.component),
                             pjoin(workflow_dir, args.component),
                             branch=args.branch)
+            nf_cfg = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'nextflow.config')
+            comp_cfg = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.component, args.component + '.config')
+            if os.path.isfile(comp_cfg):
+                update_nf_cfg(nf_cfg, comp_cfg)
         recurs_load_components(args)
     # Need to add config info to nextflow.config.
+        
 
 
 def run_workflow(args):
@@ -799,6 +841,7 @@ def run_workflow(args):
     Args:
         args (Namespace object): User-provided arguments.
     """
+    raft_cfg = load_raft_cfg()
     init_dir = getcwd()
     raft_cfg = load_raft_cfg()
     all_samp_ids = []
@@ -822,10 +865,13 @@ def run_workflow(args):
         # we can assume this workflow is not meant to be run on a sample-level.
         # This can probably be cleaned up a bit, but this is functional for
         # now.
+        work_dir = raft_cfg['filesystem']['work']
         generic_nf_cmd = get_generic_nf_cmd(args)
         generic_nf_cmd = prepend_nf_cmd(args, generic_nf_cmd)
+        generic_nf_cmd = add_nf_wd(work_dir, generic_nf_cmd)
         # Going to update with work dir and log dir later.
         #print("Running:\n{}".format(generic_nf_cmd))
+        os.chdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'logs'))
         subprocess.run(generic_nf_cmd, shell=True, check=False)
         print("Started process...")
     else:
@@ -934,7 +980,7 @@ def add_nf_wd(work_dir, samp_nf_cmd):
     Returns:
         Str containing the modified Nextflow command with a working directory.
     """
-    return ' '.join([samp_nf_cmd, '-w {}'.format(work_dir), '-resume'])
+    return ' '.join([samp_nf_cmd, '-w {}'.format(work_dir)])
 
 
 def get_samp_mani_info(analysis, samp_id):
@@ -1003,6 +1049,38 @@ def prepend_nf_cmd(args, samp_nf_cmd):
     cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd, anlys_dir_str, '-resume'])
     return cmd
 
+
+def update_nf_cfg(nf_cfg, comp_cfg):
+    """
+    Updates the shared analysis nextflow.config file with information from a
+    specific component's config file (named <component>.config).
+
+    This is currently designed to only pull in configuration parameters if they
+    are not already in the nextflow.config. This is a blind spot that should be
+    addressed in the future.
+
+    Args:
+        nf_cfg (str): Path to nextflow.config to be updated.
+        comp_cfg (str): Path to component config file to use for updating nextflow.config.
+    """
+    new_nf_cfg = []
+    to_copy = []
+    with open(comp_cfg) as cfo:
+        for line in cfo:
+            if line not in ["process {\n", "}\n"]:
+                to_copy.append(line)
+
+    with open(nf_cfg) as nfo:
+        for line in nfo:
+            new_nf_cfg.append(line)
+            if line == "process {\n":
+                new_nf_cfg.extend(to_copy)
+
+    with open(nf_cfg, 'w') as nfo:
+        for line in new_nf_cfg:
+            nfo.write(line)
+    
+        
 
 def get_samp_nf_cmd(args, samp_mani_info):
     """
@@ -1219,6 +1297,8 @@ def main():
         load_component(args)
     elif args.command == 'list-steps':
         list_steps(args)
+    elif args.command == 'update-mounts':
+        update_mounts(args)
     elif args.command == 'add-step':
         add_step(args)
     elif args.command == 'run-workflow':
