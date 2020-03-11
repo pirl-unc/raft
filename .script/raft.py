@@ -563,7 +563,7 @@ def update_mounts_cfg(mounts_cfg, bound_dirs):
     with open(mounts_cfg, 'r') as ifo:
         for line in ifo:
             if re.search('runOptions', line):
-                line = line.strip('"\n') + ',{}'.format(','.join(bound_dirs)) + '\n'
+                line = line.strip('"\n') + ',{}'.format(','.join(bound_dirs)) + '"\n'
             out.append(line)
 
     with open(mounts_cfg, 'w') as fo:
@@ -780,9 +780,10 @@ def load_component(args):
     if args.analysis:
         # Should probably check here and see if the specified analysis even exists...
         workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
-        Repo.clone_from(pjoin(args.repo, args.component),
-                        pjoin(workflow_dir, args.component),
-                        branch=args.branch)
+        if not glob(pjoin(workflow_dir, args.component)):
+            Repo.clone_from(pjoin(args.repo, args.component),
+                            pjoin(workflow_dir, args.component),
+                            branch=args.branch)
         recurs_load_components(args)
     # Need to add config info to nextflow.config.
 
@@ -988,13 +989,18 @@ def prepend_nf_cmd(args, samp_nf_cmd):
         Str containing modified Nextflow command with execution portion.
     """
     raft_cfg = load_raft_cfg()
-    workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.workflow)
+    workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
     print(workflow_dir)
     #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
-    discovered_nf = glob(pjoin(workflow_dir, '*.nf'))[0]
+    discovered_nf = glob(pjoin(workflow_dir, 'main.nf'))[0]
     print(discovered_nf)
-#    cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd])
-    cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd, '-resume'])
+    cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd])
+    anyls_dir_str = ''
+    # Should this be in its own additional function?
+    if not re.search('--analysis_dir', args.nf_params):
+        analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
+        anlys_dir_str = "--analysis_dir {}".format(analysis_dir)
+    cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd, anlys_dir_str, '-resume'])
     return cmd
 
 
