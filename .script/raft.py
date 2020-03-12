@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # Run this *in* the RAFT directory, or bad things will happen (or nothing at all).
 
@@ -604,7 +604,7 @@ def update_mounts(args):
 
     bound_dirs = list(set(bound_dirs))                                                              
    
-     if bound_dirs:                                                                                                
+    if bound_dirs:                                                                                                
         update_mounts_cfg(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'), bound_dirs)
 
 
