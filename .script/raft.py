@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # Run this *in* the RAFT directory, or bad things will happen (or nothing at all).
 
