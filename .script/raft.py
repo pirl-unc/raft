@@ -68,11 +68,28 @@ def get_args():
                                       help="Analysis requiring samples.",
                                       required=True)
 
+    
+    # Subparser for loading reference files/dirs into an analysis.
+    parser_load_reference = subparsers.add_parser('load-reference',
+                                                  help="Symlinks reference files/dirs into an analysis.")
+    parser_load_reference.add_argument('-f', '--file',
+                                       help="Reference file or directory. Check docs for more info.",
+                                       required=True)
+    parser_load_reference.add_argument('-s', '--sub-dir',
+                                       help="Subdirectory for reference file or directory.", 
+                                       default='')
+    parser_load_reference.add_argument('-a', '--analysis',
+                                       help="Analysis to add metadata to.",
+                                       required=True)
+    parser_load_reference.add_argument('-m', '--mode',
+                                      help="Mode (copy or symlink). Default: copy",
+                                      default='copy')
+
 
     # Subparser for loading metadata into an analysis.
     parser_load_metadata = subparsers.add_parser('load-metadata',
                                                  help="Loads metadata for an analysis.")
-    parser_load_metadata.add_argument('-f', '--metadata-file',
+    parser_load_metadata.add_argument('-f', '--file',
                                       help="Metadata file. Check docs for more info.",
                                       required=True)
     parser_load_metadata.add_argument('-s', '--sub-dir',
@@ -80,6 +97,9 @@ def get_args():
     parser_load_metadata.add_argument('-a', '--analysis',
                                       help="Analysis to add metadata to.",
                                       required=True)
+    parser_load_metadata.add_argument('-m', '--mode',
+                                      help="Mode (copy or symlink). Default: symlink",
+                                      default='symlink')
 
 
     # Subparser for loading component into an analysis.
@@ -604,7 +624,7 @@ def update_mounts(args):
 
     bound_dirs = list(set(bound_dirs))                                                              
    
-     if bound_dirs:                                                                                                
+    if bound_dirs:                                                                                                
         update_mounts_cfg(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'), bound_dirs)
 
 
@@ -700,9 +720,6 @@ def load_manifest(args):
     #Need to udpate mounts.config with the symlinks for these FASTQs.
 
 
-
-
-
 def load_metadata(args):
     """
     Part of the load-metadata mode.
@@ -717,19 +734,50 @@ def load_metadata(args):
         args (Namespace object): User-provided arguments.
 
     """
+    load_files(args, 'metadata')
+
+
+def load_reference(args):
+    """
+    Part of load-reference mode.
+
+    Note: This is effectively load_metadata() but putting data into a different directory
+    """
+    load_files(args, 'references')
+
+
+def load_files(args, out_dir):
+    """
+    Generic loading/symlinking function for functions like load_metadata(), load_reference(), etc.
+
+    Args:
+    
+    """
     raft_cfg = load_raft_cfg()
     if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
         # If the specified analysis doesn't exist, then should it be created automatically?
-        metadata_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
+        abs_out_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, out_dir)
         if args.sub_dir:
-            os.mkdir(pjoin(metadata_dir, args.sub_dir))
-        shutil.copyfile(args.metadata_file,
-                        pjoin(metadata_dir, args.sub_dir, os.path.basename(args.metadata_file)))
-
+            os.makedirs(pjoin(abs_out_dir, args.sub_dir))
+        if args.mode == 'symlink':
+            os.symlink(os.path.realpath(args.file),
+                       pjoin(abs_out_dir, args.sub_dir, os.path.basename(args.file)))
+            update_mounts_cfg(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'), [os.path.realpath(args.file)])
+        elif args.mode == 'copy':
+            shutil.copyfile(os.path.realpath(args.file),
+                        pjoin(abs_out_dir, args.sub_dir, os.path.basename(args.file)))
+        
+    
 
 def recurs_load_components(args):
     """
-    Recurively loads Nextflow components. This occurs in multiple waves such that each time a dependencies is loaded/cloned, another wave is initated. This continues until a wave in which no new dependencies are loaded/cloned. There's probably a more intelligent way of doing this, but this should be able to handle the multiple layers of dependencies we're working with. A notable blind spot is the ability to specify the branch to use for each tool (defaults to develop).
+    Recurively loads Nextflow components. This occurs in multiple waves such
+    that each time a dependencies is loaded/cloned, another wave is initated. This
+    continues until a wave in which no new dependencies are loaded/cloned. There's
+    probably a more intelligent way of doing this, but this should be able to
+    handle the multiple layers of dependencies we're working with. A notable blind
+    spot is the ability to specify the branch to use for each tool (defaults to
+    develop).
 
     Args:
         args (Namespace object): User-provided arguments.
@@ -869,6 +917,7 @@ def run_workflow(args):
         generic_nf_cmd = get_generic_nf_cmd(args)
         generic_nf_cmd = prepend_nf_cmd(args, generic_nf_cmd)
         generic_nf_cmd = add_nf_wd(work_dir, generic_nf_cmd)
+        generic_nf_cmd = add_global_fq_dir(generic_nf_cmd)
         # Going to update with work dir and log dir later.
         #print("Running:\n{}".format(generic_nf_cmd))
         os.chdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'logs'))
@@ -965,6 +1014,23 @@ def add_log_dir(samp_id, args, samp_nf_cmd):
                     '{}.log'.format(samp_id))
 
     return ' '.join([samp_nf_cmd, '> {} 2>&1 &'.format(log_dir)])
+
+
+def add_global_fq_dir(samp_nf_cmd):
+    """
+    Part of run-workflow mode.
+
+    Appends global fastq directory to Nextflow command.
+
+    Args:
+        samp_nf_cmd (str): Sample-specific Nextflow command.
+
+    Returns:
+        Str containing the modified Nextflow command with a working directory.
+    """
+    raft_cfg = load_raft_cfg()
+    global_fq_dir = raft_cfg['filesystem']['fastqs']
+    return ' '.join([samp_nf_cmd, '--global_fq_dir {}'.format(global_fq_dir)])
 
 
 def add_nf_wd(work_dir, samp_nf_cmd):
@@ -1293,6 +1359,8 @@ def main():
         load_manifest(args)
     elif args.command == 'load-metadata':
         load_metadata(args)
+    elif args.command == 'load-reference':
+        load_reference(args)
     elif args.command == 'load-component':
         load_component(args)
     elif args.command == 'list-steps':
