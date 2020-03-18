@@ -8,6 +8,7 @@ from glob import glob
 import hashlib
 import json
 import os
+import pprint
 import random
 import re
 import shutil
@@ -157,7 +158,10 @@ def get_args():
     parser_add_step = subparsers.add_parser('add-step',
                                             help="Clones private module into analysis.")
     parser_add_step.add_argument('-a', '--analysis',
-                                 help="Analysis to add workflow to.",
+                                 help="Analysis to add step to.",
+                                 required=True)
+    parser_add_step.add_argument('-m', '--module',
+                                 help="Module to pull from.",
                                  required=True)
     parser_add_step.add_argument('-s', '--step',
                                  help="Proces/workflow to add.",
@@ -1340,6 +1344,198 @@ def load_analysis(args):
     tar = tarfile.open(tarball)
     tar.extractall(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft'))
     tar.close()
+
+
+def add_step(args):
+    """
+    Part of add-step mode.
+
+    Args:
+        args (Namespace object): User-provided arguments.
+    """
+    raft_cfg = load_raft_cfg()
+
+    #Relevant files
+    main_nf = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'main.nf')
+    mod_nf = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.module, args.module + '.nf')
+    print(main_nf)
+    
+    #Get strings to include
+    wf_str = ''
+    mod_contents = []
+    with open(mod_nf) as mfo:
+        mod_contents = mfo.readlines()
+        wf_slice = extract_wf_from_contents(mod_contents, args.step)
+        print("WF SLICE")
+        print(wf_slice)
+        sub_wfs = extract_sub_wfs_from_contents(wf_slice)
+        wf_str = get_workflow_string(mod_contents, args.step)
+    
+    inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
+
+    #Need to ensure module is actually loaded. Going to assume it's loaded for now.
+
+    #Including each step individually for now.
+
+    main_contents = []
+
+    with open(main_nf) as mfo:
+       main_contents = mfo.readlines()
+
+    #Getting params
+    raw_params = []
+    expanded_params = {}
+
+    discovered_subs = [args.step]
+    while discovered_subs:
+       print("Discovered subs")
+       print(discovered_subs)
+       #Resetting...
+       new_subs = [] 
+       for discovered_sub in discovered_subs:
+           sub_contents = []
+           #print(mod_contents)
+           if [re.findall('workflow {} {{\n'.format(discovered_sub), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(discovered_sub), i)]:
+               print("Found in mod_contents")
+               sub_contents = extract_wf_from_contents(mod_contents, discovered_sub)
+           else:
+               print("Looking for new mod contents...")
+               subs_module = find_subs_module(mod_contents, discovered_sub)
+               new_mod_path = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', subs_module, subs_module + '.nf')
+               new_mod_contents = []
+               with open(new_mod_path) as fo:
+                   new_mod_contents = fo.readlines()
+               sub_contents = extract_wf_from_contents(new_mod_contents, discovered_sub)
+           if sub_contents:
+               params = extract_params_from_contents(sub_contents)
+               if params:
+                   raw_params.extend(params)
+               subs = extract_sub_wfs_from_contents(sub_contents)
+               if subs:
+                   new_subs.extend(subs)
+               print("{} {} {}".format(discovered_sub, params, subs))
+       discovered_subs = new_subs[:]
+
+    raw_params = list(set(raw_params))
+
+    print("RAW_PARAMS")
+    print(raw_params)
+
+    expanded_params = expand_params(raw_params)
+    expanded_params = '\n'.join(["{} = {}".format(k, v) for k, v in sorted(expanded_params.items())]) + '\n'
+
+    inc_idx = main_contents.index("/*Inclusions*/\n")
+    wf_idx = main_contents.index("workflow {\n")
+    params_idx = main_contents.index("/*Fine-tuned Parameters*/\n")
+
+
+    if all([inc_idx, wf_idx]) and [inclusion_str, wf_str] not in main_contents:
+
+        main_contents.insert(inc_idx + 1, inclusion_str)
+        #Why does wf_idx require +2?
+        main_contents.insert(wf_idx + 2, wf_str)
+        main_contents.insert(params_idx + 1, expanded_params)
+
+        with open(main_nf, 'w') as ofo:
+            ofo.write(''.join(main_contents))
+
+
+def expand_params(params):
+    """
+    """
+    expanded_params = {}
+    for param in params:
+        param = param.split('.')
+        expanded_params['.'.join(param)] = "''"
+        if len(param) > 2:
+            for i in range(1,len(param) - 1):
+                expanded_params['.'.join(param[:i+1] + [param[-1]])] = '.'.join(param[:i] + [param[-1]])
+            expanded_params['.'.join([param[0]] + [param[-1]])] = "''"
+    pprint.pprint(expanded_params)
+    return(expanded_params)
+
+def is_workflow(contents, step):
+    """
+    """
+    is_workflow = False
+    hit = [re.findall(' {} {{'.format(step),i) for i in contents if re.findall(' {} {{'.format(step, i))][0][0]
+    if re.search(hit, 'workflow '):
+        is_workflow = True
+    return is_workflow 
+    
+
+def find_subs_module(contents, sub):
+    """
+    """
+    #print(sub)
+    #print(contents)
+    mod = [re.findall('include .*{}.*'.format(sub), i) for i in contents if re.findall('include .*{}.*'.format(sub), i)][0][0].split('/')[1]
+    #print(mod)
+    #print("{}: {}".format(sub, mod))
+    return mod
+
+def extract_sub_wfs_from_contents(contents):
+    """
+    """
+    wfs = [re.findall('.*\(.*\)', i) for i in contents if re.findall('.*\(.*\)', i)]
+    flat = [i.partition('(')[0] for j in wfs for i in j]
+    
+    print("SUB WFS")
+    print(flat)
+    return(flat)
+
+
+def extract_params_from_contents(contents):
+    """
+    """
+    print(contents)
+    params = [re.findall("(params.*,|params.*\))", i) for i in contents if re.findall("params.*,|params.*\)", i)]
+    flat = [i.replace(',','').replace(')', '') for j in params for i in j]
+    print("PARAMS")
+    print(params)
+    print(flat)
+    return(flat)
+    
+
+
+def extract_wf_from_contents(contents, workflow):
+    """
+    Extract a workflow's contents (for parameter and wf_extraction) from a
+    module file's conents.
+
+    Args:
+        contents (list): List containing the contents of a module file.
+        wf_name (str): Workflow of interest. 
+    """
+    wf_slice = []
+    contents = [i.strip() for i in contents]
+    try: 
+        wf_start = contents.index("workflow {} {{".format(workflow))
+        wf_end = contents.index("}", wf_start)
+        wf_slice = contents[wf_start:wf_end]
+    except:
+        pass
+    return wf_slice
+    
+
+def get_workflow_string(contents, workflow):
+    """This seems like a pretty fragile system for extracting strings.
+    """
+    #print(contents)
+    #Can just strip contents before processing to not have to deal with a lot
+    #of the newlines and space considerations.
+    wf_slice = extract_wf_from_contents(contents, workflow)
+    main_idx = wf_slice.index('main:')
+    wf_list = [wf_slice[0].replace("workflow ", "").replace(" {",""), '(', ", ".join([x for x in wf_slice[2:main_idx]]), ')\n']
+    wf_string = "".join(wf_list)
+    print(wf_string)
+    return wf_string
+
+
+def get_process_string():
+    """
+    """
+    pass
 
 
 def main():
