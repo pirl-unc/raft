@@ -1293,23 +1293,26 @@ def package_analysis(args):
     anlys_tmp_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'tmp', foo)
 
     os.mkdir(anlys_tmp_dir)
-    for dir in os.listdir(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)):
-        # These directories should be hidden (at least optionally so) in the future
-        if dir in ['references', 'indices', 'fastqs', 'repos', 'tmp']:
-            continue
-        print(dir)
+#    for dir in os.listdir(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)):
+#        # These directories should be hidden (at least optionally so) in the future
+#        if dir in ['references', 'indices', 'fastqs', 'repos', 'tmp']:
+#            continue
+#        print(dir)
 
     # Copying metadata directory. Should probably perform some size checks here.
     shutil.copytree(os.path.join(anlys_dir, 'metadata'), os.path.join(anlys_tmp_dir, 'metadata'))
 
     # Getting required checksums. Currently only doing /datasets, but should
     # probably do other directories produced by workflow as well.
-    dirs = ['outputs', 'metadata']
+    dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices']
     hashes = {}
     with open(os.path.join(anlys_tmp_dir, 'checksums'), 'w') as fo:
+        hashes = {}
         for dir in dirs:
             files = glob(os.path.join('analyses', args.analysis, dir, '**'), recursive=True)
-            hashes = {file: hashlib.md5(file_as_bytes(open(file, 'rb'))).hexdigest() for file in files if os.path.isfile(file)}
+            print(files)
+            sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
+            hashes.update(sub_hashes)
         json.dump(hashes, fo, indent=4)
 
     # Get Nextflow configs, etc.
@@ -1321,8 +1324,8 @@ def package_analysis(args):
             shutil.copyfile(dir, pjoin(anlys_tmp_dir, 'workflow', os.path.basename(dir)))
 
     # Get auto.raft
-    shutil.copyfile(os.path.join(anlys_dir, '.raft', 'auto.raft'), os.path.join(anlys_dir, '.raft', 'snapshot.raft'))
-#    shutil.copyfile(os.path.join(anlys_dir, '.raft', 'snapshot.raft'), os.path.join(anlys_tmp_dir, 'snapshot.raft'))
+    shutil.copyfile(pjoin(anlys_dir, '.raft', 'auto.raft'), pjoin(anlys_dir, '.raft', 'snapshot.raft'))
+    shutil.copyfile(pjoin(anlys_dir, '.raft', 'snapshot.raft'), pjoin(anlys_tmp_dir, 'snapshot.raft'))
 
     rftpkg = ''
     if args.output:
@@ -1333,6 +1336,15 @@ def package_analysis(args):
         for i in os.listdir(anlys_tmp_dir):
             print(i)
             taro.add(os.path.join(anlys_tmp_dir, i), arcname = i)
+
+
+#https://stackoverflow.com/a/3431838
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
 
 
 #https://stackoverflow.com/a/3431835
@@ -1361,6 +1373,8 @@ def load_analysis(args):
     tar = tarfile.open(tarball)
     tar.extractall(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft'))
     tar.close()
+    for dir in ['metadata', 'workflow']:
+        shutil.move(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', dir), pjoin(raft_cfg['filesystem']['analyses'], args.analysis, dir))
 
 
 def add_step(args):
