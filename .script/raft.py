@@ -879,7 +879,19 @@ def load_component(args):
                 update_nf_cfg(nf_cfg, comp_cfg)
         recurs_load_components(args)
     # Need to add config info to nextflow.config.
-        
+
+
+def run_auto(args):
+    """
+    Given a loaded analysis, run auto.raft steps. This is a bit dangerous since
+    malicious code could be implanted into an auto.raft file, but can be made
+    safer by ensuring all cmmands are called through RAFT (in other words,
+    ensure steps are valid RAFT modes before running).
+
+    There are some considerations -- sometimes metadata may already be within
+    the metadata directory, so they won't need to be loaded a second time.
+    Perhaps this should be part of load-metadata?
+    """
 
 
 def run_workflow(args):
@@ -1292,9 +1304,12 @@ def package_analysis(args):
 
     # Getting required checksums. Currently only doing /datasets, but should
     # probably do other directories produced by workflow as well.
-    with open(os.path.join(anlys_tmp_dir, 'datasets.md5'), 'w') as fo:
-        files = glob(os.path.join('analyses', args.analysis, 'datasets', '**'), recursive=True)
-        hashes = {file: hashlib.md5(file_as_bytes(open(file, 'rb'))).hexdigest() for file in files if os.path.isfile(file)}
+    dirs = ['outputs', 'metadata']
+    hashes = {}
+    with open(os.path.join(anlys_tmp_dir, 'checksums'), 'w') as fo:
+        for dir in dirs:
+            files = glob(os.path.join('analyses', args.analysis, dir, '**'), recursive=True)
+            hashes = {file: hashlib.md5(file_as_bytes(open(file, 'rb'))).hexdigest() for file in files if os.path.isfile(file)}
         json.dump(hashes, fo, indent=4)
 
     # Get Nextflow configs, etc.
@@ -1302,10 +1317,12 @@ def package_analysis(args):
     for dir in glob(os.path.join(anlys_dir, 'workflow', '*')):
         if os.path.isdir(dir):
             shutil.copytree(os.path.join(dir), os.path.join(anlys_tmp_dir, 'workflow', os.path.basename(dir)))
+        else:
+            shutil.copyfile(dir, pjoin(anlys_tmp_dir, 'workflow', os.path.basename(dir)))
 
     # Get auto.raft
     shutil.copyfile(os.path.join(anlys_dir, '.raft', 'auto.raft'), os.path.join(anlys_dir, '.raft', 'snapshot.raft'))
-    shutil.copyfile(os.path.join(anlys_dir, '.raft', 'snapshot.raft'), os.path.join(anlys_tmp_dir, 'snapshot.raft'))
+#    shutil.copyfile(os.path.join(anlys_dir, '.raft', 'snapshot.raft'), os.path.join(anlys_tmp_dir, 'snapshot.raft'))
 
     rftpkg = ''
     if args.output:
@@ -1357,21 +1374,21 @@ def add_step(args):
 
     #Relevant files
     main_nf = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'main.nf')
-    mod_nf = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.module, args.module + '.nf')
+    comp_nf = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.module, args.component + '.nf')
     print(main_nf)
     
     #Get strings to include
     wf_str = ''
-    mod_contents = []
-    with open(mod_nf) as mfo:
-        mod_contents = mfo.readlines()
-        wf_slice = extract_wf_from_contents(mod_contents, args.step)
+    comp_contents = []
+    with open(comp_nf) as cfo:
+        comp_contents = cfo.readlines()
+        wf_slice = extract_wf_from_contents(comp_contents, args.step)
         print("WF SLICE")
         print(wf_slice)
         sub_wfs = extract_sub_wfs_from_contents(wf_slice)
-        wf_str = get_workflow_string(mod_contents, args.step)
+        wf_str = get_workflow_string(comp_contents, args.step)
     
-    inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
+    inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.component)
 
     #Need to ensure module is actually loaded. Going to assume it's loaded for now.
 
@@ -1382,51 +1399,51 @@ def add_step(args):
     with open(main_nf) as mfo:
        main_contents = mfo.readlines()
 
-    #Getting params
-    raw_params = []
-    expanded_params = {}
-
-    discovered_subs = [args.step]
-    while discovered_subs:
-       print("Discovered subs")
-       print(discovered_subs)
-       #Resetting...
-       new_subs = [] 
-       for discovered_sub in discovered_subs:
-           sub_contents = []
-           #print(mod_contents)
-           if [re.findall('workflow {} {{\n'.format(discovered_sub), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(discovered_sub), i)]:
-               print("Found in mod_contents")
-               sub_contents = extract_wf_from_contents(mod_contents, discovered_sub)
-           else:
-               print("Looking for new mod contents...")
-               subs_module = find_subs_module(mod_contents, discovered_sub)
-               new_mod_path = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', subs_module, subs_module + '.nf')
-               new_mod_contents = []
-               with open(new_mod_path) as fo:
-                   new_mod_contents = fo.readlines()
-               sub_contents = extract_wf_from_contents(new_mod_contents, discovered_sub)
-           if sub_contents:
-               params = extract_params_from_contents(sub_contents)
-               if params:
-                   raw_params.extend(params)
-               subs = extract_sub_wfs_from_contents(sub_contents)
-               if subs:
-                   new_subs.extend(subs)
-               print("{} {} {}".format(discovered_sub, params, subs))
-       discovered_subs = new_subs[:]
-
-    raw_params = list(set(raw_params))
-
-    print("RAW_PARAMS")
-    print(raw_params)
-
-    expanded_params = expand_params(raw_params)
-    expanded_params = '\n'.join(["{} = {}".format(k, v) for k, v in sorted(expanded_params.items())]) + '\n'
+#    #Getting params
+#    raw_params = []
+#    expanded_params = {}
+#
+#    discovered_subs = [args.step]
+#    while discovered_subs:
+#       print("Discovered subs")
+#       print(discovered_subs)
+#       #Resetting...
+#       new_subs = [] 
+#       for discovered_sub in discovered_subs:
+#           sub_contents = []
+#           #print(mod_contents)
+#           if [re.findall('workflow {} {{\n'.format(discovered_sub), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(discovered_sub), i)]:
+#               print("Found in mod_contents")
+#               sub_contents = extract_wf_from_contents(mod_contents, discovered_sub)
+#           else:
+#               print("Looking for new mod contents...")
+#               subs_module = find_subs_module(mod_contents, discovered_sub)
+#               new_mod_path = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', subs_module, subs_module + '.nf')
+#               new_mod_contents = []
+#               with open(new_mod_path) as fo:
+#                   new_mod_contents = fo.readlines()
+#               sub_contents = extract_wf_from_contents(new_mod_contents, discovered_sub)
+#           if sub_contents:
+#               params = extract_params_from_contents(sub_contents)
+#               if params:
+#                   raw_params.extend(params)
+#               subs = extract_sub_wfs_from_contents(sub_contents)
+#               if subs:
+#                   new_subs.extend(subs)
+#               print("{} {} {}".format(discovered_sub, params, subs))
+#       discovered_subs = new_subs[:]
+#
+#    raw_params = list(set(raw_params))
+#
+#    print("RAW_PARAMS")
+#    print(raw_params)
+#
+#    expanded_params = expand_params(raw_params)
+#    expanded_params = '\n'.join(["{} = {}".format(k, v) for k, v in sorted(expanded_params.items())]) + '\n'
 
     inc_idx = main_contents.index("/*Inclusions*/\n")
     wf_idx = main_contents.index("workflow {\n")
-    params_idx = main_contents.index("/*Fine-tuned Parameters*/\n")
+#    params_idx = main_contents.index("/*Fine-tuned Parameters*/\n")
 
 
     if all([inc_idx, wf_idx]) and [inclusion_str, wf_str] not in main_contents:
@@ -1434,7 +1451,7 @@ def add_step(args):
         main_contents.insert(inc_idx + 1, inclusion_str)
         #Why does wf_idx require +2?
         main_contents.insert(wf_idx + 2, wf_str)
-        main_contents.insert(params_idx + 1, expanded_params)
+#        main_contents.insert(params_idx + 1, expanded_params)
 
         with open(main_nf, 'w') as ofo:
             ofo.write(''.join(main_contents))
@@ -1442,6 +1459,31 @@ def add_step(args):
 
 def expand_params(params):
     """
+    Expand the parameters such that each tier is explicitly defined. This is
+    provides the ability for multiple tiers of parameter definition within the
+    main.nf script.
+
+    For example, given parameters [params.foo.bar.tool, params.foo.bat.tool]
+    (where the same tool is being called in two different contexts), then
+    expand_params() will return:
+    params.tool = ''
+    params.foo.tool = params.tool
+    params.foo.bar.tool = params.foo.tool
+    params.foo.bat.tool = params.foo.tool
+
+    Notice the user can provide a global tool parameter that is effectively
+    inherited down the entire heirarchy. This allows the user to define a
+    single parameter set if that's suitable for the situation. Altneratively
+    they can define a parameter set at the level of params.foo.tool (which will
+    be inherited by params.foo.bar.tool and params.foo.bat.tool, but not other
+    instances of tool not under the foo namespace). Users may also set the
+    parameter set at each instance of the tool.
+
+    Args:
+        params (list): List of params to be expanded.
+
+    Returns:
+        extended_params (dict): Dictionary containing parameters as keys and parameter definitions as values. 
     """
     expanded_params = {}
     for param in params:
@@ -1451,11 +1493,20 @@ def expand_params(params):
             for i in range(1,len(param) - 1):
                 expanded_params['.'.join(param[:i+1] + [param[-1]])] = '.'.join(param[:i] + [param[-1]])
             expanded_params['.'.join([param[0]] + [param[-1]])] = "''"
-    pprint.pprint(expanded_params)
     return(expanded_params)
+
 
 def is_workflow(contents, step):
     """
+    Determine if a step is a workflow.
+
+    Args:
+        contents (list): List containing the contents of a module/component in
+                         which step is defined.
+        step (str): Step being queried. This string may be associated with a process or a workflow.
+
+    Returns:
+        True if step is a workflow, otherwise False.
     """
     is_workflow = False
     hit = [re.findall(' {} {{'.format(step),i) for i in contents if re.findall(' {} {{'.format(step, i))][0][0]
@@ -1464,8 +1515,16 @@ def is_workflow(contents, step):
     return is_workflow 
     
 
-def find_subs_module(contents, sub):
+def find_step_module(contents, step):
     """
+    Find a step's module based on the contents of the module in which it's being called. This is effectively parsing 'include' statements.
+
+    Args:
+        contents (list): List containing rows from a Nextflow module/component.
+        step (str): Step that requires parent component.
+
+    Returns:
+        Str containing parent component for step.
     """
     #print(sub)
     #print(contents)
@@ -1474,29 +1533,31 @@ def find_subs_module(contents, sub):
     #print("{}: {}".format(sub, mod))
     return mod
 
-def extract_sub_wfs_from_contents(contents):
+
+def extract_called_steps_from_contents(contents):
     """
+    Get list of steps (workflows/processes) being called from contents.
+    NOTE: Contents in this case means a single workflow's contents.
+
+    Args:
+        contents (list): List containing the rows from a workflow's entry in a component.
     """
     wfs = [re.findall('.*\(.*\)', i) for i in contents if re.findall('.*\(.*\)', i)]
     flat = [i.partition('(')[0] for j in wfs for i in j]
-    
-    print("SUB WFS")
-    print(flat)
     return(flat)
 
 
 def extract_params_from_contents(contents):
     """
+    Get list of params being userd from contents.
+    NOTE: Contents in this case means a single workflow's contents.
+
+    Args:
+        contents (list): List containing the rows from a workflow's entry in a component.
     """
-    print(contents)
     params = [re.findall("(params.*,|params.*\))", i) for i in contents if re.findall("params.*,|params.*\)", i)]
     flat = [i.replace(',','').replace(')', '') for j in params for i in j]
-    print("PARAMS")
-    print(params)
-    print(flat)
     return(flat)
-    
-
 
 def extract_wf_from_contents(contents, workflow):
     """
@@ -1518,8 +1579,9 @@ def extract_wf_from_contents(contents, workflow):
     return wf_slice
     
 
+
 def get_workflow_string(contents, workflow):
-    """This seems like a pretty fragile system for extracting strings.
+    """Note: This seems like a pretty fragile system for extracting strings.
     """
     #print(contents)
     #Can just strip contents before processing to not have to deal with a lot
