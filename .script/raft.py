@@ -1364,6 +1364,8 @@ def load_analysis(args):
 
     # Initialize analysis
     init_analysis(fixt_args)
+    # Moving mounts.config so that can be protected and reintroduced after copying over workflow.config.
+    shutil.move(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'), pjoin(raft_cfg['filesystem']['analyses'], args.analysis, '.mounts.config'))
 
     # Copy rftpkg into analysis
     shutil.copyfile(args.rftpkg, os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', os.path.basename(args.rftpkg)))
@@ -1376,6 +1378,9 @@ def load_analysis(args):
     for dir in ['metadata', 'workflow']:
         shutil.rmtree(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, dir))
         shutil.copytree(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', dir), pjoin(raft_cfg['filesystem']['analyses'], args.analysis, dir))
+    shutil.move(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'), pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', '.mounts.config.orig'))
+    shutil.move(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, '.mounts.config'), pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'))
+    
 
 
 def add_step(args):
