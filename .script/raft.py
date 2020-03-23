@@ -1374,7 +1374,7 @@ def load_analysis(args):
     tar.extractall(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft'))
     tar.close()
     for dir in ['metadata', 'workflow']:
-        shutil.rmtree(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'dir))
+        shutil.rmtree(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, dir))
         shutil.copytree(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', dir), pjoin(raft_cfg['filesystem']['analyses'], args.analysis, dir))
 
 
