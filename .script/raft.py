@@ -1359,7 +1359,26 @@ def add_step(args):
     main_nf = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'main.nf')
     mod_nf = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.module, args.module + '.nf')
     print(main_nf)
+   
+    #Getting params
+    raw_params = []
+    expanded_params = {}
+
+    #Getting list of already defined params.
+    defined = []
     
+    #Getting global params from module
+    #Ideally we'd have a way to keep the default value here.
+    with open(mod_nf) as mfo:
+        for line in mfo.readlines():
+            line = line.strip()
+            if re.search("^params.*", line):
+                if re.search(" = ''", line):
+                    raw_params.append(line.partition(' ')[0])
+                else:
+                    defined.append(line.partition(' ')[0])
+    
+ 
     #Get strings to include
     wf_str = ''
     mod_contents = []
@@ -1382,9 +1401,6 @@ def add_step(args):
     with open(main_nf) as mfo:
        main_contents = mfo.readlines()
 
-    #Getting params
-    raw_params = []
-    expanded_params = {}
 
     discovered_subs = [args.step]
     while discovered_subs:
@@ -1401,11 +1417,12 @@ def add_step(args):
            else:
                print("Looking for new mod contents...")
                subs_module = find_subs_module(mod_contents, discovered_sub)
-               new_mod_path = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', subs_module, subs_module + '.nf')
-               new_mod_contents = []
-               with open(new_mod_path) as fo:
-                   new_mod_contents = fo.readlines()
-               sub_contents = extract_wf_from_contents(new_mod_contents, discovered_sub)
+               if subs_module:
+                   new_mod_path = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', subs_module, subs_module + '.nf')
+                   new_mod_contents = []
+                   with open(new_mod_path) as fo:
+                       new_mod_contents = fo.readlines()
+                   sub_contents = extract_wf_from_contents(new_mod_contents, discovered_sub)
            if sub_contents:
                params = extract_params_from_contents(sub_contents)
                if params:
@@ -1421,12 +1438,17 @@ def add_step(args):
     print("RAW_PARAMS")
     print(raw_params)
 
+    #filtering raw params by params already defined globally...
+    raw_params = [i for i in raw_params if i not in defined]
+
     expanded_params = expand_params(raw_params)
-    expanded_params = '\n'.join(["{} = {}".format(k, v) for k, v in sorted(expanded_params.items())]) + '\n'
+    expanded_gen_params = '\n'.join(["{} = {}".format(k, v) for k, v in sorted(expanded_params.items()) if v == "''"]) + '\n'
+    expanded_fine_params = '\n'.join(["{} = {}".format(k, v) for k, v in sorted(expanded_params.items()) if v != "''"]) + '\n'
 
     inc_idx = main_contents.index("/*Inclusions*/\n")
     wf_idx = main_contents.index("workflow {\n")
-    params_idx = main_contents.index("/*Fine-tuned Parameters*/\n")
+    gen_params_idx = main_contents.index("/*General Parameters*/\n")
+    fine_params_idx = main_contents.index("/*Fine-tuned Parameters*/\n")
 
 
     if all([inc_idx, wf_idx]) and [inclusion_str, wf_str] not in main_contents:
@@ -1434,7 +1456,8 @@ def add_step(args):
         main_contents.insert(inc_idx + 1, inclusion_str)
         #Why does wf_idx require +2?
         main_contents.insert(wf_idx + 2, wf_str)
-        main_contents.insert(params_idx + 1, expanded_params)
+        main_contents.insert(gen_params_idx + 1, expanded_gen_params)
+        main_contents.insert(fine_params_idx + 1, expanded_fine_params)
 
         with open(main_nf, 'w') as ofo:
             ofo.write(''.join(main_contents))
@@ -1467,9 +1490,13 @@ def is_workflow(contents, step):
 def find_subs_module(contents, sub):
     """
     """
+    mod = []
     #print(sub)
     #print(contents)
-    mod = [re.findall('include .*{}.*'.format(sub), i) for i in contents if re.findall('include .*{}.*'.format(sub), i)][0][0].split('/')[1]
+    try: 
+        mod = [re.findall('include .*{}.*'.format(sub), i) for i in contents if re.findall('include .*{}.*'.format(sub), i)][0][0].split('/')[1]
+    except:
+        pass
     #print(mod)
     #print("{}: {}".format(sub, mod))
     return mod
@@ -1490,7 +1517,7 @@ def extract_params_from_contents(contents):
     """
     print(contents)
     params = [re.findall("(params.*,|params.*\))", i) for i in contents if re.findall("params.*,|params.*\)", i)]
-    flat = [i.replace(',','').replace(')', '') for j in params for i in j]
+    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '') for j in params for i in j]
     print("PARAMS")
     print(params)
     print(flat)
