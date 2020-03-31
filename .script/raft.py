@@ -1457,7 +1457,7 @@ def add_step(args):
         #Why does wf_idx require +2?
         main_contents.insert(wf_idx + 2, wf_str)
         main_contents.insert(gen_params_idx + 1, expanded_gen_params)
-        main_contents.insert(fine_params_idx + 1, expanded_fine_params)
+        main_contents.insert(fine_params_idx + 2, expanded_fine_params)
 
         with open(main_nf, 'w') as ofo:
             ofo.write(''.join(main_contents))
