@@ -873,8 +873,8 @@ def load_module(args):
         args (Namespace object): User-provided arguments.
     """
     raft_cfg = load_raft_cfg()
-    #if not args.repo:
-    args.repo = raft_cfg['nextflow_repos']['nextflow_components'] if not args.repo
+    if not args.repo:
+        args.repo = raft_cfg['nextflow_repos']['nextflow_components']
     if args.analysis:
         # Should probably check here and see if the specified analysis even exists...
         workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
@@ -891,8 +891,8 @@ def load_module(args):
                             'workflow',
                             args.module,
                             args.module + '.config')
-            #if os.path.isfile(comp_cfg):
-            update_nf_cfg(nf_cfg, comp_cfg) if os.path.isfile(comp_cfg)
+            if os.path.isfile(comp_cfg):
+                update_nf_cfg(nf_cfg, comp_cfg)
         recurs_load_modules(args)
 
 
@@ -951,8 +951,8 @@ def run_workflow(args):
     nf_cmd = add_global_fq_dir(nf_cmd)
     
     os.chdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'logs'))
-    print("Running:\n{}".format(generic_nf_cmd))
-    subprocess.run(generic_nf_cmd, shell=True, check=False)
+    print("Running:\n{}".format(nf_cmd))
+    subprocess.run(nf_cmd, shell=True, check=False)
     print("Started process...")
 
 
@@ -1037,7 +1037,7 @@ def add_nf_work_dir(work_dir, nf_cmd):
     Returns:
         Str containing the modified Nextflow command with a working directory.
     """
-    return ' '.join([samp_nf_cmd, '-w {}'.format(work_dir)])
+    return ' '.join([nf_cmd, '-w {}'.format(work_dir)])
 
 
 def get_samp_mani_info(analysis, samp_id):
@@ -1075,7 +1075,7 @@ def get_samp_mani_info(analysis, samp_id):
     return samp_mani_info
 
 
-def get_base_nf_cmd(args, nf_cmd):
+def get_base_nf_cmd(args):
     """
     Part of run-workflow mode.
 
@@ -1104,7 +1104,6 @@ def get_base_nf_cmd(args, nf_cmd):
     workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
     #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
     discovered_nf = glob(pjoin(workflow_dir, 'main.nf'))[0]
-#    cmd = ' '.join(['nextflow', discovered_nf, nf_cmd])
 
     # Adding analysis directory
     anyls_dir_str = ''
@@ -1113,7 +1112,7 @@ def get_base_nf_cmd(args, nf_cmd):
         anlys_dir_str = "--analysis_dir {}".format(analysis_dir)
 
     # Adding all components to make base command.
-    cmd = ' '.join(['nextflow', discovered_nf, new_cmd, anlys_dir_str, '-resume'])
+    cmd = ' '.join(['nextflow', discovered_nf, ' '.join(new_cmd), anlys_dir_str, '-resume'])
     return cmd
 
 
@@ -1192,33 +1191,6 @@ def get_samp_nf_cmd(args, samp_mani_info):
         analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
         new_cmd.append("--analysis_dir {}".format(analysis_dir))
 
-    return ' '.join(new_cmd)
-
-
-def get_base_nf_cmd(args):
-    """
-    Part of run-workflow mode.
-
-    Generates a generic Nextflow command. This is intended for running Nextflow
-    commands that do not operate on single samples. This specifically adds the
-    --analysis_dir parameter.
-
-    Args:
-        args (Namespace object): User-provided arguments.
-
-    Return:
-        Str containing modified Nextflow command.
-    """
-    raft_cfg = load_raft_cfg()
-    cmd = args.nf_params.split(' ')
-    new_cmd = []
-    # Should this be in its own additional function?
-    for component in cmd:
-        # Do any processing here.
-        new_cmd.append(component)
-    if not re.search('--analysis_dir', args.nf_params):
-        analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
-        new_cmd.append("--analysis_dir {}".format(analysis_dir))
     return ' '.join(new_cmd)
 
 
