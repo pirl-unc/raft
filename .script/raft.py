@@ -923,78 +923,37 @@ def run_workflow(args):
     """
     raft_cfg = load_raft_cfg()
     init_dir = getcwd()
-    raft_cfg = load_raft_cfg()
     all_samp_ids = []
     processed_samp_ids = []
 
     if args.manifest_csvs:
         manifest_csvs = [i for i in args.manifest_csvs.split(',')]
-        print(manifest_csvs)
         for manifest_csv in manifest_csvs:
-            print(manifest_csv)
             all_samp_ids.extend(extract_samp_ids(args, manifest_csv))
 
     if args.samples:
         all_samp_ids.extend([i for i in args.samples.split(',')])
-    # Should probably check that the workflow exists within the analysis...
-    # Thought process here: get string, figure out map between csv columns and workflow params
-    # Best thing to do here is to take the manifest CSVs and convert them to a list of strings
-    print(all_samp_ids)
-    if not all_samp_ids:
-        # If there are no samples provided by the user (e.g. no -s or -c), then
-        # we can assume this workflow is not meant to be run on a sample-level.
-        # This can probably be cleaned up a bit, but this is functional for
-        # now.
-        work_dir = raft_cfg['filesystem']['work']
-        generic_nf_cmd = get_generic_nf_cmd(args)
-        generic_nf_cmd = prepend_nf_cmd(args, generic_nf_cmd)
-        generic_nf_cmd = add_nf_wd(work_dir, generic_nf_cmd)
-        generic_nf_cmd = add_global_fq_dir(generic_nf_cmd)
-        # Going to update with work dir and log dir later.
-        #print("Running:\n{}".format(generic_nf_cmd))
-        os.chdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'logs'))
-        subprocess.run(generic_nf_cmd, shell=True, check=False)
-        print("Started process...")
-    else:
-        for samp_id in all_samp_ids:
-            print("Processing sample {}".format(samp_id))
-            if samp_id not in processed_samp_ids:
-                samp_mani_info = get_samp_mani_info(args.analysis, samp_id)
-                # Work directory should probably just be RAFT/work.
-                work_dir = raft_cfg['filesystem']['work']
-                local_dir = pjoin(raft_cfg['filesystem']['analyses'],
-                                  args.analysis,
-                                  'datasets',
-                                  samp_mani_info['Dataset'],
-                                  samp_mani_info['Patient ID'])
-                tmp_dir =  pjoin(raft_cfg['filesystem']['analyses'],
-                                 args.analysis,
-                                 'tmp',
-                                 samp_mani_info['Patient ID'],
-                                 str(time.time()))
 
-                os.makedirs(work_dir, exist_ok=True)
-                os.makedirs(local_dir, exist_ok=True)
-                os.makedirs(tmp_dir, exist_ok=True)
+    # If there are no samples provided by the user (e.g. no -s or -c), then
+    # we can assume this workflow is not meant to be run on a sample-level.
+    # This can probably be cleaned up a bit, but this is functional for
+    # now.
 
-                # Constructing a sample-level Nextflow command.
-                samp_nf_cmd = get_samp_nf_cmd(args, samp_mani_info)
-                samp_nf_cmd = prepend_nf_cmd(args, samp_nf_cmd)
-                samp_nf_cmd = add_nf_wd(work_dir, samp_nf_cmd)
-                samp_nf_cmd = add_log_dir(samp_id, args, samp_nf_cmd)
+    # Getting base command
+#    nf_cmd = get_base_nf_cmd(args)
+    nf_cmd = get_base_nf_cmd(args)
+   
+    # Appending work directory 
+    work_dir = raft_cfg['filesystem']['work']
+    nf_cmd = add_nf_work_dir(work_dir, nf_cmd)
 
-                os.chdir(tmp_dir)
-                print("Currently in: {}".format(getcwd()))
-                print("Running:\n{}".format(samp_nf_cmd))
-                subprocess.run(samp_nf_cmd, shell=True, check=False)
-                print("Started process...")
-                processed_samp_ids.append(samp_id)
-                # TODO: This should only be done with all but the last
-                # submission. This isn't hard to fix, but not worth it right
-                # now.
-                print("Waiting 10 seconds before sending next request.")
-                time.sleep(10)
-                os.chdir(init_dir)
+    # Appending global FASTQ directory (for internal FASTQ symlinking)
+    nf_cmd = add_global_fq_dir(nf_cmd)
+    
+    os.chdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'logs'))
+    print("Running:\n{}".format(generic_nf_cmd))
+    subprocess.run(generic_nf_cmd, shell=True, check=False)
+    print("Started process...")
 
 
 def extract_samp_ids(args, manifest_csv):
@@ -1065,7 +1024,7 @@ def add_global_fq_dir(samp_nf_cmd):
     return ' '.join([samp_nf_cmd, '--global_fq_dir {}'.format(global_fq_dir)])
 
 
-def add_nf_wd(work_dir, samp_nf_cmd):
+def add_nf_work_dir(work_dir, nf_cmd):
     """
     Part of run-workflow mode.
 
@@ -1073,7 +1032,7 @@ def add_nf_wd(work_dir, samp_nf_cmd):
 
     Args:
         work_dir (str): Work directory path to be appended.
-        samp_nf_cmd (str): Sample-specific Nextflow command.
+        nf_cmd (str): Nextflow command.
 
     Returns:
         Str containing the modified Nextflow command with a working directory.
@@ -1116,7 +1075,7 @@ def get_samp_mani_info(analysis, samp_id):
     return samp_mani_info
 
 
-def prepend_nf_cmd(args, samp_nf_cmd):
+def get_base_nf_cmd(args, nf_cmd):
     """
     Part of run-workflow mode.
 
@@ -1133,18 +1092,28 @@ def prepend_nf_cmd(args, samp_nf_cmd):
         Str containing modified Nextflow command with execution portion.
     """
     raft_cfg = load_raft_cfg()
+    # Processing nf-params
+    cmd = args.nf_params.split(' ')
+    new_cmd = []
+    # Should this be in its own additional function?
+    for component in cmd:
+        # Do any processing here.
+        new_cmd.append(component)
+
+    #Discovering workflow script 
     workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
-    print(workflow_dir)
     #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
     discovered_nf = glob(pjoin(workflow_dir, 'main.nf'))[0]
-    print(discovered_nf)
-    cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd])
+#    cmd = ' '.join(['nextflow', discovered_nf, nf_cmd])
+
+    # Adding analysis directory
     anyls_dir_str = ''
-    # Should this be in its own additional function?
     if not re.search('--analysis_dir', args.nf_params):
-        analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
+        analysis_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis)
         anlys_dir_str = "--analysis_dir {}".format(analysis_dir)
-    cmd = ' '.join(['nextflow', discovered_nf, samp_nf_cmd, anlys_dir_str, '-resume'])
+
+    # Adding all components to make base command.
+    cmd = ' '.join(['nextflow', discovered_nf, new_cmd, anlys_dir_str, '-resume'])
     return cmd
 
 
@@ -1226,7 +1195,7 @@ def get_samp_nf_cmd(args, samp_mani_info):
     return ' '.join(new_cmd)
 
 
-def get_generic_nf_cmd(args):
+def get_base_nf_cmd(args):
     """
     Part of run-workflow mode.
 
@@ -1240,9 +1209,9 @@ def get_generic_nf_cmd(args):
     Return:
         Str containing modified Nextflow command.
     """
+    raft_cfg = load_raft_cfg()
     cmd = args.nf_params.split(' ')
     new_cmd = []
-    raft_cfg = load_raft_cfg()
     # Should this be in its own additional function?
     for component in cmd:
         # Do any processing here.
@@ -1250,7 +1219,6 @@ def get_generic_nf_cmd(args):
     if not re.search('--analysis_dir', args.nf_params):
         analysis_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
         new_cmd.append("--analysis_dir {}".format(analysis_dir))
-    print(new_cmd)
     return ' '.join(new_cmd)
 
 
