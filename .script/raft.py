@@ -72,7 +72,7 @@ def get_args():
     # Subparser for loading reference files/dirs into an analysis.
     parser_load_reference = subparsers.add_parser('load-reference',
                                                   help="Loads ref files/dirs into an analysis.")
-    parser_load_reference.add_argument('-r', '--ref',
+    parser_load_reference.add_argument('-f', '--file',
                                        help="Reference file or directory (see documentation).",
                                        required=True)
     parser_load_reference.add_argument('-s', '--sub-dir',
@@ -768,7 +768,7 @@ def load_files(args, out_dir):
     if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
         # If the specified analysis doesn't exist, then should it be created automatically?
         abs_out_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, out_dir)
-        if args.sub_dir:
+        if args.sub_dir and not(os.path.exists(pjoin(abs_out_dir, args.sub_dir))):
             os.makedirs(pjoin(abs_out_dir, args.sub_dir))
         if args.mode == 'symlink':
             os.symlink(os.path.realpath(args.file),
@@ -819,7 +819,7 @@ def recurs_load_modules(args):
                 new_deps = 1
                 spoofed_args = args
                 spoofed_args.module = dep
-                load_component(spoofed_args)
+                load_module(spoofed_args)
              
 
 def list_steps(args):
@@ -891,8 +891,8 @@ def load_module(args):
                             'workflow',
                             args.module,
                             args.module + '.config')
-            if os.path.isfile(comp_cfg):
-                update_nf_cfg(nf_cfg, comp_cfg)
+            if os.path.isfile(mod_cfg):
+                update_nf_cfg(nf_cfg, mod_cfg)
         recurs_load_modules(args)
 
 
@@ -1107,7 +1107,7 @@ def update_nf_cfg(nf_cfg, mod_cfg):
         for line in nfo:
             new_nf_cfg.append(line)
             if line == "process {\n":
-                new_nf_cfg.extend(linse_to_copy)
+                new_nf_cfg.extend(lines_to_copy)
 
     with open(nf_cfg, 'w') as nfo:
         for line in new_nf_cfg:
@@ -1181,7 +1181,6 @@ def package_analysis(args):
         hashes = {}
         for dir in dirs:
             files = glob(pjoin('analyses', args.analysis, dir, '**'), recursive=True)
-            print(files)
             sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
             hashes.update(sub_hashes)
         json.dump(hashes, fo, indent=4)
@@ -1322,7 +1321,7 @@ def add_step(args):
         else:
             step_str = get_process_string(mod_contents, args.step)
     
-    inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.component)
+    inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
 
     #Need to ensure module is actually loaded. Going to assume it's loaded for now.
 
@@ -1342,7 +1341,7 @@ def add_step(args):
            if [re.findall('workflow {} {{\n'.format(discovered_sub), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(discovered_sub), i)]:
                sub_contents = extract_step_slice_from_contents(mod_contents, discovered_sub)
            else:
-               subs_module = find_subs_module(mod_contents, discovered_sub)
+               subs_module = find_step_module(mod_contents, discovered_sub)
                if subs_module:
                    new_mod_path = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', subs_module, subs_module + '.nf')
                    new_mod_contents = []
@@ -1364,11 +1363,11 @@ def add_step(args):
     raw_params = [i for i in raw_params if i not in defined]
 
     expanded_params = expand_params(raw_params)
-    expanded_gen_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in \
+    expanded_gen_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in 
                           sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
-    expanded_fine_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in \
-                           sorted(expanded_params, \ 
-                           key = lambda i: (i.split('.')[-1], len(i.split('.')))) if \
+    expanded_fine_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in 
+                           sorted(expanded_params, 
+                           key = lambda i: (i.split('.')[-1], len(i.split('.')))) if 
                            expanded_params[k] != "''"]) + '\n'
 
     inc_idx = main_contents.index("/*Inclusions*/\n")
@@ -1446,9 +1445,9 @@ def is_workflow(contents, step):
         True if step is a workflow, otherwise False.
     """
     is_workflow = False
-    hit = [re.findall(' {} {{'.format(step),i) for i in contents if \
-           re.findall(' {} {{'.format(step), i)][0][0]
-    if re.search(hit, 'workflow '):
+    hit = [re.findall('.* {} {{'.format(step),i) for i in contents if 
+           re.findall('.* {} {{'.format(step), i)][0][0]
+    if re.search('workflow', hit):
         is_workflow = True
     return is_workflow 
     
@@ -1467,14 +1466,10 @@ def find_step_module(contents, step):
         Str containing parent component for step.
     """
     mod = []
-    #print(sub)
-    #print(contents)
     try: 
         mod = [re.findall('include .*{}.*'.format(sub), i) for i in contents if re.findall('include .*{}.*'.format(sub), i)][0][0].split('/')[1]
     except:
         pass
-    #print(mod)
-    #print("{}: {}".format(sub, mod))
     return mod
 
 def extract_subs_from_contents(contents):
@@ -1502,9 +1497,9 @@ def extract_params_from_contents(contents):
     Args:
         contents (list): List containing the rows from a workflow's entry in a component.
     """
-    params = [re.findall("(params.*,|params.*\))", i) for i in contents if \
+    params = [re.findall("(params.*,|params.*\))", i) for i in contents if 
               re.findall("params.*,|params.*\)", i)]
-    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '') for \
+    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '') for 
             j in params for i in j]
     return(flat)
 
@@ -1547,10 +1542,9 @@ def get_workflow_string(contents, workflow):
     wf_slice = extract_step_slice_from_contents(contents, workflow)
     main_idx = wf_slice.index('main:')
     #Need to account for comments here. Don't want them included.
-    wf_list = [wf_slice[0].replace("workflow ", "").replace(" {",""), '(', \
+    wf_list = [wf_slice[0].replace("workflow ", "").replace(" {",""), '(', 
                ", ".join([x for x in wf_slice[2:main_idx]]), ')\n']
     wf_str = "".join(wf_list)
-    print(wf_str)
     return wf_str
 
 
