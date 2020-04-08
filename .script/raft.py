@@ -1498,7 +1498,7 @@ def extract_params_from_contents(contents):
     Args:
         contents (list): List containing the rows from a workflow's entry in a component.
     """
-    params = [re.findall("(params.*,|params.*\))", i) for i in contents if 
+    params = [re.findall("(params.*?,|params.*\)|params.*})", i) for i in contents if 
               re.findall("params.*,|params.*\)", i)]
     flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '') for 
             j in params for i in j]
