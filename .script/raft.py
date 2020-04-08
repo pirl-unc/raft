@@ -1421,12 +1421,13 @@ def expand_params(params):
     """
     expanded_params = {}
     for param in params:
+        param = param.partition('.')[2]
         param = param.split('$')
-        expanded_params['$'.join(param)] = "''"
-        if len(param) > 2:
-            for i in range(1,len(param) - 1):
-                expanded_params['$'.join(param[:i+1] + [param[-1]])] = '$'.join(param[:i] + [param[-1]])
-            expanded_params['$'.join([param[0]] + [param[-1]])] = "''"
+        expanded_params['params.' + '$'.join(param)] = "''"
+        if len(param) > 1:
+            for i in range(0,len(param) - 1):
+                expanded_params['params.' + '$'.join(param[:i+1] + [param[-1]])] = 'params.' + '$'.join(param[:i] + [param[-1]])
+            expanded_params['params.' + param[-1])] = "''"
     return expanded_params
 
 
