@@ -1367,7 +1367,7 @@ def add_step(args):
                           sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
     expanded_fine_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in 
                            sorted(expanded_params, 
-                           key = lambda i: (i.split('.')[-1], len(i.split('.')))) if 
+                           key = lambda i: (i.split('$')[-1], len(i.split('$')))) if 
                            expanded_params[k] != "''"]) + '\n'
 
     inc_idx = main_contents.index("/*Inclusions*/\n")
