@@ -1427,7 +1427,7 @@ def expand_params(params):
         if len(param) > 1:
             for i in range(0,len(param) - 1):
                 expanded_params['params.' + '$'.join(param[:i+1] + [param[-1]])] = 'params.' + '$'.join(param[:i] + [param[-1]])
-            expanded_params['params.' + param[-1])] = "''"
+            expanded_params['params.' + param[-1]] = "''"
     return expanded_params
 
 
