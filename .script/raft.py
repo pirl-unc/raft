@@ -1400,9 +1400,9 @@ def expand_params(params):
     (where the same tool is being called in two different contexts), then
     expand_params() will generate:
     params.tool = ''
-    params.foo.tool = params.tool
-    params.foo.bar.tool = params.foo.tool
-    params.foo.bat.tool = params.foo.tool
+    params.foo$tool = params.tool
+    params.foo$bar$tool = params.foo.tool
+    params.foo$bat$tool = params.foo.tool
 
     Notice the user can provide a global tool parameter that is effectively
     inherited down the entire heirarchy. This allows the user to define a
@@ -1421,12 +1421,12 @@ def expand_params(params):
     """
     expanded_params = {}
     for param in params:
-        param = param.split('.')
-        expanded_params['.'.join(param)] = "''"
+        param = param.split('$')
+        expanded_params['$'.join(param)] = "''"
         if len(param) > 2:
             for i in range(1,len(param) - 1):
-                expanded_params['.'.join(param[:i+1] + [param[-1]])] = '.'.join(param[:i] + [param[-1]])
-            expanded_params['.'.join([param[0]] + [param[-1]])] = "''"
+                expanded_params['$'.join(param[:i+1] + [param[-1]])] = '$'.join(param[:i] + [param[-1]])
+            expanded_params['$'.join([param[0]] + [param[-1]])] = "''"
     return expanded_params
 
 
