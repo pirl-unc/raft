@@ -830,7 +830,7 @@ def list_steps(args):
        args (Namespace object): User-provided arguments
     """
     raft_cfg = load_raft_cfg()
-    with open(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.component, args.component + '.nf')) as fo:
+    with open(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.module, args.module + '.nf')) as fo:
         for line in fo:
             if re.search('^workflow|^process', line):
                 print(line.split(' ')[1])
