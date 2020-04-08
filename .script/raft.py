@@ -1500,7 +1500,7 @@ def extract_params_from_contents(contents):
     """
     params = [re.findall("(params.*?,|params.*?\)|params.*\?})", i) for i in contents if 
               re.findall("params.*,|params.*\)", i)]
-    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '') for 
+    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '') for 
             j in params for i in j]
     return(flat)
 
