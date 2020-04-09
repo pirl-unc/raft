@@ -2,6 +2,7 @@
 nextflow.preview.dsl=2
 
 /*General Parameters*/
+params.analysis_dir = ''
 
 /*Fine-tuned Parameters*/
 
