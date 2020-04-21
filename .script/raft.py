@@ -48,24 +48,24 @@ def get_args():
 
 
     # Subparser for initializing an analysis.
-    parser_init_analysis = subparsers.add_parser('init-analysis',
-                                                 help="Initialize a RAFT analysis.")
-    parser_init_analysis.add_argument('-c', '--init-config',
-                                      help="Analysis config file (see documentation).",
+    parser_init_project = subparsers.add_parser('init-project',
+                                                 help="Initialize a RAFT project.")
+    parser_init_project.add_argument('-c', '--init-config',
+                                      help="Project config file (see documentation).",
                                       default=pjoin(getcwd(), '.init.cfg'))
-    parser_init_analysis.add_argument('-i', '--id',
-                                      help="Analysis identifier.",
+    parser_init_project.add_argument('-p', '--project-id',
+                                      help="Project identifier.",
                                       required=True)
 
 
     # Subparser for loading a manifest into an analysis.
     parser_load_manifest = subparsers.add_parser('load-manifest',
-                                                 help="Load manifest into an analysis.")
+                                                 help="Load manifest into a project.")
     parser_load_manifest.add_argument('-c', '--manifest-csv',
                                       help="Manifest CSV (see documentation).",
                                      required=True)
-    parser_load_manifest.add_argument('-a', '--analysis',
-                                      help="Analysis identifier.",
+    parser_load_manifest.add_argument('-p', '--project-id',
+                                      help="Project identifier.",
                                       required=True)
 
 
@@ -238,13 +238,13 @@ def setup(args):
         # This requires more information. What are the keys of this object?
         args (Namespace object): User-provided arguments.
     """
-    print("Setting up RAFT...")
+    print("Setting up RAFT...\n")
     if args.default:
         print("Using defaults due to -d/--default flag...")
 
     # DEFAULTS
     raft_paths = {'work': pjoin(getcwd(), 'work'),
-                  'analyses': pjoin(getcwd(), 'analyses'),
+                  'projects': pjoin(getcwd(), 'projects'),
                   'indices': pjoin(getcwd(), 'indices'),
                   'references': pjoin(getcwd(), 'references'),
                   'fastqs': pjoin(getcwd(), 'fastqs'),
@@ -293,7 +293,7 @@ def setup(args):
     print("Setup complete.")
 
 
-def setup_get_user_raft_paths(raft_paths):
+def get_user_raft_paths(raft_paths):
     """
     Part of setup mode.
 
@@ -312,16 +312,17 @@ def setup_get_user_raft_paths(raft_paths):
     Returns:
         Dictionary containing RAFT paths as keys and user-specified directories as values.
     """
+    print("""/!\ WARNING: The work directory will be large. Select accordingly. /!\\""")
     for raft_path, default in raft_paths.items():
-        user_spec_path = input("Provide a shared directory for {} (Default: {}): "
+        user_spec_path = input("Provide a global (among projects) directory for {} (Default: {}): "
                                .format(raft_path, default))
         # Should be doing some sanity checking here to ensure the path can exist.
         if user_spec_path:
-            rath_paths[raft_path] = user_spec_path
+            raft_paths[raft_path] = user_spec_path
     return raft_paths
 
 
-def setup_get_user_nf_repos(nf_repos):
+def get_user_nf_repos(nf_repos):
     """
     Part of setup mode.
 
@@ -340,14 +341,14 @@ def setup_get_user_nf_repos(nf_repos):
     """
     # Allow users to specify their own Nextflow workflows and modules repos.
     for nf_repo, default in nf_repos.items():
-        user_spec_repo = input("Provide a repository for Nextflow {}\n(Default: {}):"
+        user_spec_repo = input("\nProvide a repository for Nextflow {}\n(Default: {}):"
                                .format(nf_repo, default))
         if user_spec_repo:
             nf_repos[nf_repo] = user_spec_repo
     return nf_repos
 
 
-def setup_get_user_raft_repos(raft_repos):
+def get_user_raft_repos(raft_repos):
     """
     Part of setup mode.
 
@@ -362,7 +363,7 @@ def setup_get_user_raft_repos(raft_repos):
         user-specific git urls (or null) as values. Null values are intended to
         be used to generate local repositories.
     """
-    message = ["Provide any git repositories you'd like RAFT to access.",
+    message = ["\nProvide any git repositories you'd like RAFT to access.",
                "These are for pushing RAFT/analysis packages and are not required",
                "for pulling RAFT packages from public repositories.",
                "/!\\ Make sure ssh/pgp credentials in place before using these repos /!\\"]
@@ -403,9 +404,14 @@ def setup_run_once(master_cfg):
         master_cfg (dict): Dictionary with configuration information.
     """
     for dir in master_cfg['filesystem'].values():
-        if os.path.isdir(dir):
+        if re.search('~', dir):
+            dir = os.path.expanduser(dir)
+        if os.path.isdir(dir): # Need to ensure dir isn't already in RAFT dir.
             print("Symlinking {} to {}...".format(dir, getcwd()))
-            os.symlink(dir, getcwd())
+            try:
+                os.symlink(dir, getcwd())
+            except:
+                print("{} already exists.".format(dir))
         else:
             print("Making {}...".format(dir))
             os.mkdir(dir)
@@ -421,26 +427,26 @@ def setup_run_once(master_cfg):
             Repo.init(pjoin(master_cfg['filesystem']['repos'], name))
 
 
-def init_analysis(args):
+def init_project(args):
     """
-    Part of init-analysis mode.
+    Part of init-project mode.
 
-    Initializes analysis.
+    Initializes project.
 
-    Initializing an analysis includes:
-      - Make analysis directory within RAFT /analyses directory.
-      - Populate analysis directory using information within specificed
+    Initializing a project includes:
+      - Make a project directory within RAFT /projects directory.
+      - Populate project directory using information within specificed
         init_config file.
       - Make a mounts.config file to allow Singularity to access RAFT directories.
       - Make auto.raft file (which records steps taken within RAFT).
-      - Create workflow/modules/ directory and <analysis>.nf overall workflow.
+      - Create workflow/modules/ directory and project.nf overall workflow.
 
     Args:
         args (Namespace object): User-provided arguments
     """
-    anlys_dir = mk_anlys_dir(args.id)
-    bound_dirs = fill_dir(anlys_dir, args.init_config)
-    mk_mounts_cfg(anlys_dir, bound_dirs)
+    proj_dir = mk_proj_dir(args.project_id)
+    bound_dirs = fill_dir(proj_dir, args.init_config)
+    mk_mounts_cfg(proj_dir, bound_dirs)
     mk_auto_raft(args)
     mk_main_wf_and_cfg(args)
 
@@ -457,11 +463,11 @@ def mk_main_wf_and_cfg(args):
     raft_cfg = load_raft_cfg()
     tmplt_wf_file = os.path.join(os.getcwd(), '.init.wf')
     tmplt_cfg_file = os.path.join(os.getcwd(), '.nextflow.config')
-    anlys_wf_path = pjoin(raft_cfg['filesystem']['analyses'],
-                                   args.id,
-                                   'workflow')
-    shutil.copyfile(tmplt_wf_file, pjoin(anlys_wf_path, 'main.nf'))
-    shutil.copyfile(tmplt_cfg_file, pjoin(anlys_wf_path, 'nextflow.config'))
+    proj_wf_path = pjoin(raft_cfg['filesystem']['projects'],
+                                  args.project_id,
+                                  'workflow')
+    shutil.copyfile(tmplt_wf_file, pjoin(proj_wf_path, 'main.nf'))
+    shutil.copyfile(tmplt_cfg_file, pjoin(proj_wf_path, 'nextflow.config'))
 
 
 def mk_auto_raft(args):
@@ -475,8 +481,8 @@ def mk_auto_raft(args):
         args (Namespace object): User-provided arguments
     """
     raft_cfg = load_raft_cfg()
-    auto_raft_file = pjoin(raft_cfg['filesystem']['analyses'],
-                           args.id,
+    auto_raft_file = pjoin(raft_cfg['filesystem']['projects'],
+                           args.project_id,
                            '.raft',
                            'auto.raft')
 
@@ -484,7 +490,7 @@ def mk_auto_raft(args):
         fo.write("{}\n".format(' '.join(sys.argv)))
 
 
-def mk_anlys_dir(name):
+def mk_proj_dir(name):
     """
     Part of the init-analysis mode.
 
@@ -496,17 +502,17 @@ def mk_anlys_dir(name):
     Returns:
         str containing the generated analysis path.
     """
-    anlys_dir = ''
+    proj_dir = ''
     raft_cfg = load_raft_cfg()
-    global_dir = raft_cfg['filesystem']['analyses']
-    anlys_dir = pjoin(global_dir, name)
+    global_dir = raft_cfg['filesystem']['projects']
+    proj_dir = pjoin(global_dir, name)
 
     try:
-        os.mkdir(anlys_dir)
+        os.mkdir(proj_dir)
     except:
-        sys.exit("Analysis directory already exists. Please try another.")
+        sys.exit("Project directory already exists. Please try another.")
 
-    return anlys_dir
+    return proj_dir
 
 
 def fill_dir(dir, init_cfg):
@@ -556,9 +562,9 @@ def fill_dir(dir, init_cfg):
 
 def mk_mounts_cfg(dir, bind_dirs):
     """
-    Part of the init-analysis mode.
+    Part of the init-project mode.
 
-    Creates a mounts.config file for an analysis. This file is provided to
+    Creates a mounts.config file for a project. This file is provided to
     Nextflow and used to bind directories during Singularity execution. This
     will have to be modified to use Docker, but works sufficiently for
     Singularity now.
@@ -643,12 +649,11 @@ def load_manifest(args):
     Part of the load-manifest mode.
 
     Given a user-provided manifest CSV file:
-        - Copy file to analysis /metadata directory.
-        - Checks to see if any columns not labeled "dataset", "samp_id" are
-          present in the analysis /fastqs directory.
-
-    NOTE: RAFT assumes any columns (except "dataset" or "samp_id") contain
-          FASTQ prefixes.
+        - Copy file to project's /metadata directory.
+        - Checks to see if any prefixes in any column labeled "File_Prefix" are
+          present in the global RAFT /fastqs directory.
+        - Symlink FASTQs to from global RAFT /fastqs directory project-specific
+          /fastqs directory.
 
     NOTE: This function will eventually handle more than FASTQs prefixes.
 
@@ -656,24 +661,27 @@ def load_manifest(args):
         args (Namespace object): User-provided arguments.
     """
     raft_cfg = load_raft_cfg()
-    print("Loading manifest in analysis {}...".format(args.analysis))
-    overall_mani = pjoin(raft_cfg['filesystem']['analyses'],
-                         args.analysis,
+    print("Loading manifest into project {}...".format(args.project_id))
+    overall_mani = pjoin(raft_cfg['filesystem']['projects'],
+                         args.project_id,
                          'metadata',
-                         args.analysis + '_manifest.csv')
+                         args.project_id + '_manifest.csv')
 
-    # Check the global, shared FASTQ directory for FASTQs.
+    # Check the global RAFT FASTQ directory for FASTQs.
     global_fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
-    local_fastqs_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'fastqs')
+    local_fastqs_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'fastqs')
 
     print("Copying metadata file into analysis metadata directory...")
-    if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
+    if os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id)):
         # If the specified analysis doesn't exist, then should it be created automatically?
-        metadata_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'metadata')
+        metadata_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'metadata')
         shutil.copyfile(args.manifest_csv,
                         pjoin(metadata_dir, os.path.basename(args.manifest_csv)))
 
-    reconfiged_hdr = 'samp_id,dataset,tissue,prefix\n'
+    # This header may evolve in the future, but is largely sufficient for now.
+    
+    hdrl = ['Sample_ID', 'Patient_ID', 'File_Prefix', 'Dataset', 'Treatment', 'Sample_Type', 'Pipeline_Role', 'Tissue']
+    proj_hdr = ','.join(hdrl) + '\n'
     reconfiged_mani = []
 
     bind_dirs = [] #Stores directories containing absolute path to FASTQs.
@@ -683,21 +691,24 @@ def load_manifest(args):
         hdr = fo.readline()
         hdr = hdr.strip('\n').split(',')
         # Will certainly need a better way to do this, but this will work for now.
-        cols_to_check = [i for i in range(len(hdr)) if hdr[i] not in ['dataset', 'samp_id']]
-        dataset_col = hdr.index('dataset')
-        samp_id_col = hdr.index('samp_id')
+        cols_to_check = [i for i in range(len(hdr)) if hdr[i] in ['File_Prefix']]
+        col_idx_map = {i:j for j,i in enumerate(hdr)}
 
         for row in fo:
             row = row.strip('\n').split(',')
-            dataset = row[dataset_col]
-            samp_id = row[samp_id_col]
 
-            for col in cols_to_check:
-                tissue = hdr[col] #This is where translation will happen, if needed!
+            #Mention adding manifest to project-level manifest.
+            for col in cols_to_check: # Is this needed? Seems like only one column should be used.
                 prefix = row[col]
                 if prefix == 'NA':
                     continue
-                reconfiged_mani.append(','.join([samp_id, dataset, tissue, prefix]))
+                reconfiged_row = []
+                for col in hdrl:
+                    if col in col_idx_map.keys():
+                        reconfiged_row.append(row[col_idx_map[col]])
+                    else:
+                        reconfiged_row.append('NA')
+                reconfiged_mani.append(','.join(reconfiged_row))
 
                 print("Checking for FASTQ prefix {} in global /fastqs...".format(prefix))
                 hits = glob(pjoin(global_fastqs_dir, prefix + '*'), recursive=True)
@@ -714,8 +725,8 @@ def load_manifest(args):
 
     bind_dirs = list(set(bind_dirs))
 
-    update_mounts_cfg(pjoin(raft_cfg['filesystem']['analyses'],
-                            args.analysis,
+    update_mounts_cfg(pjoin(raft_cfg['filesystem']['projects'],
+                            args.project_id,
                             'workflow',
                             'mounts.config'),
                       bind_dirs)
@@ -726,8 +737,8 @@ def load_manifest(args):
             contents = mfo.readlines()
         except:
             pass
-        if reconfiged_hdr not in contents:
-            mfo.write(reconfiged_hdr)
+        if proj_hdr not in contents:
+            mfo.write(proj_hdr)
         mfo.write('\n'.join([row for row in reconfiged_mani if row not in contents]))
 
 
@@ -1148,11 +1159,11 @@ def dump_to_auto_raft(args):
     Args:
         args (Namespace object): User-specified arguments.
     """
-    if args.command not in ['init-analysis', 'run-auto', 'package-analysis',
-                            'load-analysis', 'setup', 'add-step']:
+    if args.command not in ['init-project', 'run-auto', 'package-project',
+                            'load-project', 'setup', 'add-step']:
         raft_cfg = load_raft_cfg()
-        auto_raft_path = pjoin(raft_cfg['filesystem']['analyses'],
-                               args.analysis,
+        auto_raft_path = pjoin(raft_cfg['filesystem']['projects'],
+                               args.project_id,
                                '.raft',
                                'auto.raft')
         with open(auto_raft_path, 'a') as fo:
@@ -1584,8 +1595,8 @@ def main():
     # functions, but this will work for now.
     if args.command == 'setup':
         setup(args)
-    elif args.command == 'init-analysis':
-        init_analysis(args)
+    elif args.command == 'init-project':
+        init_project(args)
     elif args.command == 'load-manifest':
         load_manifest(args)
     elif args.command == 'load-metadata':
