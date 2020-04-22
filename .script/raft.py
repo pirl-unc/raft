@@ -149,17 +149,17 @@ def get_args():
     parser_add_step = subparsers.add_parser('add-step',
                                             help="""Add step (process/workflow) to analysis
                                                     (see documentation).""")
-    parser_add_step.add_argument('-a', '--analysis',
-                                 help="Analysis.",
+    parser_add_step.add_argument('-p', '--project-id',
+                                 help="Project to add step to.",
                                  required=True)
     parser_add_step.add_argument('-m', '--module',
                                  help="Module containing step (process/workflow).",
                                  required=True)
     parser_add_step.add_argument('-s', '--step',
-                                 help="Proces/workflow to add.",
+                                 help="Process/workflow to add.",
                                  required=True)
     parser_add_step.add_argument('-S', '--subworkflow',
-                                 help="Subworkflow (if needed)",
+                                 help="Subworkflow to add step to (if needed)",
                                  default='main')
 #    parser_add_step.add_argument('-n', '--no-populate',
 #                                 help="Load step without placeholder variables.",
@@ -1297,6 +1297,34 @@ def load_analysis(args):
     shutil.move(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, '.mounts.config'),
                 pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'))
 
+def get_params_from_module(module_path):
+    """
+    """
+    undef_params, defined_params = ([], [])
+    with open(module_path) as mfo:
+        for line in mfo.readlines():
+            line = line.strip()
+            if re.search("^params.*", line):
+                if re.search(" = ''", line):
+                    undef_params.append(line.partition(' ')[0])
+                else:
+                    defined_params.append(line.partition(' ')[0])
+
+    return undef_params, defined_params
+    
+
+def get_section_insert_idx(contents, section, stop='\n'):
+    """
+    Part of add-step mode.
+
+    Find the index of the nearest empty row for a section. Basically, find
+    where the the a set of rows should be inserted within a main.nf specific
+    section.
+    """
+    start = contents.index(section)
+    insert_idx = contents[start:].index(stop)
+    return start + insert_idx
+    
 
 
 def add_step(args):
@@ -1306,52 +1334,48 @@ def add_step(args):
     Args:
         args (Namespace object): User-provided arguments.
     """
+    print("Adding step {} from module {} to project {}".format(args.step, args.module, args.project_id))
     raft_cfg = load_raft_cfg()
 
     # Relevant files
-    main_nf = pjoin(raft_cfg['filesystem']['analyses'],
-                    args.analysis,
+    main_nf = pjoin(raft_cfg['filesystem']['projects'],
+                    args.project_id,
                     'workflow',
                     'main.nf')
-    mod_nf = pjoin(raft_cfg['filesystem']['analyses'],
-                   args.analysis,
+    mod_nf = pjoin(raft_cfg['filesystem']['projects'],
+                   args.project_id,
                    'workflow',
                    args.module,
                    args.module + '.nf')
 
-    # Getting params
-    raw_params = []
-    expanded_params = {}
+    # Step's inclusion statement for main.nf
+    inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
 
-    # Getting list of already defined params.
-    # Defined params are assumed to be defined using other, non-defined params.
-    defined = []
-
+    # Need to load main.nf params here to check against when getting step-specific params.
+    tmp_main_undef_params, tmp_main_defined_params = get_params_from_module(main_nf)
+    main_params = tmp_main_undef_params + tmp_main_defined_params
+    
     # Getting global params from module
     # Ideally we'd have a way to keep the default value here.
-    with open(mod_nf) as mfo:
-        for line in mfo.readlines():
-            line = line.strip()
-            if re.search("^params.*", line):
-                if re.search(" = ''", line):
-                    raw_params.append(line.partition(' ')[0])
-                else:
-                    defined.append(line.partition(' ')[0])
+    mod_expanded_params = {}
+    # Defined params are assumed to be defined using other, non-defined params.
+    # For example, B = A, A = '' means B is defined, A is not.
+    mod_undef_params, mod_defined_params = get_params_from_module(mod_nf)
 
-
-    # Get strings to include
+    # Extract step contents from step's module file in order to make string to
+    # put within main.nf
     step_str = ''
     mod_contents = []
     with open(mod_nf) as mfo:
         mod_contents = mfo.readlines()
         step_slice = extract_step_slice_from_contents(mod_contents, args.step)
-        if is_workflow(mod_contents, args.step):
-            step_str = get_workflow_string(mod_contents, args.step)
-            subs = extract_subs_from_contents(step_slice)
+        if is_workflow(step_slice):
+            step_str = get_workflow_str(step_slice)
+#            steps = extract_steps_from_contents(step_slice)
         else:
-            step_str = get_process_string(mod_contents, args.step)
+            step_str = get_process_str(step_slice)
+    print("Adding the following step to main.nf: {}".format(step_str))
 
-    inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
 
     #Need to ensure module is actually loaded. Going to assume it's loaded for now.
 
@@ -1362,57 +1386,75 @@ def add_step(args):
     with open(main_nf) as mfo:
        main_contents = mfo.readlines()
 
-    discovered_subs = [args.step]
-    while discovered_subs:
-       #Resetting...
-       new_subs = []
-       for discovered_sub in discovered_subs:
-           sub_contents = []
-           if [re.findall('workflow {} {{\n'.format(discovered_sub), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(discovered_sub), i)]:
-               sub_contents = extract_step_slice_from_contents(mod_contents, discovered_sub)
+    # This section is for retreiving all of the parameters needed both for the
+    # user-specified step and any other steps called by that step.
+    # Priming list with user-specified step.
+    step_raw_params = []
+    discovered_steps = [args.step]
+    while discovered_steps:
+       # new_steps are steps called by the previous step. 
+       new_steps = []
+       for step in discovered_steps:
+           print("Adding parameters for step {} to main.nf.".format(step))
+           step_slice = []
+           if [re.findall('workflow {} {{\n'.format(step), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(step), i)]:
+               # If the workflow can be found in the current module's contents,
+               # then load it. This is a bit repetetive for the first step
+               # (since module is specified), but useful for getting modules
+               # for any other steps called by the initial step.
+               step_slice = extract_step_slice_from_contents(mod_contents, step)
            else:
-               subs_module = find_step_module(mod_contents, discovered_sub)
-               if subs_module:
-                   new_mod_path = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', subs_module, subs_module + '.nf')
-                   new_mod_contents = []
-                   with open(new_mod_path) as fo:
-                       new_mod_contents = fo.readlines()
-                   sub_contents = extract_step_slice_from_contents(new_mod_contents, discovered_sub)
-           if sub_contents:
-               params = extract_params_from_contents(sub_contents)
-               if params:
-                   raw_params.extend(params)
-               subs = extract_subs_from_contents(sub_contents)
-               if subs:
-                   new_subs.extend(subs)
-       discovered_subs = new_subs[:]
+               # Otherwise, determine the module for this step and load the slice from that module.
+               steps_module = find_step_module(mod_contents, step)
+               if steps_module:
+                   mod_path = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', subs_module, subs_module + '.nf')
+                   mod_contents = []
+                   with open(mod_path) as fo:
+                       mod_contents = fo.readlines()
+                   step_slice = extract_step_slice_from_contents(new_mod_contents, step)
+           if step_slice:
+               step_params = extract_params_from_contents(step_slice)
+               if step_params:
+                   step_raw_params.extend(step_params)
+               steps = extract_steps_from_contents(step_slice)
+               if steps:
+                   new_steps.extend(steps)
+       discovered_steps = new_steps[:]
 
-    raw_params = list(set(raw_params))
+    step_raw_params = list(set(step_raw_params))
 
     # Filtering raw params by params already defined globally...
-    raw_params = [i for i in raw_params if i not in defined]
+    step_params = [i for i in step_raw_params if i not in main_params]
 
-    expanded_params = expand_params(raw_params)
-    expanded_gen_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
-                          sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
-    expanded_fine_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
-                           sorted(expanded_params,
-                           key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
-                           expanded_params[k] != "''"]) + '\n'
+    expanded_step_params = expand_params(step_params)
+    expanded_step_undef_params = '\n'.join(["{} = {}".format(k, expanded_step_params[k]) for k in
+                                 sorted(expanded_step_params.keys()) if expanded_step_params[k] == "''"]) + '\n'
+    expanded_step_defined_params = '\n'.join(["{} = {}".format(k, expanded_step_params[k]) for k in
+                                  sorted(expanded_step_params,
+                                  key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
+                                  expanded_step_params[k] != "''"]) + '\n'
 
-    inc_idx = main_contents.index("/*Inclusions*/\n")
-    wf_idx = main_contents.index("workflow {\n")
-    gen_params_idx = main_contents.index("/*General Parameters*/\n")
-    fine_params_idx = main_contents.index("/*Fine-tuned Parameters*/\n")
+    # get_section_insert_idx
 
+    inc_idx = get_section_insert_idx(main_contents, "/*Inclusions*/\n")
+    wf_idx = get_section_insert_idx(main_contents, "workflow {\n", "}\n")
+    gen_params_idx = get_section_insert_idx(main_contents, "/*General Parameters*/\n")
+    fine_params_idx = get_section_insert_idx(main_contents, "/*Fine-tuned Parameters*/\n")
+
+    print(mod_undef_params)
+    print(expanded_step_undef_params)
+    all_undef_params = mod_undef_params + expanded_step_undef_params
+    all_defined_params = mod_defined_params + expanded_step_defines_params
 
     if all([inc_idx, wf_idx]) and [inclusion_str, step_str] not in main_contents:
 
-        main_contents.insert(inc_idx + 1, inclusion_str)
+        main_contents.insert(inc_idx, inclusion_str)
         #Why does wf_idx require +2?
-        main_contents.insert(wf_idx + 2, step_str)
-        main_contents.insert(gen_params_idx + 1, expanded_gen_params)
-        main_contents.insert(fine_params_idx + 2, expanded_fine_params)
+        main_contents.insert(wf_idx, step_str)
+        main_contents.insert(gen_params_idx, mod_undef_params.append(expanded_step_undef_params))
+        main_contents.insert(fine_params_idx, mod_defined_params.append(expanded_step_defined_params))
+
+        print(main_contents)
 
         with open(main_nf, 'w') as ofo:
             ofo.write(''.join(main_contents))
@@ -1461,7 +1503,7 @@ def expand_params(params):
     return expanded_params
 
 
-def is_workflow(contents, step):
+def is_workflow(step):
     """
     Part of add-step mode.
 
@@ -1476,9 +1518,7 @@ def is_workflow(contents, step):
         True if step is a workflow, otherwise False.
     """
     is_workflow = False
-    hit = [re.findall('.* {} {{'.format(step),i) for i in contents if
-           re.findall('.* {} {{'.format(step), i)][0][0]
-    if re.search('workflow', hit):
+    if re.search('workflow', step[0]):
         is_workflow = True
     return is_workflow
 
@@ -1503,7 +1543,7 @@ def find_step_module(contents, step):
         pass
     return mod
 
-def extract_subs_from_contents(contents):
+def extract_steps_from_contents(contents):
     """
     Part of add-step mode.
 
@@ -1523,7 +1563,7 @@ def extract_params_from_contents(contents):
     Part of add-step mode.
 
     Get list of params being userd from contents.
-    NOTE: Contents in this case means a single workflow's contents.
+    NOTE: Contents in this case means a single step's contents.
 
     Args:
         contents (list): List containing the rows from a workflow's entry in a component.
@@ -1560,7 +1600,7 @@ def extract_step_slice_from_contents(contents, step):
 
 
 
-def get_workflow_string(contents, workflow):
+def get_workflow_str(wf_slice):
     """
     Part of add-step mode.
 
@@ -1570,22 +1610,20 @@ def get_workflow_string(contents, workflow):
     """
     #Can just strip contents before processing to not have to deal with a lot
     #of the newlines and space considerations.
-    wf_slice = extract_step_slice_from_contents(contents, workflow)
+    take_idx = wf_slice.index('take:')
     main_idx = wf_slice.index('main:')
-    #Need to account for comments here. Don't want them included.
     wf_list = [wf_slice[0].replace("workflow ", "").replace(" {",""), '(',
-               ", ".join([x for x in wf_slice[2:main_idx]]), ')\n']
+               ", ".join([x for x in wf_slice[take_idx+1:main_idx]]), ')\n']
     wf_str = "".join(wf_list)
     return wf_str
 
 
-def get_process_string(contents, process):
+def get_process_string(proc_slice):
     """
     Part of add-step mode.
 
     Get the string containing a process and its parameters for the main.nf workflow.
     """
-    proc_slice = extract_step_slice_from_contents(contents, process)
     start_idx = proc_slice.index('input:')
     stop_idx = proc_slice.index('output:')
     params = [x for x in proc_slice[start_idx+1:stop_idx] if x]
