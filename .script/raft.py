@@ -43,7 +43,7 @@ def get_args():
                                                  and configuration.""")
     parser_setup.add_argument('-d', '--default',
                               help="Use default paths for setup.",
-                              action="store_true",
+                              action='store_true',
                               default=False)
 
 
@@ -78,8 +78,8 @@ def get_args():
     parser_load_reference.add_argument('-s', '--sub-dir',
                                        help="Subdirectory for reference file or directory.",
                                        default='')
-    parser_load_reference.add_argument('-a', '--analysis',
-                                       help="Analysis to add metadata to.",
+    parser_load_reference.add_argument('-p', '--project-id',
+                                       help="Project to add reference to.",
                                        required=True)
     parser_load_reference.add_argument('-m', '--mode',
                                       help="Mode (copy or symlink). Default: symlink",
@@ -94,8 +94,8 @@ def get_args():
                                       required=True)
     parser_load_metadata.add_argument('-s', '--sub-dir',
                                       help="Subdirectory for metadata file.", default='')
-    parser_load_metadata.add_argument('-a', '--analysis',
-                                      help="Analysis.",
+    parser_load_metadata.add_argument('-p', '--project-id',
+                                      help="Project to add metadata to.",
                                       required=True)
     parser_load_metadata.add_argument('-m', '--mode',
                                       help="Mode (copy or symlink). Default: copy",
@@ -105,8 +105,8 @@ def get_args():
     # Subparser for loading component into an analysis.
     parser_load_module = subparsers.add_parser('load-module',
                                                help="Clones Nextflow module into analysis.")
-    parser_load_module.add_argument('-a', '--analysis',
-                                    help="Analysis.",
+    parser_load_module.add_argument('-p', '--project-id',
+                                    help="Project to load module(s) into.",
                                     required=True)
     parser_load_module.add_argument('-r', '--repo',
                                     help="Module repository.",
@@ -118,10 +118,6 @@ def get_args():
     parser_load_module.add_argument('-b', '--branch',
                                     help="Branch to checkout. Default='develop'.",
                                     default='develop')
-#    parser_load_component.add_argument('-p', '--private',
-#                                    help="Clones from private subgroup.",
-#                                    action='store_true',
-#                                    default=False)
     parser_load_module.add_argument('-n', '--no-deps',
                                     help="Do not automatically load dependencies.",
                                     default=False)
@@ -187,6 +183,10 @@ def get_args():
     parser_run_workflow.add_argument('-a', '--analysis',
                                      help="Analysis.",
                                      required=True)
+    parser_run_workflow.add_argument('--no-resume', 
+                                     help="Do not use Nextflow's -resume.",
+                                     default=False,
+                                     action='store_true')
 
 
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
@@ -678,6 +678,15 @@ def load_manifest(args):
         shutil.copyfile(args.manifest_csv,
                         pjoin(metadata_dir, os.path.basename(args.manifest_csv)))
 
+    # Extract header from overall mani if it already exists. Ideally we'd get
+    # the union of all input files.
+    #with open(overall_mani, 'w') as mfo:
+    #    contents = ''
+    #    try:
+    #        contents = mfo.readlines()
+    #    except:
+    #        pass
+    #    if proj_hdr not in contents:
     # This header may evolve in the future, but is largely sufficient for now.
     
     hdrl = ['Sample_ID', 'Patient_ID', 'File_Prefix', 'Dataset', 'Treatment', 'Sample_Type', 'Pipeline_Role', 'Tissue']
@@ -745,16 +754,16 @@ def load_manifest(args):
 def load_metadata(args):
     """
     Part of the load-metadata mode.
-
+    
     NOTE: This is effectively load_samples without the sample-level checks.
           These can probably be easily consolidated.
 
     Given a user-provided metadata CSV file:
-        - Copy/symlink file to analysis /metadata directory.
+        - Copy/symlink file to project's /metadata directory.
+        - Update project's mounts.config file if metadata file is symlinked.
 
     Args:
         args (Namespace object): User-provided arguments.
-
     """
     load_files(args, 'metadata')
 
@@ -763,7 +772,12 @@ def load_reference(args):
     """
     Part of load-reference mode.
 
-    Note: This is effectively load_metadata() but putting data into a different directory
+    Given a user-provided reference file:
+        - Copy/symlink reference file to project's /reference directory.
+        - Update project's mounts.config file if reference file is symlinked.
+    
+    Args:
+        args (Namespace object): User-provided arguments.
     """
     load_files(args, 'references')
 
@@ -773,19 +787,21 @@ def load_files(args, out_dir):
     Generic loading/symlinking function for functions like load_metadata(), load_reference(), etc.
 
     Args:
+        args (Namespace object): User-provided arguments.
+        out_dir (str): Output directory for copied/symlinked file.
 
     """
     raft_cfg = load_raft_cfg()
-    if os.path.isdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis)):
+    if os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id)):
         # If the specified analysis doesn't exist, then should it be created automatically?
-        abs_out_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, out_dir)
+        abs_out_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, out_dir)
         if args.sub_dir and not(os.path.exists(pjoin(abs_out_dir, args.sub_dir))):
             os.makedirs(pjoin(abs_out_dir, args.sub_dir))
         if args.mode == 'symlink':
             os.symlink(os.path.realpath(args.file),
                        pjoin(abs_out_dir, args.sub_dir, os.path.basename(args.file)))
-            update_mounts_cfg(pjoin(raft_cfg['filesystem']['analyses'],
-                                    args.analysis,
+            update_mounts_cfg(pjoin(raft_cfg['filesystem']['projects'],
+                                    args.project_id,
                                     'workflow',
                                     'mounts.config'),
                               [os.path.realpath(args.file)])
@@ -809,7 +825,7 @@ def recurs_load_modules(args):
 
     """
     raft_cfg = load_raft_cfg()
-    wf_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
+    wf_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
     new_deps = 1
     while new_deps == 1:
         new_deps = 0
@@ -823,7 +839,6 @@ def recurs_load_modules(args):
                         dep = line.split()[-1].replace("'", '').split('/')[1]
                         if dep not in deps:
                             deps.append(dep)
-#                deps.append([re.search('.nf', line).group() for line in mfo if re.search('^include', line)])
         for dep in deps:
             curr_deps = [i.split('/')[-1] for i in glob(pjoin(wf_dir, '*'))]
             if dep not in curr_deps:
@@ -876,35 +891,37 @@ def load_module(args):
     """
     Part of the load-module mode.
 
-    Loads a Nextflow component (e.g. module) into an analysis.
+    Loads a Nextflow module into a project's workflow directory.
     Allows users to specify a specific branch to checkout.
-    Automatically loads 'develop' branch of modules repo unless specified by user.
+    Automatically loads 'develop' branch of module's repo unless specified by user.
 
     Args:
         args (Namespace object): User-provided arguments.
     """
+    print("Loading module {} into project {}".format(args.module, args.project_id))
     raft_cfg = load_raft_cfg()
     if not args.repo:
         args.repo = raft_cfg['nextflow_repos']['nextflow_components']
-    if args.analysis:
-        # Should probably check here and see if the specified analysis even exists...
-        workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
-        if not glob(pjoin(workflow_dir, args.module)):
-            Repo.clone_from(pjoin(args.repo, args.module),
-                            pjoin(workflow_dir, args.module),
-                            branch=args.branch)
-            nf_cfg = pjoin(raft_cfg['filesystem']['analyses'],
-                           args.analysis,
-                           'workflow',
-                           'nextflow.config')
-            mod_cfg = pjoin(raft_cfg['filesystem']['analyses'],
-                            args.analysis,
-                            'workflow',
-                            args.module,
-                            args.module + '.config')
-            if os.path.isfile(mod_cfg):
-                update_nf_cfg(nf_cfg, mod_cfg)
-        recurs_load_modules(args)
+    # Should probably check here and see if the specified analysis even exists...
+    workflow_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
+    if not glob(pjoin(workflow_dir, args.module)):
+        Repo.clone_from(pjoin(args.repo, args.module),
+                        pjoin(workflow_dir, args.module),
+                        branch=args.branch)
+        nf_cfg = pjoin(raft_cfg['filesystem']['projects'],
+                       args.project_id,
+                       'workflow',
+                       'nextflow.config')
+        mod_cfg = pjoin(raft_cfg['filesystem']['projects'],
+                        args.project_id,
+                        'workflow',
+                        args.module,
+                        args.module + '.config')
+        if os.path.isfile(mod_cfg):
+            update_nf_cfg(nf_cfg, mod_cfg)
+    else:
+        print("Module {} is already loaded into project {}. Skipping...".format(args.module, args.project_id))
+    recurs_load_modules(args)
 
 
 def run_auto(args):
@@ -1088,7 +1105,10 @@ def get_base_nf_cmd(args):
         anlys_dir_str = "--analysis_dir {}".format(analysis_dir)
 
     # Adding all components to make base command.
-    cmd = ' '.join(['nextflow', discovered_nf, ' '.join(new_cmd), anlys_dir_str, '-resume'])
+    resume = ''
+    if not args.no_resume:
+        resume = '-resume'
+    cmd = ' '.join(['nextflow', discovered_nf, ' '.join(new_cmd), anlys_dir_str, resume])
     return cmd
 
 
@@ -1133,8 +1153,7 @@ def rndm_str_gen(k=5):
 
 
 def load_raft_cfg():
-    """
-    Part of several modes.
+    """ Part of several modes.
 
     This function reads the RAFT configuration file and provides a dictionary
     with configuration information.
@@ -1159,8 +1178,8 @@ def dump_to_auto_raft(args):
     Args:
         args (Namespace object): User-specified arguments.
     """
-    if args.command not in ['init-project', 'run-auto', 'package-project',
-                            'load-project', 'setup', 'add-step']:
+    if args.command and args.command not in ['init-project', 'run-auto', 'package-project',
+                                             'load-project', 'setup', 'add-step']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = pjoin(raft_cfg['filesystem']['projects'],
                                args.project_id,
