@@ -125,12 +125,13 @@ def get_args():
     # Subparser for listing module steps.
     parser_list_steps = subparsers.add_parser('list-steps',
                                               help="List module's processes and workflows.")
-    parser_list_steps.add_argument('-a', '--analysis',
-                                   help="Analysis.",
+    parser_list_steps.add_argument('-p', '--project-id',
+                                   help="Project.",
                                    required=True)
     parser_list_steps.add_argument('-m', '--module',
-                                   help="Module.",
-                                   required=True)
+                                   help="Module.")
+    parser_list_steps.add_argument('-s', '--step',
+                                   help="Step.")
 
 
     # Subparser for updating analysis-specific mounts.config file.
@@ -171,6 +172,10 @@ def get_args():
                                                 help="Run workflow")
     # At least one of these should be required, but should they be mutually exclusive?
     # Above comment is old -- but this does seem like a reasonable way to filter samples.
+    parser_run_workflow.add_argument('--no-resume', 
+                                     help="Do not use Nextflow's -resume.",
+                                     default=False,
+                                     action='store_true')
     parser_run_workflow.add_argument('-c', '--manifest-csvs',
                                      help="Comma-separated list of manifest CSV(s)")
     parser_run_workflow.add_argument('-s', '--samples',
@@ -180,13 +185,9 @@ def get_args():
                                      default='main')
     parser_run_workflow.add_argument('-n', '--nf-params',
                                      help="Param string passed to Nextflow (see documentation).")
-    parser_run_workflow.add_argument('-a', '--analysis',
-                                     help="Analysis.",
+    parser_run_workflow.add_argument('-p', '--project-id',
+                                     help="Project.",
                                      required=True)
-    parser_run_workflow.add_argument('--no-resume', 
-                                     help="Do not use Nextflow's -resume.",
-                                     default=False,
-                                     action='store_true')
 
 
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
@@ -856,35 +857,22 @@ def list_steps(args):
        args (Namespace object): User-provided arguments
     """
     raft_cfg = load_raft_cfg()
-    with open(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', args.module, args.module + '.nf')) as fo:
-        for line in fo:
-            if re.search('^workflow|^process', line):
-                print(line.split(' ')[1])
+    
+    glob_term = '*/'
+    if args.module:
+        glob_term = args.module + '/'
 
-def load_private_module(args):
-    """
-    Part of hte load-private-module mode.
-
-    Loads a "private" module. These are modules that are not contained within
-    the common nextflow modules repository.
-
-    Args:
-        args (Namespace object): User-provided arguments.
-    """
-    raft_cfg = load_raft_cfg()
-    # This shouldn't be hard-coded, but doing it for now.
-    if not args.repo:
-        args.repo = raft_cfg['nextflow_repos']['modules_private_subgroup']
-    if args.analysis:
-        # Should probably check here and see if the specified analysis even exists...
-        workflow_dir = pjoin(raft_cfg['filesystem']['analyses'],
-                             args.analysis,
-                             'workflow',
-                             args.workflow,
-                             'pmodules')
-        Repo.clone_from(pjoin(args.repo, args.module),
-                        pjoin(workflow_dir, args.module),
-                        branch=args.branch)
+    globbed_mods = glob(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', glob_term))
+    print(globbed_mods)
+    for mod in globbed_mods:
+        with open(pjoin(mod, mod.split('/')[-2] + '.nf')) as fo:
+            for line in fo:
+                if re.search('^workflow', line):
+                    comment = "module: {}\ntype: workflow\nstep: {}\n".format(mod.split('/')[-2], line.split(' ')[1])
+                    print(comment)
+                elif re.search('^process', line):
+                    comment = "module: {}\ntype: process\nstep: {}\n".format(mod.split('/')[-2], line.split(' ')[1])
+                    print(comment)
 
 
 def load_module(args):
@@ -977,7 +965,7 @@ def run_workflow(args):
     # Appending global FASTQ directory (for internal FASTQ symlinking)
     nf_cmd = add_global_fq_dir(nf_cmd)
 
-    os.chdir(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'logs'))
+    os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     print("Running:\n{}".format(nf_cmd))
     subprocess.run(nf_cmd, shell=True, check=False)
     print("Started process...")
@@ -1086,7 +1074,9 @@ def get_base_nf_cmd(args):
     raft_cfg = load_raft_cfg()
 
     # Processing nf-params
-    cmd = args.nf_params.split(' ')
+    cmd = []
+    if args.nf_params:
+        cmd = args.nf_params.split(' ')
     new_cmd = []
     # Should this be in its own additional function?
     for component in cmd:
@@ -1094,21 +1084,21 @@ def get_base_nf_cmd(args):
         new_cmd.append(component)
 
     #Discovering workflow script
-    workflow_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow')
+    workflow_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
     #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
     discovered_nf = glob(pjoin(workflow_dir, 'main.nf'))[0]
 
     # Adding analysis directory
-    anyls_dir_str = ''
-    if not re.search('--analysis_dir', args.nf_params):
-        analysis_dir = pjoin(raft_cfg['filesystem']['analyses'], args.analysis)
-        anlys_dir_str = "--analysis_dir {}".format(analysis_dir)
+    proj_dir_str = ''
+    if not re.search('--project_dir', args.nf_params):
+        proj_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id)
+        proj_dir_str = "--project_dir {}".format(proj_dir)
 
     # Adding all components to make base command.
     resume = ''
     if not args.no_resume:
         resume = '-resume'
-    cmd = ' '.join(['nextflow', discovered_nf, ' '.join(new_cmd), anlys_dir_str, resume])
+    cmd = ' '.join(['nextflow', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume])
     return cmd
 
 
@@ -1179,14 +1169,17 @@ def dump_to_auto_raft(args):
         args (Namespace object): User-specified arguments.
     """
     if args.command and args.command not in ['init-project', 'run-auto', 'package-project',
-                                             'load-project', 'setup', 'add-step']:
+                                             'load-project', 'setup']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = pjoin(raft_cfg['filesystem']['projects'],
                                args.project_id,
                                '.raft',
                                'auto.raft')
+        comment_out = ''
+        if args.command in ['add-step']:
+            comment_out = '#'
         with open(auto_raft_path, 'a') as fo:
-            fo.write("{}\n".format(' '.join(sys.argv)))
+            fo.write("{}{}\n".format(comment_out, ' '.join(sys.argv)))
 
 
 def package_analysis(args):
@@ -1352,8 +1345,9 @@ def add_step(args):
     inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
 
     # Need to load main.nf params here to check against when getting step-specific params.
-    tmp_main_undef_params, tmp_main_defined_params = get_params_from_module(main_nf)
-    main_params = tmp_main_undef_params + tmp_main_defined_params
+    # Seems odd to emit the undefined and defined separately. 
+    main_undef_params, main_defined_params = get_params_from_module(main_nf)
+    main_params = main_undef_params + main_defined_params
     
     # Getting global params from module
     # Ideally we'd have a way to keep the default value here.
@@ -1361,6 +1355,7 @@ def add_step(args):
     # Defined params are assumed to be defined using other, non-defined params.
     # For example, B = A, A = '' means B is defined, A is not.
     mod_undef_params, mod_defined_params = get_params_from_module(mod_nf)
+    mod_params = mod_undef_params + mod_defined_params
 
     # Extract step contents from step's module file in order to make string to
     # put within main.nf
@@ -1374,7 +1369,7 @@ def add_step(args):
 #            steps = extract_steps_from_contents(step_slice)
         else:
             step_str = get_process_str(step_slice)
-    print("Adding the following step to main.nf: {}".format(step_str))
+    print("Adding the following step to main.nf: {}".format(step_str.rstrip()))
 
 
     #Need to ensure module is actually loaded. Going to assume it's loaded for now.
@@ -1423,38 +1418,34 @@ def add_step(args):
 
     step_raw_params = list(set(step_raw_params))
 
+    raw_params_to_add = [i for i in list(set(step_raw_params  + mod_params)) if i not in main_params]
+
     # Filtering raw params by params already defined globally...
-    step_params = [i for i in step_raw_params if i not in main_params]
+    #step_params = [i for i in step_raw_params if i not in main_params]
 
-    expanded_step_params = expand_params(step_params)
-    expanded_step_undef_params = '\n'.join(["{} = {}".format(k, expanded_step_params[k]) for k in
-                                 sorted(expanded_step_params.keys()) if expanded_step_params[k] == "''"]) + '\n'
-    expanded_step_defined_params = '\n'.join(["{} = {}".format(k, expanded_step_params[k]) for k in
-                                  sorted(expanded_step_params,
-                                  key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
-                                  expanded_step_params[k] != "''"]) + '\n'
+    expanded_params = expand_params(raw_params_to_add)
+    expanded_undef_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
+                            sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
+    expanded_defined_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
+                              sorted(expanded_params,
+                              key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
+                              expanded_params[k] != "''"]) + '\n'
 
-    # get_section_insert_idx
 
-    inc_idx = get_section_insert_idx(main_contents, "/*Inclusions*/\n")
-    wf_idx = get_section_insert_idx(main_contents, "workflow {\n", "}\n")
-    gen_params_idx = get_section_insert_idx(main_contents, "/*General Parameters*/\n")
-    fine_params_idx = get_section_insert_idx(main_contents, "/*Fine-tuned Parameters*/\n")
+    if step_str not in main_contents:
 
-    print(mod_undef_params)
-    print(expanded_step_undef_params)
-    all_undef_params = mod_undef_params + expanded_step_undef_params
-    all_defined_params = mod_defined_params + expanded_step_defines_params
-
-    if all([inc_idx, wf_idx]) and [inclusion_str, step_str] not in main_contents:
-
+        inc_idx = get_section_insert_idx(main_contents, "/*Inclusions*/\n")
         main_contents.insert(inc_idx, inclusion_str)
-        #Why does wf_idx require +2?
-        main_contents.insert(wf_idx, step_str)
-        main_contents.insert(gen_params_idx, mod_undef_params.append(expanded_step_undef_params))
-        main_contents.insert(fine_params_idx, mod_defined_params.append(expanded_step_defined_params))
 
-        print(main_contents)
+        gen_params_idx = get_section_insert_idx(main_contents, "/*General Parameters*/\n")
+        main_contents.insert(gen_params_idx, expanded_undef_params)
+        
+        fine_params_idx = get_section_insert_idx(main_contents, "/*Fine-tuned Parameters*/\n")
+        main_contents.insert(fine_params_idx, expanded_defined_params)
+    
+        wf_idx = get_section_insert_idx(main_contents, "workflow {\n", "}\n")
+        main_contents.insert(wf_idx, step_str)
+
 
         with open(main_nf, 'w') as ofo:
             ofo.write(''.join(main_contents))
