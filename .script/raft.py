@@ -191,11 +191,11 @@ def get_args():
 
 
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
-    parser_package_analysis = subparsers.add_parser('package-analysis',
-                                                    help="Package analysis (see documentation).")
-    parser_package_analysis.add_argument('-a', '--analysis',
-                                         help="Analysis.")
-    parser_package_analysis.add_argument('-o', '--output',
+    parser_package_project = subparsers.add_parser('package-project',
+                                                    help="Package project (see documentation).")
+    parser_package_project.add_argument('-p', '--project-id',
+                                         help="Project.")
+    parser_package_project.add_argument('-o', '--output',
                                          help="Output file.",
                                          default='')
 
@@ -1182,57 +1182,57 @@ def dump_to_auto_raft(args):
             fo.write("{}{}\n".format(comment_out, ' '.join(sys.argv)))
 
 
-def package_analysis(args):
+def package_project(args):
     """
-    Part of package-analysis mode.
+    Part of package-project mode.
     """
     raft_cfg = load_raft_cfg()
-    anlys_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis)
+    proj_dir = os.path.join(raft_cfg['filesystem']['projects'], args.project_id)
     foo = rndm_str_gen()
-    anlys_tmp_dir = os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, 'tmp', foo)
+    proj_tmp_dir = os.path.join(raft_cfg['filesystem']['projects'], args.project_id, 'tmp', foo)
 
-    os.mkdir(anlys_tmp_dir)
+    os.mkdir(proj_tmp_dir)
 
     # Copying metadata directory. Should probably perform some size checks here.
-    shutil.copytree(os.path.join(anlys_dir, 'metadata'), os.path.join(anlys_tmp_dir, 'metadata'))
+    shutil.copytree(os.path.join(proj_dir, 'metadata'), os.path.join(proj_tmp_dir, 'metadata'))
 
     # Getting required checksums. Currently only doing /datasets, but should
     # probably do other directories produced by workflow as well.
     dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices']
     hashes = {}
-    with open(os.path.join(anlys_tmp_dir, 'checksums'), 'w') as fo:
+    with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as fo:
         hashes = {}
         for dir in dirs:
-            files = glob(pjoin('analyses', args.analysis, dir, '**'), recursive=True)
+            files = glob(pjoin('projects', args.project_id, dir, '**'), recursive=True)
             sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
             hashes.update(sub_hashes)
         json.dump(hashes, fo, indent=4)
 
     # Get Nextflow configs, etc.
-    os.mkdir(pjoin(anlys_tmp_dir, 'workflow'))
-    for dir in glob(pjoin(anlys_dir, 'workflow', '*')):
+    os.mkdir(pjoin(proj_tmp_dir, 'workflow'))
+    for dir in glob(pjoin(proj_dir, 'workflow', '*')):
         if os.path.isdir(dir):
             shutil.copytree(dir,
-                            pjoin(anlys_tmp_dir, 'workflow', os.path.basename(dir)))
+                            pjoin(proj_tmp_dir, 'workflow', os.path.basename(dir)))
         else:
             shutil.copyfile(dir,
-                            pjoin(anlys_tmp_dir, 'workflow', os.path.basename(dir)))
+                            pjoin(proj_tmp_dir, 'workflow', os.path.basename(dir)))
 
     # Get auto.raft
-    shutil.copyfile(pjoin(anlys_dir, '.raft', 'auto.raft'),
-                    pjoin(anlys_dir, '.raft', 'snapshot.raft'))
-    shutil.copyfile(pjoin(anlys_dir, '.raft', 'snapshot.raft'),
-                    pjoin(anlys_tmp_dir, 'snapshot.raft'))
+    shutil.copyfile(pjoin(proj_dir, '.raft', 'auto.raft'),
+                    pjoin(proj_dir, '.raft', 'snapshot.raft'))
+    shutil.copyfile(pjoin(proj_dir, '.raft', 'snapshot.raft'),
+                    pjoin(proj_tmp_dir, 'snapshot.raft'))
 
     rftpkg = ''
     if args.output:
         rftpkg = args.output
     else:
-        rftpkg = pjoin(anlys_dir, '.raft', 'default.rftpkg')
+        rftpkg = pjoin(proj_dir, '.raft', 'default.rftpkg')
     with tarfile.open(rftpkg, 'w') as taro:
-        for i in os.listdir(anlys_tmp_dir):
+        for i in os.listdir(proj_tmp_dir):
             print(i)
-            taro.add(os.path.join(anlys_tmp_dir, i), arcname = i)
+            taro.add(os.path.join(proj_tmp_dir, i), arcname = i)
 
 
 #https://stackoverflow.com/a/3431838
@@ -1663,8 +1663,8 @@ def main():
         run_workflow(args)
     elif args.command == 'run-auto':
         run_auto(args)
-    elif args.command == 'package-analysis':
-        package_analysis(args)
+    elif args.command == 'package-project':
+        package_project(args)
     elif args.command == 'load-analysis':
         load_analysis(args)
 
