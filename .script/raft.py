@@ -200,11 +200,11 @@ def get_args():
                                          default='')
 
 
-    # Subparser for loading analysis (after receiving rftpkg tar file)
-    parser_load_analysis = subparsers.add_parser('load-analysis',
-                                                 help="Load analysis (see documentation).")
-    parser_load_analysis.add_argument('-a', '--analysis', help="Analysis.")
-    parser_load_analysis.add_argument('-r', '--rftpkg', help="rftpkg file.")
+    # Subparser for loading package (after receiving rftpkg tar file)
+    parser_load_project = subparsers.add_parser('load-project',
+                                                help="Load project (see documentation).")
+    parser_load_project.add_argument('-p', '--project-id', help="Project.")
+    parser_load_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
 
 
     return parser.parse_args()
@@ -1249,46 +1249,46 @@ def file_as_bytes(file):
     with file:
         return file.read()
 
-def load_analysis(args):
+def load_project(args):
     """
-    Part of load-analysis mode.
+    Part of load-project mode.
     """
     raft_cfg = load_raft_cfg()
     #Should really be using .init.cfg from package here...
     fixt_args = {'init_config': os.path.join(os.getcwd(), '.init.cfg'),
-                 'name': args.analysis}
+                 'project_id': args.project_id}
     fixt_args = argparse.Namespace(**fixt_args)
 
     # Initialize analysis
-    init_analysis(fixt_args)
+    init_project(fixt_args)
     # Moving mounts.config so that can be protected and reintroduced after copying over workflow.config.
-    shutil.move(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'),
-                pjoin(raft_cfg['filesystem']['analyses'], args.analysis, '.mounts.config'))
+    shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', 'mounts.config'),
+                pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.mounts.config'))
 
     # Copy rftpkg into analysis
     shutil.copyfile(args.rftpkg,
-                    pjoin(raft_cfg['filesystem']['analyses'],
-                          args.analysis,
+                    pjoin(raft_cfg['filesystem']['projects'],
+                          args.project_id,
                           '.raft',
                           os.path.basename(args.rftpkg)))
-    tarball = pjoin(raft_cfg['filesystem']['analyses'],
-                    args.analysis,
+    tarball = pjoin(raft_cfg['filesystem']['projects'],
+                    args.project_id,
                     '.raft',
                     os.path.basename(args.rftpkg))
 
     # Extract and distribute tarball contents
     tar = tarfile.open(tarball)
-    tar.extractall(os.path.join(raft_cfg['filesystem']['analyses'], args.analysis, '.raft'))
+    tar.extractall(os.path.join(raft_cfg['filesystem']['projects'], args.project_id, '.raft'))
     tar.close()
 
     for dir in ['metadata', 'workflow']:
-        shutil.rmtree(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, dir))
-        shutil.copytree(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, '.raft', dir),
-                        pjoin(raft_cfg['filesystem']['analyses'], args.analysis, dir))
-    shutil.move(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'),
-                pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', '.mounts.config.orig'))
-    shutil.move(pjoin(raft_cfg['filesystem']['analyses'], args.analysis, '.mounts.config'),
-                pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', 'mounts.config'))
+        shutil.rmtree(pjoin(raft_cfg['filesystem']['projects'], args.project_id, dir))
+        shutil.copytree(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', dir),
+                        pjoin(raft_cfg['filesystem']['projects'], args.project_id, dir))
+    shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', 'mounts.config'),
+                pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', '.mounts.config.orig'))
+    shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.mounts.config'),
+                pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', 'mounts.config'))
 
 def get_params_from_module(module_path):
     """
@@ -1665,8 +1665,8 @@ def main():
         run_auto(args)
     elif args.command == 'package-project':
         package_project(args)
-    elif args.command == 'load-analysis':
-        load_analysis(args)
+    elif args.command == 'load-project':
+        load_project(args)
 
 
 
