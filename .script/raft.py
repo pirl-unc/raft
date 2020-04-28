@@ -51,11 +51,14 @@ def get_args():
     parser_init_project = subparsers.add_parser('init-project',
                                                  help="Initialize a RAFT project.")
     parser_init_project.add_argument('-c', '--init-config',
-                                      help="Project config file (see documentation).",
-                                      default=pjoin(getcwd(), '.init.cfg'))
+                                     help="Project config file (see documentation).",
+                                     default=pjoin(getcwd(), '.init.cfg'))
     parser_init_project.add_argument('-p', '--project-id',
-                                      help="Project identifier.",
-                                      required=True)
+                                     help="Project identifier.",
+                                     required=True)
+    parser_init_project.add_argument('-r', '--repo-url',
+                                     help="Git repo url for remote pushing/pulling.",
+                                     default='')
 
 
     # Subparser for loading a manifest into a project.
@@ -208,6 +211,8 @@ def get_args():
                                                 help="Load project (see documentation).")
     parser_load_project.add_argument('-p', '--project-id', help="Project.")
     parser_load_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
+    parser_load_project.add_argument('--repo-url', help="Git repo url.")
+    parser_load_project.add_argument('--branch', help="Git repo branch.", default='master')
 
     
     # Subparser for pushing package
@@ -221,10 +226,10 @@ def get_args():
     
 
     # Subparser for pulling package from repo
-    parser_load_project = subparsers.add_parser('pull-project',
+    parser_pull_project = subparsers.add_parser('pull-project',
                                                 help="Pull project from repo (see documentation).")
-    parser_load_project.add_argument('-p', '--project-id', help="Project.")
-    parser_load_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
+    parser_pull_project.add_argument('-p', '--project-id', help="Project.")
+    parser_pull_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
 
     return parser.parse_args()
 
@@ -469,6 +474,25 @@ def init_project(args):
     mk_mounts_cfg(proj_dir, bound_dirs)
     mk_auto_raft(args)
     mk_main_wf_and_cfg(args)
+    mk_repo(args)
+
+
+def mk_repo(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    local_repo = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs')
+    #repo = Repo(local_repo)
+    repo = Repo.init(local_repo)
+    if args.repo_url:
+        repo.create_remote('origin', args.repo_url)
+#    readme_md = pjoin(local_repo, 'README.md')
+#    with open(readme_md, 'w') as fo:
+#        fo.write("RAFT rftpkg repo for {}".format(args.project_id))
+#    repo.index.add(readme_md)
+#    repo.index.commit("Initial commit")
+#    if args.repo_url:
+#        repo.git.push('origin', repo.head.ref)
 
 
 def mk_main_wf_and_cfg(args):
@@ -1313,7 +1337,8 @@ def load_project(args):
     raft_cfg = load_raft_cfg()
     #Should really be using .init.cfg from package here...
     fixt_args = {'init_config': os.path.join(os.getcwd(), '.init.cfg'),
-                 'project_id': args.project_id}
+                 'project_id': args.project_id,
+                 'repo_url': ''}
     fixt_args = argparse.Namespace(**fixt_args)
 
     # Initialize analysis
@@ -1322,16 +1347,24 @@ def load_project(args):
     shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', 'mounts.config'),
                 pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.mounts.config'))
 
-    # Copy rftpkg into analysis
-    shutil.copyfile(args.rftpkg,
-                    pjoin(raft_cfg['filesystem']['projects'],
-                          args.project_id,
-                          '.raft',
-                          os.path.basename(args.rftpkg)))
-    tarball = pjoin(raft_cfg['filesystem']['projects'],
+    tarball = ''
+    if args.rftpkg:
+        # Copy rftpkg into analysis
+        shutil.copyfile(args.rftpkg,
+                        pjoin(raft_cfg['filesystem']['projects'],
+                              args.project_id,
+                              'rftpkgs',
+                              os.path.basename(args.rftpkg)))
+    elif args.repo_url:
+        repo = Repo(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs'))
+        repo.create_remote('origin', args.repo_url)
+        repo.git.pull('origin', args.branch)
+
+    tarball = glob(pjoin(raft_cfg['filesystem']['projects'],
                     args.project_id,
-                    '.raft',
-                    os.path.basename(args.rftpkg))
+                    'rftpkgs',
+                    '*.rftpkg'))[0]
+        
 
     # Extract and distribute tarball contents
     tar = tarfile.open(tarball)
@@ -1731,27 +1764,14 @@ def push_project(args):
     """
     """
     raft_cfg = load_raft_cfg()
-    # Check if repo exists at remote...
-    repo_url = pjoin(args.repo + ':', args.project_id + '.git')
-    local_repo = pjoin(raft_cfg['filesystem']['repos'], args.project_id)
-    new_repo = ''
-    if not os.path.isdir(local_repo):
-        #pull repo
-        Repo.init(local_repo)
-#        Repo.clone_from(repo_url, local_repo)
-    new_repo = Repo(local_repo)
-#    rftpkg_branch = new_repo.create_head('{}'.format(args.branch))
-#    rftpkg_branch.checkout()
-    origin = new_repo.create_remote('origin', repo_url)
+    local_repo = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs')
     shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', args.rftpkg + '.rftpkg'),
-                    pjoin(raft_cfg['filesystem']['repos'], args.project_id, args.rftpkg + '.rftpkg'))
-    new_repo.index.add(pjoin(raft_cfg['filesystem']['repos'], args.project_id, args.rftpkg + '.rftpkg'))
-    new_repo.index.commit("{}".format(time.time()))
-    new_repo.git.push("--set-upstream", origin, new_repo.head.ref)
-#    origin = new_repo.create_remote('origin', pjoin(args.repo, args.project_id))
-    origin.push()
+                    pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs', args.rftpkg + '.rftpkg'))
+    repo = Repo(local_repo)
+    repo.index.add(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs', args.rftpkg + '.rftpkg'))
+    repo.index.commit("rftpkg commit {}".format(time.time()))
+    repo.git.push('origin', repo.head.ref)
       
-
 
 def main():
     """
