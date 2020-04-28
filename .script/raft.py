@@ -47,7 +47,7 @@ def get_args():
                               default=False)
 
 
-    # Subparser for initializing an analysis.
+    # Subparser for initializing a project.
     parser_init_project = subparsers.add_parser('init-project',
                                                  help="Initialize a RAFT project.")
     parser_init_project.add_argument('-c', '--init-config',
@@ -58,7 +58,7 @@ def get_args():
                                       required=True)
 
 
-    # Subparser for loading a manifest into an analysis.
+    # Subparser for loading a manifest into a project.
     parser_load_manifest = subparsers.add_parser('load-manifest',
                                                  help="Load manifest into a project.")
     parser_load_manifest.add_argument('-c', '--manifest-csv',
@@ -198,6 +198,9 @@ def get_args():
     parser_package_project.add_argument('-o', '--output',
                                          help="Output file.",
                                          default='')
+    parser_package_project.add_argument('-n', '--no-git',
+                                        help="Do not include Git files.",
+                                        default=False, action='store_true')
 
 
     # Subparser for loading package (after receiving rftpkg tar file)
@@ -206,6 +209,22 @@ def get_args():
     parser_load_project.add_argument('-p', '--project-id', help="Project.")
     parser_load_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
 
+    
+    # Subparser for pushing package
+    parser_push_project = subparsers.add_parser('push-project',
+                                                help="Push project to repo(see documentation).")
+    parser_push_project.add_argument('-p', '--project-id', help="Project.")
+    parser_push_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
+    parser_push_project.add_argument('--repo', help="Repo push to.")
+    parser_push_project.add_argument('-c', '--comment', help="Commit comment.")
+    parser_push_project.add_argument('-b', '--branch', help="Git branch.")
+    
+
+    # Subparser for pulling package from repo
+    parser_load_project = subparsers.add_parser('pull-project',
+                                                help="Pull project from repo (see documentation).")
+    parser_load_project.add_argument('-p', '--project-id', help="Project.")
+    parser_load_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
 
     return parser.parse_args()
 
@@ -923,7 +942,9 @@ def run_auto(args):
     the metadata directory, so they won't need to be loaded a second time.
     Perhaps this should be part of load-metadata?
     """
-    pass
+    raft_cfg = load_raft_cfg()
+    #auto_raft = pjoin(raft_cfg['filesystem']['projects'], 
+    
 
 
 def run_workflow(args):
@@ -1181,6 +1202,31 @@ def dump_to_auto_raft(args):
         with open(auto_raft_path, 'a') as fo:
             fo.write("{}{}\n".format(comment_out, ' '.join(sys.argv)))
 
+def snapshot_postproc(inf, outf):
+    """
+    Strips out repeated steps from snapshot so auto-run can run as expected.
+
+    This may be overly aggressive, but can modify it later.
+    """
+    with open(outf, 'w') as ofo:
+        with open(inf) as ifo:
+            new_contents = []
+            contents = ifo.readlines()
+            for line_idx, line in enumerate(contents):
+               if not(re.search("run-workflow", line)):
+                   new_contents.append(line)
+               elif line_idx == len(contents) - 1:
+                   line = line.strip().replace('n=', 'n="')
+                   print(line)
+                   if re.search('-profile', line):
+                       spl = line.split(' ')
+                       ind =  [i for i, word in enumerate(spl) if re.search('-profile', word)]
+                       spl[ind[0] + 1] = "RAFT_PROFILE_PLACEHOLDER"
+                       line = ' '.join(spl)
+                   new_contents.append(line + '"\n')
+            for line in new_contents:
+                ofo.write(line)
+
 
 def package_project(args):
     """
@@ -1198,19 +1244,24 @@ def package_project(args):
 
     # Getting required checksums. Currently only doing /datasets, but should
     # probably do other directories produced by workflow as well.
-    dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices']
+    dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices', 'workflow']
     hashes = {}
     with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as fo:
         hashes = {}
         for dir in dirs:
             files = glob(pjoin('projects', args.project_id, dir, '**'), recursive=True)
+            if args.no_git:
+                files = [file for file in files if not(re.search('.git', file))]
             sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
             hashes.update(sub_hashes)
         json.dump(hashes, fo, indent=4)
 
     # Get Nextflow configs, etc.
     os.mkdir(pjoin(proj_tmp_dir, 'workflow'))
-    for dir in glob(pjoin(proj_dir, 'workflow', '*')):
+    wf_dirs = glob(pjoin(proj_dir, 'workflow', '*'))
+    if args.no_git:
+        wf_dirs = [dir for dir in wf_dirs if not(re.search('.git', dir))]
+    for dir in wf_dirs:
         if os.path.isdir(dir):
             shutil.copytree(dir,
                             pjoin(proj_tmp_dir, 'workflow', os.path.basename(dir)))
@@ -1220,13 +1271,18 @@ def package_project(args):
 
     # Get auto.raft
     shutil.copyfile(pjoin(proj_dir, '.raft', 'auto.raft'),
-                    pjoin(proj_dir, '.raft', 'snapshot.raft'))
-    shutil.copyfile(pjoin(proj_dir, '.raft', 'snapshot.raft'),
+                    pjoin(proj_dir, '.raft', 'snapshot.raft.actual'))
+    snapshot_postproc(pjoin(proj_dir, '.raft', 'snapshot.raft.actual'),
+                      pjoin(proj_dir, '.raft', 'snapshot.raft.postproc'))
+    
+    shutil.copyfile(pjoin(proj_dir, '.raft', 'snapshot.raft.postproc'),
                     pjoin(proj_tmp_dir, 'snapshot.raft'))
+    shutil.copyfile(pjoin(proj_dir, '.raft', 'snapshot.raft.actual'),
+                    pjoin(proj_tmp_dir, 'snapshot.raft.actual'))
 
     rftpkg = ''
     if args.output:
-        rftpkg = args.output
+        rftpkg = pjoin(proj_dir, '.raft', args.output + '.rftpkg')
     else:
         rftpkg = pjoin(proj_dir, '.raft', 'default.rftpkg')
     with tarfile.open(rftpkg, 'w') as taro:
@@ -1248,6 +1304,7 @@ def md5(fname):
 def file_as_bytes(file):
     with file:
         return file.read()
+
 
 def load_project(args):
     """
@@ -1289,6 +1346,45 @@ def load_project(args):
                 pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', '.mounts.config.orig'))
     shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.mounts.config'),
                 pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', 'mounts.config'))
+
+    # Create back-up of snapshot.raft and checksums
+    shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft'),
+                    pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft.orig'))
+    shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums'),
+                    pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums.orig'))
+
+    orig_proj_id = get_orig_prod_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft'))
+
+    replace_proj_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums'), get_orig_prod_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft.orig')), args.project_id)
+    replace_proj_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft'), get_orig_prod_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft.orig')), args.project_id)
+
+
+def replace_proj_id(fle, old_proj_id, new_proj_id):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    with open(pjoin(raft_cfg['filesystem']['projects'], new_proj_id, 'tmp', 'tmp_file'), 'w') as tfo:
+        with open(fle) as fo:
+            contents = fo.readlines()
+            for line in contents:
+                line = line.replace('-p {}'.format(old_proj_id), '-p {}'.format(new_proj_id)) 
+                line = line.replace('projects/{}'.format(old_proj_id), 'projects/{}'.format(new_proj_id))
+                tfo.write(line)
+
+    shutil.move(pjoin(raft_cfg['filesystem']['projects'], new_proj_id, 'tmp', 'tmp_file'), fle)
+            
+
+def get_orig_prod_id(fle):
+    """
+    """
+    with open(fle) as fo:
+        contents = fo.readlines()
+        first = contents[0].strip()
+        ind = ''
+        ind = first.split(' ').index('-p')
+        if not ind:
+            ind = first.split(' ').index('--project-id')
+        return first.split(' ')[ind +1] 
 
 def get_params_from_module(module_path):
     """
@@ -1631,6 +1727,32 @@ def get_process_string(proc_slice):
     return proc_str
 
 
+def push_project(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    # Check if repo exists at remote...
+    repo_url = pjoin(args.repo + ':', args.project_id + '.git')
+    local_repo = pjoin(raft_cfg['filesystem']['repos'], args.project_id)
+    new_repo = ''
+    if not os.path.isdir(local_repo):
+        #pull repo
+        Repo.init(local_repo)
+#        Repo.clone_from(repo_url, local_repo)
+    new_repo = Repo(local_repo)
+#    rftpkg_branch = new_repo.create_head('{}'.format(args.branch))
+#    rftpkg_branch.checkout()
+    origin = new_repo.create_remote('origin', repo_url)
+    shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', args.rftpkg + '.rftpkg'),
+                    pjoin(raft_cfg['filesystem']['repos'], args.project_id, args.rftpkg + '.rftpkg'))
+    new_repo.index.add(pjoin(raft_cfg['filesystem']['repos'], args.project_id, args.rftpkg + '.rftpkg'))
+    new_repo.index.commit("{}".format(time.time()))
+    new_repo.git.push("--set-upstream", origin, new_repo.head.ref)
+#    origin = new_repo.create_remote('origin', pjoin(args.repo, args.project_id))
+    origin.push()
+      
+
+
 def main():
     """
     """
@@ -1667,9 +1789,10 @@ def main():
         package_project(args)
     elif args.command == 'load-project':
         load_project(args)
-
-
-
+    elif args.command == 'push-project':
+        push_project(args)
+    elif args.command == 'pull-project':
+        pull_project(args)
 
 
 if __name__=='__main__':
