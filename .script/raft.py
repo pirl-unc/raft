@@ -469,7 +469,7 @@ def init_project(args):
         args (Namespace object): User-provided arguments
     """
     proj_dir = mk_proj_dir(args.project_id)
-    bound_dirs = fill_dir(proj_dir, args.init_config)
+    bound_dirs = fill_dir(proj_dir, args.init_config,)
     mk_mounts_cfg(proj_dir, bound_dirs)
     mk_auto_raft(args)
     mk_main_wf_and_cfg(args)
@@ -582,6 +582,7 @@ def fill_dir(dir, init_cfg):
     req_sub_dirs = {}
     with open(init_cfg) as fo:
         req_sub_dirs = json.load(fo)
+    # Adding global work directory.
     for name, sdir in req_sub_dirs.items():
         # If the desired directory has an included path, link that path to
         # within the analysis directory. This should include some sanity
@@ -594,7 +595,7 @@ def fill_dir(dir, init_cfg):
         elif not sdir:
             os.mkdir(pjoin(dir, name))
             bind_dirs.append(pjoin(dir, name))
-
+    bind_dirs.append(raft_cfg['filesystem']['work'])
     bind_dirs.append(getcwd())
 
     # Bindable directories are returned so they can be used to generate
