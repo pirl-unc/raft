@@ -274,7 +274,7 @@ def setup(args):
                   'references': pjoin(getcwd(), 'references'),
                   'fastqs': pjoin(getcwd(), 'fastqs'),
                   'imgs': pjoin(getcwd(), 'imgs'),
-                  'repos': pjoin(getcwd(), 'repos')}
+                  'metadata': pjoin(getcwd(), 'metadata')}
 
     # This prefix should probably be user configurable
     git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
@@ -836,22 +836,28 @@ def load_files(args, out_dir):
 
     """
     raft_cfg = load_raft_cfg()
-    if os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id)):
-        # If the specified analysis doesn't exist, then should it be created automatically?
-        abs_out_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, out_dir)
-        if args.sub_dir and not(os.path.exists(pjoin(abs_out_dir, args.sub_dir))):
-            os.makedirs(pjoin(abs_out_dir, args.sub_dir))
-        if args.mode == 'symlink':
-            os.symlink(os.path.realpath(args.file),
-                       pjoin(abs_out_dir, args.sub_dir, os.path.basename(args.file)))
-            update_mounts_cfg(pjoin(raft_cfg['filesystem']['projects'],
-                                    args.project_id,
-                                    'workflow',
-                                    'mounts.config'),
-                              [os.path.realpath(args.file)])
-        elif args.mode == 'copy':
-            shutil.copyfile(os.path.realpath(args.file),
-                            pjoin(abs_out_dir, args.sub_dir, os.path.basename(args.file)))
+
+    base = out_dir # output dir is input dir
+
+    full_base = raft_cfg['filesystem'][base]
+    globbed_file =  glob(pjoin(full_base, '**', args.file), recursive = True)[0]
+
+    abs_out_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, out_dir)
+    if args.sub_dir and not(os.path.exists(pjoin(abs_out_dir, args.sub_dir))):
+        os.makedirs(pjoin(abs_out_dir, args.sub_dir))
+    if args.mode == 'symlink':
+        os.symlink(os.path.realpath(globbed_file),
+                   pjoin(abs_out_dir, args.sub_dir, os.path.basename(globbed_file)))
+
+        update_mounts_cfg(pjoin(raft_cfg['filesystem']['projects'],
+                                args.project_id,
+                                'workflow',
+                                'mounts.config'),
+                          [os.path.realpath(globbed_file)])
+
+    elif args.mode == 'copy':
+        shutil.copyfile(os.path.realpath(args.file),
+                        pjoin(abs_out_dir, args.sub_dir, os.path.basename(args.file)))
 
 
 def recurs_load_modules(args):
@@ -1360,10 +1366,10 @@ def load_project(args):
         repo.create_remote('origin', args.repo_url)
         repo.git.pull('origin', args.branch)
 
-    tarball = glob(pjoin(raft_cfg['filesystem']['projects'],
+    tarball = pjoin(raft_cfg['filesystem']['projects'],
                     args.project_id,
                     'rftpkgs',
-                    '*.rftpkg'))[0]
+                    args.rftpkg + '.rftpkg')
         
 
     # Extract and distribute tarball contents
