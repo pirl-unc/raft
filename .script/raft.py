@@ -270,7 +270,6 @@ def setup(args):
     # DEFAULTS
     raft_paths = {'work': pjoin(getcwd(), 'work'),
                   'projects': pjoin(getcwd(), 'projects'),
-                  'indices': pjoin(getcwd(), 'indices'),
                   'references': pjoin(getcwd(), 'references'),
                   'fastqs': pjoin(getcwd(), 'fastqs'),
                   'imgs': pjoin(getcwd(), 'imgs'),
@@ -302,7 +301,7 @@ def setup(args):
         nf_repos = get_user_nf_repos(nf_repos)
 
         # Setting any RAFT repositories
-        raft_repos = get_user_raft_repos(raft_repos)
+        #raft_repos = get_user_raft_repos(raft_repos)
 
     # Would like to have master_cfg constructed in its own function eventually.
     master_cfg = {'filesystem': raft_paths,
@@ -343,6 +342,8 @@ def get_user_raft_paths(raft_paths):
                                .format(raft_path, default))
         # Should be doing some sanity checking here to ensure the path can exist.
         if user_spec_path:
+            if re.search('~', user_spec_path):
+                user_spec_path = os.path.realpath(os.path.expanduser(user_spec_path))
             raft_paths[raft_path] = user_spec_path
     return raft_paths
 
@@ -429,27 +430,25 @@ def setup_run_once(master_cfg):
         master_cfg (dict): Dictionary with configuration information.
     """
     for dir in master_cfg['filesystem'].values():
-        if re.search('~', dir):
-            dir = os.path.expanduser(dir)
         if os.path.isdir(dir): # Need to ensure dir isn't already in RAFT dir.
             print("Symlinking {} to {}...".format(dir, getcwd()))
             try:
-                os.symlink(dir, getcwd())
+                os.symlink(dir, pjoin(getcwd(), os.path.basename(dir)))
             except:
                 print("{} already exists.".format(dir))
         else:
             print("Making {}...".format(dir))
             os.mkdir(dir)
 
-    for name, repo_url in master_cfg['analysis_repos'].items():
-        if repo_url:
-            try:
-                Repo.clone_from(repo_url, pjoin(master_cfg['filesystem']['repos'], name))
-            except:
-                print("Unable to create repo {} from url {}. Review your .raft.cfg."
-                      .format(name, repo_url))
-        else:
-            Repo.init(pjoin(master_cfg['filesystem']['repos'], name))
+#    for name, repo_url in master_cfg['analysis_repos'].items():
+#        if repo_url:
+#            try:
+#                Repo.clone_from(repo_url, pjoin(master_cfg['filesystem']['repos'], name))
+#            except:
+#                print("Unable to create repo {} from url {}. Review your .raft.cfg."
+#                      .format(name, repo_url))
+#        else:
+#            Repo.init(pjoin(master_cfg['filesystem']['repos'], name))
 
 
 def init_project(args):
@@ -715,11 +714,13 @@ def load_manifest(args):
     global_fastqs_dir = pjoin(raft_cfg['filesystem']['fastqs'])
     local_fastqs_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'fastqs')
 
+    # Glob the manifest from the global metadata directory.
+    global_csv = glob(pjoin(raft_cfg['filesystem']['metadata'], '**', args.manifest_csv), recursive=True)[0]
     print("Copying metadata file into analysis metadata directory...")
     if os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id)):
         # If the specified analysis doesn't exist, then should it be created automatically?
         metadata_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'metadata')
-        shutil.copyfile(args.manifest_csv,
+        shutil.copyfile(global_csv,
                         pjoin(metadata_dir, os.path.basename(args.manifest_csv)))
 
     # Extract header from overall mani if it already exists. Ideally we'd get
@@ -740,7 +741,7 @@ def load_manifest(args):
     bind_dirs = [] #Stores directories containing absolute path to FASTQs.
 
     print("Checking contents of manifest csv...")
-    with open(args.manifest_csv) as fo:
+    with open(global_csv) as fo:
         hdr = fo.readline()
         hdr = hdr.strip('\n').split(',')
         # Will certainly need a better way to do this, but this will work for now.
@@ -767,14 +768,13 @@ def load_manifest(args):
                 hits = glob(pjoin(global_fastqs_dir, prefix + '*'), recursive=True)
                 #Check here to ensure that these FASTQs actually belong to the same sample.
                 if hits:
-                    print("Found FASTQs for prefix {} in /fastqs!".format(prefix))
+                    print("Found FASTQs for prefix {} in /fastqs!\n".format(prefix))
                     for hit in hits:
                         os.symlink(os.path.realpath(hit), pjoin(local_fastqs_dir, os.path.basename(hit)))
                         #Just adding each file individually for now...
                         bind_dirs.append(os.path.dirname(os.path.realpath(hit)))
                 else:
-                    print("""Unable to find FASTQs for prefix {} in /fastqs.
-                             Check your metadata csv!\n""".format(prefix))
+                    print("""Unable to find FASTQs for prefix {} in /fastqs. Check your metadata csv!\n""".format(prefix))
 
     bind_dirs = list(set(bind_dirs))
 
@@ -1220,7 +1220,7 @@ def dump_to_auto_raft(args):
         args (Namespace object): User-specified arguments.
     """
     if args.command and args.command not in ['init-project', 'run-auto', 'package-project',
-                                             'load-project', 'setup']:
+                                             'load-project', 'setup', 'push-project']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = pjoin(raft_cfg['filesystem']['projects'],
                                args.project_id,
