@@ -2,7 +2,7 @@
 nextflow.preview.dsl=2
 
 /*General Parameters*/
-params.analysis_dir = ''
+params.project_dir = ''
 
 /*Fine-tuned Parameters*/
 
