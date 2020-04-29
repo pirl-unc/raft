@@ -1554,12 +1554,14 @@ def add_step(args):
 
     step_raw_params = list(set(step_raw_params))
 
-    raw_params_to_add = [i for i in list(set(step_raw_params  + mod_params)) if i not in main_params]
+    #raw_params_to_add = [i for i in list(set(step_raw_params  + mod_params)) if i not in main_params]
+
+    raw_params = list(set(step_raw_params + mod_params))
 
     # Filtering raw params by params already defined globally...
     #step_params = [i for i in step_raw_params if i not in main_params]
 
-    expanded_params = expand_params(raw_params_to_add)
+    expanded_params = {k:v for (k,v) in expand_params(raw_params).items() if k not in main_params}
     expanded_undef_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
                             sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
     expanded_defined_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
