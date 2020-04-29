@@ -735,7 +735,7 @@ def load_manifest(args):
     #    if proj_hdr not in contents:
     # This header may evolve in the future, but is largely sufficient for now.
     
-    hdrl = ['Sample_ID', 'Patient_ID', 'File_Prefix', 'Dataset', 'Treatment', 'Sample_Type', 'Pipeline_Role', 'Tissue']
+    hdrl = ['Sample_ID', 'Patient_ID', 'File_Prefix', 'Dataset', 'Treatment', 'Sample_Type', 'Sequencing_Method', 'Tissue']
     proj_hdr = ','.join(hdrl) + '\n'
     reconfiged_mani = []
 
