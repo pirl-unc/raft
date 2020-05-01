@@ -278,7 +278,8 @@ def setup(args):
     # This prefix should probably be user configurable
     git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
     #nextflow-components is a subgroup, not a repo.
-    nf_repos = {'nextflow_components': pjoin(git_prefix, 'nextflow-components')}
+    nf_repos = {'nextflow_modules': pjoin(git_prefix, 'Modules')}
+    nf_subs = {'nextflow_module_subgroups': ['Tools', 'Projects', 'Datasets']}
 
     raft_repos = {}
 
@@ -298,7 +299,7 @@ def setup(args):
         raft_paths = get_user_raft_paths(raft_paths)
 
         # Setting up Nextflow module repositories.
-        nf_repos = get_user_nf_repos(nf_repos)
+        nf_repos, nf_subs = get_user_nf_repos(nf_repos, nf_subs)
 
         # Setting any RAFT repositories
         #raft_repos = get_user_raft_repos(raft_repos)
@@ -306,6 +307,7 @@ def setup(args):
     # Would like to have master_cfg constructed in its own function eventually.
     master_cfg = {'filesystem': raft_paths,
                   'nextflow_repos': nf_repos,
+                  'nextflow_subgroups': nf_subs,
                   'analysis_repos': raft_repos}
 
     print("Saving configuration file to {}...".format(cfg_path))
@@ -348,7 +350,7 @@ def get_user_raft_paths(raft_paths):
     return raft_paths
 
 
-def get_user_nf_repos(nf_repos):
+def get_user_nf_repos(nf_repos, nf_subs):
     """
     Part of setup mode.
 
@@ -371,7 +373,15 @@ def get_user_nf_repos(nf_repos):
                                .format(nf_repo, default))
         if user_spec_repo:
             nf_repos[nf_repo] = user_spec_repo
-    return nf_repos
+
+    # This should be in its own function.
+    for nf_sub, default in nf_subs.items():
+        user_spec_subs = input("\nProvide a comma separated list for Nextflow Module subgroups \n(Default: {}):"
+                               .format(default))
+        if user_spec_subs:
+            nf_subs[nf_sub] = user_spec_subs
+
+    return nf_repos, nf_subs
 
 
 def get_user_raft_repos(raft_repos):
@@ -939,13 +949,17 @@ def load_module(args):
     print("Loading module {} into project {}".format(args.module, args.project_id))
     raft_cfg = load_raft_cfg()
     if not args.repo:
-        args.repo = raft_cfg['nextflow_repos']['nextflow_components']
+        args.repo = raft_cfg['nextflow_repos']['nextflow_modules']
     # Should probably check here and see if the specified analysis even exists...
     workflow_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
     if not glob(pjoin(workflow_dir, args.module)):
-        Repo.clone_from(pjoin(args.repo, args.module),
-                        pjoin(workflow_dir, args.module),
-                        branch=args.branch)
+        for subgroup in raft_cfg['nextflow_subgroups']:
+            try:
+                Repo.clone_from(pjoin(args.repo, args.module),
+                                pjoin(workflow_dir, args.module),
+                                branch=args.branch)
+            except:
+                pass
         nf_cfg = pjoin(raft_cfg['filesystem']['projects'],
                        args.project_id,
                        'workflow',
