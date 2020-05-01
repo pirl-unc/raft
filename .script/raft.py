@@ -867,7 +867,7 @@ def load_files(args, out_dir):
                           [os.path.realpath(globbed_file)])
 
     elif args.mode == 'copy':
-        shutil.copyfile(os.path.realpath(args.file),
+        shutil.copyfile(os.path.realpath(globbed_file),
                         pjoin(abs_out_dir, args.sub_dir, os.path.basename(args.file)))
 
 
