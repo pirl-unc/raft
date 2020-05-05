@@ -1446,8 +1446,8 @@ def get_params_from_module(module_path):
     undef_params, defined_params = ([], [])
     with open(module_path) as mfo:
         for line in mfo.readlines():
-            line = line.strip()
-            if re.search("^params.*", line):
+            line = line.rstrip()
+            if re.search("params.*", line):
                 if re.search(" = ''", line):
                     undef_params.append(line.partition(' ')[0])
                 else:
@@ -1537,6 +1537,7 @@ def add_step(args):
     step_raw_params = []
     discovered_steps = [args.step]
     while discovered_steps:
+       print("STEP_RAW_PARAMS: {}".format(step_raw_params))
        # new_steps are steps called by the previous step. 
        new_steps = []
        for step in discovered_steps:
@@ -1548,7 +1549,7 @@ def add_step(args):
                # (since module is specified), but useful for getting modules
                # for any other steps called by the initial step.
                step_slice = extract_step_slice_from_contents(mod_contents, step)
-           else:
+           else: # This code isn't being accessed.
                # Otherwise, determine the module for this step and load the slice from that module.
                steps_module = find_step_module(mod_contents, step)
                if steps_module:
@@ -1557,7 +1558,9 @@ def add_step(args):
                    with open(mod_path) as fo:
                        mod_contents = fo.readlines()
                    step_slice = extract_step_slice_from_contents(new_mod_contents, step)
+           print(step)
            if step_slice:
+               print(step_slice)
                step_params = extract_params_from_contents(step_slice)
                if step_params:
                    step_raw_params.extend(step_params)
@@ -1567,10 +1570,12 @@ def add_step(args):
        discovered_steps = new_steps[:]
 
     step_raw_params = list(set(step_raw_params))
+    print("STEP_RAW_PARAMS: {}".format(step_raw_params))
 
     #raw_params_to_add = [i for i in list(set(step_raw_params  + mod_params)) if i not in main_params]
 
     raw_params = list(set(step_raw_params + mod_params))
+    print("RAW PARAMS: {}".format(raw_params))
 
     # Filtering raw params by params already defined globally...
     #step_params = [i for i in step_raw_params if i not in main_params]
@@ -1696,7 +1701,8 @@ def extract_steps_from_contents(contents):
     Args:
         contents (list): List containing the rows from a workflow's entry in a component.
     """
-    wfs = [re.findall('.*\(.*\)', i) for i in contents if re.findall('.*\(.*\)', i)]
+    print(contents)
+    wfs = [re.findall('^[\w_]+\(.*', i) for i in contents if re.findall('^[\w_]+\(.*', i)]
     flat = [i.partition('(')[0] for j in wfs for i in j]
     return(flat)
 
@@ -1711,10 +1717,23 @@ def extract_params_from_contents(contents):
     Args:
         contents (list): List containing the rows from a workflow's entry in a component.
     """
+    print("EXTRACT_PARAMS_FROM_CONTENTS")
+    print(contents)
+    take_params = []
+    if [re.findall("take:", i) for i in contents if re.findall("take:", i) for i in contents]:
+        start = contents.index("take:") + 1
+        end = contents.index("main:")
+        take_params = contents[start:end]
+    print("TAKE PARAMS")
     params = [re.findall("(params.*?,|params.*?\)|params.*\?})", i) for i in contents if
               re.findall("params.*,|params.*\)", i)]
+    print("FILTERED PARAMS")
+    print(params)
     flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '') for
             j in params for i in j]
+    ### THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
+    flat = [i for i in flat if i not in take_params]
+    print(flat)
     return(flat)
 
 
