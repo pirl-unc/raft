@@ -102,7 +102,7 @@ def get_args():
                                       required=True)
     parser_load_metadata.add_argument('-m', '--mode',
                                       help="Mode (copy or symlink). Default: copy",
-                                      default='copy')
+                                      default='symlink')
 
 
     # Subparser for loading component into an analysis.
@@ -1558,10 +1558,14 @@ def add_step(args):
                    with open(mod_path) as fo:
                        mod_contents = fo.readlines()
                    step_slice = extract_step_slice_from_contents(new_mod_contents, step)
-           print(step)
+           print("\n\n\n{}".format(step))
            if step_slice:
                print(step_slice)
-               step_params = extract_params_from_contents(step_slice)
+               step_params = ''
+               if step == args.step:
+                   step_params = extract_params_from_contents(step_slice, False)
+               else:
+                   step_params = extract_params_from_contents(step_slice, True)
                if step_params:
                    step_raw_params.extend(step_params)
                steps = extract_steps_from_contents(step_slice)
@@ -1707,7 +1711,7 @@ def extract_steps_from_contents(contents):
     return(flat)
 
 
-def extract_params_from_contents(contents):
+def extract_params_from_contents(contents, discard_requires):
     """
     Part of add-step mode.
 
@@ -1719,11 +1723,11 @@ def extract_params_from_contents(contents):
     """
     print("EXTRACT_PARAMS_FROM_CONTENTS")
     print(contents)
-    take_params = []
-    if [re.findall("take:", i) for i in contents if re.findall("take:", i) for i in contents]:
-        start = contents.index("take:") + 1
-        end = contents.index("main:")
-        take_params = contents[start:end]
+    require_params = []
+    if [re.findall("// require:", i) for i in contents if re.findall("// require:", i) for i in contents]:
+        start = contents.index("// require:") + 1
+        end = contents.index("take:")
+        require_params = [i.replace('//   ','') for i in contents[start:end]]
     print("TAKE PARAMS")
     params = [re.findall("(params.*?,|params.*?\)|params.*\?})", i) for i in contents if
               re.findall("params.*,|params.*\)", i)]
@@ -1732,7 +1736,11 @@ def extract_params_from_contents(contents):
     flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '') for
             j in params for i in j]
     ### THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
-    flat = [i for i in flat if i not in take_params]
+    if discard_requires:
+        flat = [i for i in flat if i not in require_params]
+    else:
+        flat = flat + require_params
+    print("FLAT!!!")
     print(flat)
     return(flat)
 
@@ -1772,10 +1780,11 @@ def get_workflow_str(wf_slice):
     """
     #Can just strip contents before processing to not have to deal with a lot
     #of the newlines and space considerations.
+    require_idx = wf_slice.index('// require:')
     take_idx = wf_slice.index('take:')
     main_idx = wf_slice.index('main:')
     wf_list = [wf_slice[0].replace("workflow ", "").replace(" {",""), '(',
-               ", ".join([x for x in wf_slice[take_idx+1:main_idx]]), ')\n']
+               ", ".join([x.replace('//  ', '').strip() for x in wf_slice[require_idx+1:take_idx]]), ')\n']
     wf_str = "".join(wf_list)
     return wf_str
 
