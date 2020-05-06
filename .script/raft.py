@@ -165,6 +165,9 @@ def get_args():
     parser_add_step.add_argument('-S', '--subworkflow',
                                  help="Subworkflow to add step to (if needed)",
                                  default='main')
+    parser_add_step.add_argument('-a', '--alias',
+                                 help="Assign an alias to step.",
+                                 default='')
 #    parser_add_step.add_argument('-n', '--no-populate',
 #                                 help="Load step without placeholder variables.",
 #                                 action='store_true')
@@ -1493,7 +1496,10 @@ def add_step(args):
                    args.module + '.nf')
 
     # Step's inclusion statement for main.nf
-    inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
+    if args.alias:
+        inclusion_str = "include {step} as {alias} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module, alias=args.alias)
+    else:
+        inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
 
     # Need to load main.nf params here to check against when getting step-specific params.
     # Seems odd to emit the undefined and defined separately. 
@@ -1520,6 +1526,10 @@ def add_step(args):
 #            steps = extract_steps_from_contents(step_slice)
         else:
             step_str = get_process_str(step_slice)
+
+    if args.alias:
+        params = step_str.partition('(')[2]
+        step_str = ''.join([args.alias, '(', params])
     print("Adding the following step to main.nf: {}".format(step_str.rstrip()))
 
 
