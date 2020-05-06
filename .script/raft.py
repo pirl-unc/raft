@@ -1733,7 +1733,7 @@ def extract_params_from_contents(contents, discard_requires):
               re.findall("params.*,|params.*\)", i)]
     print("FILTERED PARAMS")
     print(params)
-    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '') for
+    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '') for
             j in params for i in j]
     ### THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
     if discard_requires:
@@ -1780,23 +1780,31 @@ def get_workflow_str(wf_slice):
     """
     #Can just strip contents before processing to not have to deal with a lot
     #of the newlines and space considerations.
-    require_idx = wf_slice.index('// require:')
-    take_idx = wf_slice.index('take:')
-    main_idx = wf_slice.index('main:')
-    wf_list = [wf_slice[0].replace("workflow ", "").replace(" {",""), '(',
-               ", ".join([x.replace('//  ', '').strip() for x in wf_slice[require_idx+1:take_idx]]), ')\n']
+    wf_list = []
+    if '// require:' in wf_slice:
+        require_idx = wf_slice.index('// require:')
+        take_idx = wf_slice.index('take:')
+        main_idx = wf_slice.index('main:')
+        wf_list = [wf_slice[0].replace("workflow ", "").replace(" {",""), '(',
+                   ", ".join([x.replace('//  ', '').strip() for x in wf_slice[require_idx+1:take_idx]]), ')\n']
+    else:
+        wf_list = [wf_slice[0].replace("workflow ", "").replace(" {", ""), '()\n']
     wf_str = "".join(wf_list)
     return wf_str
 
 
-def get_process_string(proc_slice):
+def get_process_str(proc_slice):
     """
     Part of add-step mode.
 
     Get the string containing a process and its parameters for the main.nf workflow.
     """
+    stop_idx = ''
     start_idx = proc_slice.index('input:')
-    stop_idx = proc_slice.index('output:')
+    if 'output:' in proc_slice:
+        stop_idx = proc_slice.index('output:')
+    else:
+        stop_idx = proc_slice.index('script:')
     params = [x for x in proc_slice[start_idx+1:stop_idx] if x]
     cleaned_params = []
     for param in params:
@@ -1806,7 +1814,7 @@ def get_process_string(proc_slice):
         else:
             cleaned_params.append(param[2])
 
-    proc_list = [proc_slice[0].replace('process ', '').replace(' {', ''), '(', ','.join(cleaned_params), ')\n']
+    proc_list = [proc_slice[0].replace('process ', '').replace(' {', ''), '(', ', '.join(cleaned_params), ')\n']
     proc_str = ''.join(proc_list)
     return proc_str
 
