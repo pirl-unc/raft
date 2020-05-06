@@ -953,13 +953,14 @@ def load_module(args):
     # Should probably check here and see if the specified analysis even exists...
     workflow_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
     if not glob(pjoin(workflow_dir, args.module)):
-        for subgroup in raft_cfg['nextflow_subgroups']:
+        for subgroup in raft_cfg['nextflow_subgroups']["nextflow_module_subgroups"]:
             try:
-                Repo.clone_from(pjoin(args.repo, args.module),
+                Repo.clone_from(pjoin(args.repo, subgroup, args.module),
                                 pjoin(workflow_dir, args.module),
                                 branch=args.branch)
             except:
                 pass
+                #print("Unable to find {} in subgroup {}".format(args.module, subgroup))
         nf_cfg = pjoin(raft_cfg['filesystem']['projects'],
                        args.project_id,
                        'workflow',
