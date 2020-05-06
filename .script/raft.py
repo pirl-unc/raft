@@ -923,16 +923,16 @@ def list_steps(args):
         glob_term = args.module + '/'
 
     globbed_mods = glob(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', glob_term))
-    print(globbed_mods)
+    #print(globbed_mods)
     for mod in globbed_mods:
         with open(pjoin(mod, mod.split('/')[-2] + '.nf')) as fo:
             for line in fo:
                 if re.search('^workflow', line):
                     comment = "module: {}\ntype: workflow\nstep: {}\n".format(mod.split('/')[-2], line.split(' ')[1])
-                    print(comment)
+                    #print(comment)
                 elif re.search('^process', line):
                     comment = "module: {}\ntype: process\nstep: {}\n".format(mod.split('/')[-2], line.split(' ')[1])
-                    print(comment)
+                    #print(comment)
 
 
 def load_module(args):
@@ -1262,7 +1262,7 @@ def snapshot_postproc(inf, outf):
                    new_contents.append(line)
                elif line_idx == len(contents) - 1:
                    line = line.strip().replace('n=', 'n="')
-                   print(line)
+                   #print(line)
                    if re.search('-profile', line):
                        spl = line.split(' ')
                        ind =  [i for i, word in enumerate(spl) if re.search('-profile', word)]
@@ -1332,7 +1332,7 @@ def package_project(args):
         rftpkg = pjoin(proj_dir, '.raft', 'default.rftpkg')
     with tarfile.open(rftpkg, 'w') as taro:
         for i in os.listdir(proj_tmp_dir):
-            print(i)
+            #print(i)
             taro.add(os.path.join(proj_tmp_dir, i), arcname = i)
 
 
@@ -1447,7 +1447,7 @@ def get_params_from_module(module_path):
     with open(module_path) as mfo:
         for line in mfo.readlines():
             line = line.rstrip()
-            if re.search("params.*", line):
+            if re.search("^params.*", line):
                 if re.search(" = ''", line):
                     undef_params.append(line.partition(' ')[0])
                 else:
@@ -1537,7 +1537,7 @@ def add_step(args):
     step_raw_params = []
     discovered_steps = [args.step]
     while discovered_steps:
-       print("STEP_RAW_PARAMS: {}".format(step_raw_params))
+       #print("STEP_RAW_PARAMS: {}".format(step_raw_params))
        # new_steps are steps called by the previous step. 
        new_steps = []
        for step in discovered_steps:
@@ -1558,9 +1558,9 @@ def add_step(args):
                    with open(mod_path) as fo:
                        mod_contents = fo.readlines()
                    step_slice = extract_step_slice_from_contents(new_mod_contents, step)
-           print("\n\n\n{}".format(step))
+           #print("\n\n\n{}".format(step))
            if step_slice:
-               print(step_slice)
+               #print(step_slice)
                step_params = ''
                if step == args.step:
                    step_params = extract_params_from_contents(step_slice, False)
@@ -1574,12 +1574,13 @@ def add_step(args):
        discovered_steps = new_steps[:]
 
     step_raw_params = list(set(step_raw_params))
-    print("STEP_RAW_PARAMS: {}".format(step_raw_params))
+    #print("STEP_RAW_PARAMS: {}".format(step_raw_params))
 
     #raw_params_to_add = [i for i in list(set(step_raw_params  + mod_params)) if i not in main_params]
 
-    raw_params = list(set(step_raw_params + mod_params))
-    print("RAW PARAMS: {}".format(raw_params))
+    #print("MOD PARAMS: {}".format(mod_params))
+    raw_params = [i for i in (set(step_raw_params + mod_params)) if i]
+    #print("RAW PARAMS: {}".format(raw_params))
 
     # Filtering raw params by params already defined globally...
     #step_params = [i for i in step_raw_params if i not in main_params]
@@ -1645,6 +1646,7 @@ def expand_params(params):
     """
     expanded_params = {}
     for param in params:
+        #print(param)
         param = param.partition('.')[2]
         param = param.split('$')
         expanded_params['params.' + '$'.join(param)] = "''"
@@ -1652,6 +1654,7 @@ def expand_params(params):
             for i in range(0,len(param) - 1):
                 expanded_params['params.' + '$'.join(param[:i+1] + [param[-1]])] = 'params.' + '$'.join(param[:i] + [param[-1]])
             expanded_params['params.' + param[-1]] = "''"
+        #print(expanded_params)
     return expanded_params
 
 
@@ -1705,7 +1708,7 @@ def extract_steps_from_contents(contents):
     Args:
         contents (list): List containing the rows from a workflow's entry in a component.
     """
-    print(contents)
+    #print(contents)
     wfs = [re.findall('^[\w_]+\(.*', i) for i in contents if re.findall('^[\w_]+\(.*', i)]
     flat = [i.partition('(')[0] for j in wfs for i in j]
     return(flat)
@@ -1721,18 +1724,19 @@ def extract_params_from_contents(contents, discard_requires):
     Args:
         contents (list): List containing the rows from a workflow's entry in a component.
     """
-    print("EXTRACT_PARAMS_FROM_CONTENTS")
-    print(contents)
+    #print("EXTRACT_PARAMS_FROM_CONTENTS")
+    #print(contents)
     require_params = []
     if [re.findall("// require:", i) for i in contents if re.findall("// require:", i) for i in contents]:
         start = contents.index("// require:") + 1
         end = contents.index("take:")
         require_params = [i.replace('//   ','') for i in contents[start:end]]
-    print("TAKE PARAMS")
+        #print("REQUIRE PARAMS: {}".format(require_params))
+    #print("TAKE PARAMS")
     params = [re.findall("(params.*?,|params.*?\)|params.*\?})", i) for i in contents if
               re.findall("params.*,|params.*\)", i)]
-    print("FILTERED PARAMS")
-    print(params)
+    #print("FILTERED PARAMS")
+    #print(params)
     flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '') for
             j in params for i in j]
     ### THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
@@ -1740,8 +1744,8 @@ def extract_params_from_contents(contents, discard_requires):
         flat = [i for i in flat if i not in require_params]
     else:
         flat = flat + require_params
-    print("FLAT!!!")
-    print(flat)
+    #print("FLAT!!!")
+    #print(flat)
     return(flat)
 
 
