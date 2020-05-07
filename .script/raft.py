@@ -141,8 +141,8 @@ def get_args():
     parser_update_mounts = subparsers.add_parser('update-mounts',
                                                  help="""Updates analysis-specific mounts.config
                                                          file with symlinks found in a directory.""")
-    parser_update_mounts.add_argument('-a', '--analysis',
-                                      help="Analysis.",
+    parser_update_mounts.add_argument('-p', '--project-id',
+                                      help="Project Identifier.",
                                       required=True)
     parser_update_mounts.add_argument('-d', '--dir',
                                       help="Directory containing symlinks for mounts.config.",
@@ -525,6 +525,24 @@ def mk_main_wf_and_cfg(args):
     shutil.copyfile(tmplt_wf_file, pjoin(proj_wf_path, 'main.nf'))
     shutil.copyfile(tmplt_cfg_file, pjoin(proj_wf_path, 'nextflow.config'))
 
+    # Adding Singularity info.
+    imgs_dir = raft_cfg['filesystem']['imgs']
+    out = ["manifest.mainScript = 'main.nf'\n\n"]
+    out.append('singularity {\n')
+    out.append('  cacheDir = "{}"\n'.format(imgs_dir))
+    out.append("  autoMount = 'true'\n")
+    out.append('}\n')
+
+    with open(pjoin(proj_wf_path, 'nextflow.config')) as fo:
+        out.extend(fo.readlines()[1:])
+    proc_idx = out.index("process {\n")
+    mounts_cfg_path = pjoin(proj_wf_path, 'mounts.config')
+    out.insert(proc_idx + 1, "containerOptions = '-B `cat {}`'\n".format(mounts_cfg_path))
+    with open(pjoin(proj_wf_path, 'nextflow.config'), 'w') as fo:
+        for row in out:
+            fo.write(row)
+
+
 
 def mk_auto_raft(args):
     """
@@ -633,11 +651,7 @@ def mk_mounts_cfg(dir, bind_dirs):
     raft_cfg = load_raft_cfg()
     imgs_dir = raft_cfg['filesystem']['imgs']
     out = []
-    out.append('singularity {\n')
-    out.append('  runOptions = "-B {}"\n'.format(','.join(bind_dirs)))
-    out.append('  cacheDir = "{}"\n'.format(imgs_dir))
-    out.append("  autoMount = 'true'\n")
-    out.append('}')
+    out.append('{}\n'.format(','.join(bind_dirs)))
 
     with open(pjoin(dir, 'workflow', 'mounts.config'), 'w') as fo:
         for row in out:
@@ -659,16 +673,12 @@ def update_mounts_cfg(mounts_cfg, bind_dirs):
     """
     out = []
     with open(mounts_cfg, 'r') as ifo:
-        for line in ifo:
-            if re.search('runOptions', line):
-                # This should probably be its own function.
-                line = line.strip('"\n')
-                [p1, p2, paths] = line.partition('-B ')
-                paths = paths.split(',')
-                paths.extend([path for path in bind_dirs if path not in paths])
-                paths = ','.join(paths) + '"\n'
-                line = ''.join([p1, p2, paths])
-            out.append(line)
+        line = ifo.readline()
+        line = line.strip('\n')
+        paths = line.split(',')
+        paths.extend([path for path in bind_dirs if path not in paths])
+        paths = ','.join(paths) + '\n'
+        out.append(paths)
 
     with open(mounts_cfg, 'w') as fo:
         for row in out:
@@ -694,8 +704,8 @@ def update_mounts(args):
     bind_dirs = list(set(bind_dirs))
 
     if bind_dirs:
-        update_mounts_cfg(pjoin(raft_cfg['filesystem']['analyses'],
-                                args.analysis,
+        update_mounts_cfg(pjoin(raft_cfg['filesystem']['projects'],
+                                args.project_id,
                                 'workflow',
                                 'mounts.config'),
                           bind_dirs)
