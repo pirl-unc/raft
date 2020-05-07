@@ -854,7 +854,15 @@ def load_files(args, out_dir):
     base = out_dir # output dir is input dir
 
     full_base = raft_cfg['filesystem'][base]
-    globbed_file =  glob(pjoin(full_base, '**', args.file), recursive = True)[0]
+    
+    globbed_files =  glob(pjoin(full_base, '**', args.file), recursive = True)
+    if len(globbed_files) == 0:
+        sys.exit("Cannot find {} in {}/**".format(args.file, full_base))
+        # Put list of available references here.
+    if len(globbed_files) > 1:
+        sys.exit("File name {} is not specific enough. Please provide a directory prefix.".format(args.file))
+        # Put list of conflicting files here.
+    globbed_file = globbed_files[0]
 
     abs_out_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, out_dir)
     if args.sub_dir and not(os.path.exists(pjoin(abs_out_dir, args.sub_dir))):
@@ -1481,6 +1489,7 @@ def add_step(args):
     Args:
         args (Namespace object): User-provided arguments.
     """
+    # TODO: MAKE SURE MODULE IS ACTUALLY LOADED. LOAD IT IF NOT ALREADY LOADED.
     print("Adding step {} from module {} to project {}".format(args.step, args.module, args.project_id))
     raft_cfg = load_raft_cfg()
 
@@ -1773,6 +1782,8 @@ def extract_step_slice_from_contents(contents, step):
     """
     step_slice = []
     contents = [i.strip() for i in contents]
+    # Need the ability to error out if step doesn't exist. Should list steps
+    # from module in that case.
     try:
         step_start = contents.index("workflow {} {{".format(step))
         step_end = contents.index("}", step_start)
