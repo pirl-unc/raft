@@ -61,6 +61,8 @@ def get_args():
                                      default='')
 
 
+
+
     # Subparser for loading a manifest into a project.
     parser_load_manifest = subparsers.add_parser('load-manifest',
                                                  help="Load manifest into a project.")
@@ -1349,9 +1351,9 @@ def package_project(args):
 
     rftpkg = ''
     if args.output:
-        rftpkg = pjoin(proj_dir, '.raft', args.output + '.rftpkg')
+        rftpkg = pjoin(proj_dir, 'rftpkgs', args.output + '.rftpkg')
     else:
-        rftpkg = pjoin(proj_dir, '.raft', 'default.rftpkg')
+        rftpkg = pjoin(proj_dir, 'rftpkgs', 'default.rftpkg')
     with tarfile.open(rftpkg, 'w') as taro:
         for i in os.listdir(proj_tmp_dir):
             #print(i)
@@ -1846,7 +1848,7 @@ def get_process_str(proc_slice):
     for param in params:
         param = param.partition(' ')
         if param[0] in ['tuple', 'set']:
-            cleaned_params.append(''.join('{', param[2], '}'))
+            cleaned_params.append(''.join(['{', param[2], '}']))
         else:
             cleaned_params.append(param[2])
 
@@ -1859,11 +1861,11 @@ def push_project(args):
     """
     """
     raft_cfg = load_raft_cfg()
-    local_repo = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs')
-    shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', args.rftpkg + '.rftpkg'),
-                    pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs', args.rftpkg + '.rftpkg'))
+    local_repo = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'repo')
+    shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs', args.rftpkg + '.rftpkg'),
+                    pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'repo', args.rftpkg + '.rftpkg'))
     repo = Repo(local_repo)
-    repo.index.add(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs', args.rftpkg + '.rftpkg'))
+    repo.index.add(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'repo', args.rftpkg + '.rftpkg'))
     repo.index.commit("rftpkg commit {}".format(time.time()))
     repo.git.push('origin', repo.head.ref)
       
