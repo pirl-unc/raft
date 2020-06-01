@@ -196,6 +196,9 @@ def get_args():
     parser_run_workflow.add_argument('-p', '--project-id',
                                      help="Project.",
                                      required=True)
+    parser_run_workflow.add_argument('-k', '--keep-old-outputs',
+                                     help="Do not remove old outputs before running.",
+                                     action='store_true')
 
 
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
@@ -1031,6 +1034,9 @@ def run_workflow(args):
     init_dir = getcwd()
     all_samp_ids = []
     processed_samp_ids = []
+
+    if not args.keep_old_outputs:
+        shutil.rmtree(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs'))
 
     if args.manifest_csvs:
         manifest_csvs = [i for i in args.manifest_csvs.split(',')]
