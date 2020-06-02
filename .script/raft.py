@@ -121,8 +121,8 @@ def get_args():
                                     required=True)
     # Need support for commits and tags here as well.
     parser_load_module.add_argument('-b', '--branch',
-                                    help="Branch to checkout. Default='develop'.",
-                                    default='develop')
+                                    help="Branch to checkout. Default='master'.",
+                                    default='master')
     parser_load_module.add_argument('-n', '--no-deps',
                                     help="Do not automatically load dependencies.",
                                     default=False)
@@ -905,7 +905,7 @@ def recurs_load_modules(args):
     probably a more intelligent way of doing this, but this should be able to
     handle the multiple layers of dependencies we're working with. A notable blind
     spot is the ability to specify the branch to use for each tool (defaults to
-    develop).
+    master).
 
     Args:
         args (Namespace object): User-provided arguments.
@@ -967,7 +967,7 @@ def load_module(args):
 
     Loads a Nextflow module into a project's workflow directory.
     Allows users to specify a specific branch to checkout.
-    Automatically loads 'develop' branch of module's repo unless specified by user.
+    Automatically loads 'master' branch of module's repo unless specified by user.
 
     Args:
         args (Namespace object): User-provided arguments.
