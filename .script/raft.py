@@ -1036,7 +1036,11 @@ def run_workflow(args):
     processed_samp_ids = []
 
     if not args.keep_old_outputs:
-        shutil.rmtree(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs'))
+        #Check for directory instead of try/except.
+        try:
+            shutil.rmtree(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs'))
+        except:
+            pass
 
     if args.manifest_csvs:
         manifest_csvs = [i for i in args.manifest_csvs.split(',')]
