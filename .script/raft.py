@@ -683,9 +683,13 @@ def update_mounts_cfg(mounts_cfg, bind_dirs):
         paths = line.split(',')
         bind_dirs_to_add = []
         for bind_dir in bind_dirs:
-            if any[bind_dir.startswith(path) for path in paths]:
-                bind_dirs_to_add.extend(bind_dir) 
-        paths.extend([bind_dirs])
+            if not(any([bind_dir.startswith(path) for path in paths])):
+                bind_dirs_to_add.append(bind_dir)
+            for path in paths:
+                if path.startswith(bind_dir):
+                    paths.remove(path)
+        paths.extend(bind_dirs_to_add)
+        print(paths)
         paths = ','.join(paths) + '\n'
         out.append(paths)
 
