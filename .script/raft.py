@@ -681,7 +681,11 @@ def update_mounts_cfg(mounts_cfg, bind_dirs):
         line = ifo.readline()
         line = line.strip('\n')
         paths = line.split(',')
-        paths.extend([path for path in bind_dirs if path not in paths])
+        bind_dirs_to_add = []
+        for bind_dir in bind_dirs:
+            if any[bind_dir.startswith(path) for path in paths]:
+                bind_dirs_to_add.extend(bind_dir) 
+        paths.extend([bind_dirs])
         paths = ','.join(paths) + '\n'
         out.append(paths)
 
