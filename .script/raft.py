@@ -487,7 +487,7 @@ def init_project(args):
         args (Namespace object): User-provided arguments
     """
     proj_dir = mk_proj_dir(args.project_id)
-    bound_dirs = fill_dir(proj_dir, args.init_config,)
+    bound_dirs = fill_dir(args, proj_dir, args.init_config,)
     mk_mounts_cfg(proj_dir, bound_dirs)
     mk_auto_raft(args)
     mk_main_wf_and_cfg(args)
@@ -594,7 +594,7 @@ def mk_proj_dir(name):
     return proj_dir
 
 
-def fill_dir(dir, init_cfg):
+def fill_dir(args, dir, init_cfg):
     """
     Part of the init-analysis mode.
 
@@ -603,6 +603,7 @@ def fill_dir(dir, init_cfg):
     analysis.
 
     Args:
+        args ():
         dir (str): Analysis path.
         init_cfg (str): Initialization configuration path. File should be in
                         JSON format.
@@ -625,12 +626,13 @@ def fill_dir(dir, init_cfg):
         # checking to ensure the sub_dir directory even exists.
         if sdir:
             os.symlink(sdir, pjoin(dir, name))
-            bind_dirs.append(pjoin(dir, name))
+            #bind_dirs.append(pjoin(dir, name))
         # Else if the desired directory doesn't have an included path, simply
         # make a directory by that name within the analysis directory.
         elif not sdir:
             os.mkdir(pjoin(dir, name))
-            bind_dirs.append(pjoin(dir, name))
+            #bind_dirs.append(pjoin(dir, name))
+    bind_dirs.append(pjoin(raft_cfg['filesystem']['projects'], args.project_id))
     bind_dirs.append(raft_cfg['filesystem']['work'])
     bind_dirs.append(getcwd())
 
@@ -689,7 +691,6 @@ def update_mounts_cfg(mounts_cfg, bind_dirs):
                 if path.startswith(bind_dir):
                     paths.remove(path)
         paths.extend(bind_dirs_to_add)
-        print(paths)
         paths = ','.join(paths) + '\n'
         out.append(paths)
 
