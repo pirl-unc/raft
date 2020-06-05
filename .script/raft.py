@@ -1893,12 +1893,24 @@ def push_project(args):
     repo.index.add(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'repo', args.rftpkg + '.rftpkg'))
     repo.index.commit("rftpkg commit {}".format(time.time()))
     repo.git.push('origin', repo.head.ref)
-      
+
+
+def chk_proj_id_exists(project_id):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    if not os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], project_id)):
+        sys.exit("Check your project identifier (-p/--project-id). Project {} cannot be found in {}"
+                 .format(project_id, raft_cfg['filesystem']['projects'])) 
+
 
 def main():
     """
     """
     args = get_args()
+
+    if 'project_id' in args and args.command != 'init-project':
+        chk_proj_id_exists(args.project_id)
 
     # Only dump to auto.raft if RAFT successfully completes.
     dump_to_auto_raft(args)
