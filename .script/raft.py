@@ -1077,7 +1077,12 @@ def run_workflow(args):
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     print("Running:\n{}".format(nf_cmd))
     subprocess.run(nf_cmd, shell=True, check=False)
-    print("Started process...")
+    print("Workflow completed! Moving reports...")
+    reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
+    os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
+    for report in reports:
+        shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs', report),
+                    pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports', report))
 
 
 def extract_samp_ids(args, manifest_csv):
@@ -1207,7 +1212,8 @@ def get_base_nf_cmd(args):
     resume = ''
     if not args.no_resume:
         resume = '-resume'
-    cmd = ' '.join(['nextflow', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume])
+    reports = '-with-trace -with-report -with-dag -with-timeline'
+    cmd = ' '.join(['nextflow', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume, reports])
     return cmd
 
 
