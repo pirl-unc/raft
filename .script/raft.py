@@ -895,9 +895,14 @@ def load_files(args, out_dir):
     abs_out_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, out_dir)
     if args.sub_dir and not(os.path.exists(pjoin(abs_out_dir, args.sub_dir))):
         os.makedirs(pjoin(abs_out_dir, args.sub_dir))
-    if args.mode == 'symlink':
+
+    result_file = pjoin(abs_out_dir, args.sub_dir, os.path.basename(globbed_file))
+
+    if os.path.exists(result_file):
+        print("{} already exists within the project. Ignoring load request.".format(result_file))
+    elif args.mode == 'symlink':
         os.symlink(os.path.realpath(globbed_file),
-                   pjoin(abs_out_dir, args.sub_dir, os.path.basename(globbed_file)))
+                   result_file)
 
         update_mounts_cfg(pjoin(raft_cfg['filesystem']['projects'],
                                 args.project_id,
@@ -907,7 +912,7 @@ def load_files(args, out_dir):
 
     elif args.mode == 'copy':
         shutil.copyfile(os.path.realpath(globbed_file),
-                        pjoin(abs_out_dir, args.sub_dir, os.path.basename(args.file)))
+                        result_file)
 
 
 def recurs_load_modules(args):
