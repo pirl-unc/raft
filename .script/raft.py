@@ -1829,7 +1829,7 @@ def extract_params_from_contents(contents, discard_requires):
               re.findall("params.*,|params.*\)", i)]
     #print("FILTERED PARAMS")
     #print(params)
-    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '') for
+    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '').replace('/', '').replace('\\', '') for
             j in params for i in j]
     ### THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
     if discard_requires:
