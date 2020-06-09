@@ -120,8 +120,8 @@ def get_args():
                                     help="Module to add to analysis.",
                                     required=True)
     # Need support for commits and tags here as well.
-    parser_load_module.add_argument('-b', '--branch',
-                                    help="Branch to checkout. Default='master'.",
+    parser_load_module.add_argument('-b', '--branches',
+                                    help="Branches to checkout per module (see documentat). Default='master'.",
                                     default='master')
     parser_load_module.add_argument('-n', '--no-deps',
                                     help="Do not automatically load dependencies.",
@@ -974,6 +974,23 @@ def list_steps(args):
                     #print(comment)
 
 
+def get_module_branch(args):
+    """
+    """
+    branch = 'master'
+    if re.search(':', args.branches):
+        branch_lookup = {}
+        arged_branches = args.branches.split(',')
+        for combination in arged_branches:
+            combo_mod, combo_branch = combination.split(':')
+            branch_lookup[combo_mod] = combo_branch
+        if args.module in branch_lookup.keys():
+            branch = branch_lookup[args.module]
+    else:
+        branch = args.branches
+    return branch
+         
+    
 def load_module(args):
     """
     Part of the load-module mode.
@@ -985,18 +1002,22 @@ def load_module(args):
     Args:
         args (Namespace object): User-provided arguments.
     """
-    print("Loading module {} into project {}".format(args.module, args.project_id))
     raft_cfg = load_raft_cfg()
     if not args.repo:
         args.repo = raft_cfg['nextflow_repos']['nextflow_modules']
     # Should probably check here and see if the specified analysis even exists...
     workflow_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
+
+    branch = get_module_branch(args) 
+    
+    print("Loading module {} (branch {}) into project {}".format(args.module, branch, args.project_id))
+
     if not glob(pjoin(workflow_dir, args.module)):
         for subgroup in raft_cfg['nextflow_subgroups']["nextflow_module_subgroups"]:
             try:
                 Repo.clone_from(pjoin(args.repo, subgroup, args.module),
                                 pjoin(workflow_dir, args.module),
-                                branch=args.branch)
+                                branch=branch)
                 time.sleep(args.delay)
             except:
                 pass
