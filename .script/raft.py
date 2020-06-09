@@ -1572,6 +1572,10 @@ def add_step(args):
                    args.module,
                    args.module + '.nf')
 
+    print("Making backup of project's main.nf...")
+    shutil.copyfile(main_nf, main_nf + '.bak')
+    
+
     # Step's inclusion statement for main.nf
     if args.alias:
         inclusion_str = "include {step} as {alias} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module, alias=args.alias)
