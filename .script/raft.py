@@ -1018,15 +1018,18 @@ def load_module(args):
     print("Loading module {} (branch {}) into project {}".format(args.module, branch, args.project_id))
 
     if not glob(pjoin(workflow_dir, args.module)):
+        found = 0
         for subgroup in raft_cfg['nextflow_subgroups']["nextflow_module_subgroups"]:
             try:
                 Repo.clone_from(pjoin(args.repo, subgroup, args.module),
                                 pjoin(workflow_dir, args.module),
                                 branch=branch)
                 time.sleep(args.delay)
+                found = 1
             except:
                 pass
-                #print("Unable to find {} in subgroup {}".format(args.module, subgroup))
+        if found == 0:
+            sys.exit("/ ! \\ ERROR: Could not find module {} in any subgroups specified in RAFT config / ! \\".format(args.module))
         nf_cfg = pjoin(raft_cfg['filesystem']['projects'],
                        args.project_id,
                        'workflow',
