@@ -126,6 +126,10 @@ def get_args():
     parser_load_module.add_argument('-n', '--no-deps',
                                     help="Do not automatically load dependencies.",
                                     default=False)
+    parser_load_module.add_argument('-d', '--delay',
+                                    help="Delay (in seconds) before git pulls. (Default = 15s).",
+                                    default=30)
+
 
     # Subparser for listing module steps.
     parser_list_steps = subparsers.add_parser('list-steps',
@@ -993,6 +997,7 @@ def load_module(args):
                 Repo.clone_from(pjoin(args.repo, subgroup, args.module),
                                 pjoin(workflow_dir, args.module),
                                 branch=args.branch)
+                time.sleep(args.delay)
             except:
                 pass
                 #print("Unable to find {} in subgroup {}".format(args.module, subgroup))
