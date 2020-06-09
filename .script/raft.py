@@ -1963,6 +1963,10 @@ def main():
     elif args.command == 'load-reference':
         load_reference(args)
     elif args.command == 'load-module':
+        raft_cfg = load_raft_cfg()
+        print("NOTE: Module Nextflow configuration modifications must be performed in {}"
+              .format(pjoin(raft_cfg['filesystem']['projects'], args.project_id,
+                            'workflow', 'nextflow.config')))
         load_module(args)
     elif args.command == 'list-steps':
         list_steps(args)
