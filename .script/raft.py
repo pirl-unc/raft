@@ -61,8 +61,6 @@ def get_args():
                                      default='')
 
 
-
-
     # Subparser for loading a manifest into a project.
     parser_load_manifest = subparsers.add_parser('load-manifest',
                                                  help="Load manifest into a project.")
@@ -242,6 +240,14 @@ def get_args():
                                                 help="Pull project from repo (see documentation).")
     parser_pull_project.add_argument('-p', '--project-id', help="Project.")
     parser_pull_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
+
+
+    parser_update_modules = subparsers.add_parser('update-modules',
+                                                 help="Pull the latest commits for each module.")
+    parser_update_modules.add_argument('-p', '--project-id', help="Project.")
+    parser_update_modules.add_argument('-m', '--modules',
+                                     help="List of modules to update (Default = all)",
+                                     default='')
 
     return parser.parse_args()
 
@@ -1942,6 +1948,22 @@ def chk_proj_id_exists(project_id):
                  .format(project_id, raft_cfg['filesystem']['projects'])) 
 
 
+def update_modules(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    main_nf = pjoin(raft_cfg['filesystem']['projects'],
+                    args.project_id,
+                    'workflow')
+    for mod in glob(pjoin(main_nf, '*', '')):
+        if os.path.basename(os.path.dirname(mod)) in args.modules.split(',') or not args.modules:
+            repo = Repo(mod)
+            ori = repo.remotes.origin
+            print("Pulling latest for module {} (branch {})".format(os.path.basename(os.path.dirname(mod)), repo.active_branch.name))
+            ori.pull()
+    
+
+
 def main():
     """
     """
@@ -1989,6 +2011,8 @@ def main():
         push_project(args)
     elif args.command == 'pull-project':
         pull_project(args)
+    elif args.command == 'update-modules':
+        update_modules(args)
 
 
 if __name__=='__main__':
