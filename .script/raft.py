@@ -249,6 +249,11 @@ def get_args():
                                      help="List of modules to update (Default = all)",
                                      default='')
 
+    parser_rename_project = subparsers.add_parser('rename-project',
+                                                 help="Rename a project exhaustively.")
+    parser_rename_project.add_argument('-p', '--project-id', help="Project.")
+    parser_rename_project.add_argument('-n', '--new-id', help="New identifier.") 
+
     return parser.parse_args()
 
 
@@ -1324,7 +1329,8 @@ def dump_to_auto_raft(args):
         args (Namespace object): User-specified arguments.
     """
     if args.command and args.command not in ['init-project', 'run-auto', 'package-project',
-                                             'load-project', 'setup', 'push-project']:
+                                             'load-project', 'setup', 'push-project',
+                                             'rename-project']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = pjoin(raft_cfg['filesystem']['projects'],
                                args.project_id,
@@ -1961,7 +1967,24 @@ def update_modules(args):
             ori = repo.remotes.origin
             print("Pulling latest for module {} (branch {})".format(os.path.basename(os.path.dirname(mod)), repo.active_branch.name))
             ori.pull()
-    
+
+
+def rename_project(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    proj_dir = pjoin(raft_cfg['filesystem']['projects'],
+                     args.project_id)
+    for f in [pjoin('workflow', 'mounts.config'),
+              pjoin('workflow', 'nextflow.config'),
+              pjoin('.raft', 'auto.raft')]:
+        shutil.move(pjoin(proj_dir, f), pjoin(proj_dir, f + '.rename.bak'))
+        with open(pjoin(proj_dir, f), 'w') as fo:
+            with open(pjoin(proj_dir, f + '.rename.bak')) as io:
+                for line in io.readlines():
+                    fo.write(line.replace(args.project_id, args.new_id))
+    shutil.move(proj_dir,
+                pjoin(raft_cfg['filesystem']['projects'], args.new_id))
 
 
 def main():
@@ -2013,6 +2036,8 @@ def main():
         pull_project(args)
     elif args.command == 'update-modules':
         update_modules(args)
+    elif args.command == 'rename-project':
+        rename_project(args)
 
 
 if __name__=='__main__':
