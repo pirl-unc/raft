@@ -1648,7 +1648,7 @@ def add_step(args):
        # new_steps are steps called by the previous step. 
        new_steps = []
        for step in discovered_steps:
-           print("Adding parameters for step {} to main.nf.".format(step))
+           #print("Adding parameters for step {} to main.nf.".format(step))
            step_slice = []
            if [re.findall('workflow {} {{\n'.format(step), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(step), i)]:
                # If the workflow can be found in the current module's contents,
@@ -1701,7 +1701,7 @@ def add_step(args):
                               expanded_params[k] != "''"]) + '\n'
 
 
-    if step_str not in main_contents:
+    if step_str not in main_contents and inclusion_str not in main_contents:
 
         inc_idx = get_section_insert_idx(main_contents, "/*Inclusions*/\n")
         main_contents.insert(inc_idx, inclusion_str)
@@ -1718,6 +1718,11 @@ def add_step(args):
 
         with open(main_nf, 'w') as ofo:
             ofo.write(''.join(main_contents))
+    else:
+        print("/ ! \\ ERROR! / ! \\")
+        print("Step {} has already been added to Project {}.".format(step_str.split('(')[0], args.project_id))
+        print("Please use step aliasing (-a/--alias) if you intend to use this step multiple times.")
+        sys.exit(1)
 
 
 def expand_params(params):
