@@ -1380,7 +1380,16 @@ def package_project(args):
     os.mkdir(proj_tmp_dir)
 
     # Copying metadata directory. Should probably perform some size checks here.
-    shutil.copytree(os.path.join(proj_dir, 'metadata'), os.path.join(proj_tmp_dir, 'metadata'))
+    os.mkdir(pjoin(proj_tmp_dir, 'metadata'))
+    metadata_files = glob(pjoin(proj_dir, 'metadata', '**'), recursive=True)
+    for mfile in metadata_files:
+        mfilel = mfile.split('/')
+        msuffix = '/'.join(mfilel[mfilel.index('metadata')+1:])
+        if not(os.path.islink(mfile)) and not(os.path.isdir(mfile)):
+            basedir = pjoin(proj_tmp_dir, 'metadata', os.path.dirname(msuffix))
+            if '/' in msuffix:
+                os.makedirs(pjoin(proj_tmp_dir, 'metadata', os.path.dirname(msuffix)))
+            shutil.copyfile(mfile, pjoin(proj_tmp_dir, 'metadata', msuffix))
 
     # Getting required checksums. Currently only doing /datasets, but should
     # probably do other directories produced by workflow as well.
@@ -1390,8 +1399,6 @@ def package_project(args):
         hashes = {}
         for dir in dirs:
             files = glob(pjoin('projects', args.project_id, dir, '**'), recursive=True)
-            if args.no_git:
-                files = [file for file in files if not(re.search('.git', file))]
             sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
             hashes.update(sub_hashes)
         json.dump(hashes, fo, indent=4)
@@ -1399,12 +1406,14 @@ def package_project(args):
     # Get Nextflow configs, etc.
     os.mkdir(pjoin(proj_tmp_dir, 'workflow'))
     wf_dirs = glob(pjoin(proj_dir, 'workflow', '*'))
+    igpat = ''
     if args.no_git:
-        wf_dirs = [dir for dir in wf_dirs if not(re.search('.git', dir))]
+        igpat = '.*'
     for dir in wf_dirs:
         if os.path.isdir(dir):
             shutil.copytree(dir,
-                            pjoin(proj_tmp_dir, 'workflow', os.path.basename(dir)))
+                            pjoin(proj_tmp_dir, 'workflow', os.path.basename(dir)),
+                            ignore=shutil.ignore_patterns(igpat))
         else:
             shutil.copyfile(dir,
                             pjoin(proj_tmp_dir, 'workflow', os.path.basename(dir)))
