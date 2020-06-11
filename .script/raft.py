@@ -1488,7 +1488,7 @@ def load_project(args):
     tarball = pjoin(raft_cfg['filesystem']['projects'],
                     args.project_id,
                     'rftpkgs',
-                    args.rftpkg + '.rftpkg')
+                    os.path.basename(args.rftpkg))
         
 
     # Extract and distribute tarball contents
@@ -2006,7 +2006,7 @@ def main():
     """
     args = get_args()
 
-    if 'project_id' in args and args.command != 'init-project':
+    if 'project_id' in args and args.command not in ['init-project', 'load-project']:
         chk_proj_id_exists(args.project_id)
 
     # Only dump to auto.raft if RAFT successfully completes.
