@@ -264,7 +264,7 @@ def get_args():
                                       help="Keep only directories from latest successful run.",
                                       action='store_true', default = False)
     parser_clean_project.add_argument('-n', '--no-exec',
-                                      help="Keep only directories from latest successful run.",
+                                      help="Provided latest/completed/cleanable work directory counts but do NOT delete.",
                                       action='store_true', default = False)
 
     return parser.parse_args()
