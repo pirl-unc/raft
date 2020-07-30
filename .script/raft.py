@@ -260,7 +260,7 @@ def get_args():
     parser_clean_project = subparsers.add_parser('clean-project',
                                                  help="Remove unneeded (failed/aborted) work directories for a project.")
     parser_clean_project.add_argument('-p', '--project-id', help="Project.")
-    parser_clean_project.add_argument('-k', '--keep-minimal',
+    parser_clean_project.add_argument('-k', '--keep-latest',
                                       help="Keep only directories from latest successful run.",
                                       action='store_true', default = False)
     parser_clean_project.add_argument('-n', '--no-exec',
@@ -2023,12 +2023,13 @@ def clean_project(args):
     project_uuid = ''
     found_latest = False
     with open(pjoin(log_dir, '.nextflow', 'history')) as fo:
-        for line in fo.readlines():
-            line = line.split('\t')
-            if line[3] == 'OK':
-              successful_run = line[2]
-              project_uuid = line[5]
-              break
+        for line in reversed(fo.read().split('\n')):
+            if line:
+                line = line.split('\t')
+                if line[3] == 'OK':
+                  successful_run = line[2]
+                  project_uuid = line[5]
+                  break
     print("Project UUID is: {}".format(project_uuid))
     print("Last successful run is: {}".format(successful_run))
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
@@ -2039,7 +2040,7 @@ def clean_project(args):
     print("Successful run work hashes count: {} ".format(len(successful_work_hashes)))
     print("Completed run work hashes count: {} ".format(len(completed_work_hashes)))
     cleanable_hashes = []
-    if args.keep_minimal:
+    if args.keep_latest and input("/ ! \ This will only keep work directories from the latest successful run! / ! \ \nAre you sure? ") in ['YES', 'yes', 'Yes', 'Y', 'y']:
         cleanable_hashes = [x for x in all_work_hashes if x not in successful_work_hashes]
     else:
         cleanable_hashes = [x for x in all_work_hashes if x not in completed_work_hashes]
