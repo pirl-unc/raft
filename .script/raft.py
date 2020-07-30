@@ -254,8 +254,20 @@ def get_args():
     parser_rename_project.add_argument('-p', '--project-id', help="Project.")
     parser_rename_project.add_argument('-n', '--new-id', help="New identifier.") 
 
-    return parser.parse_args()
+    
 
+    # Subparser for cleaning work directories associated with a project.
+    parser_clean_project = subparsers.add_parser('clean-project',
+                                                 help="Remove unneeded (failed/aborted) work directories for a project.")
+    parser_clean_project.add_argument('-p', '--project-id', help="Project.")
+    parser_clean_project.add_argument('-k', '--keep-minimal',
+                                      help="Keep only directories from latest successful run.",
+                                      action='store_true', default = False)
+    parser_clean_project.add_argument('-n', '--no-exec',
+                                      help="Keep only directories from latest successful run.",
+                                      action='store_true', default = False)
+
+    return parser.parse_args()
 
 def setup(args):
     """
@@ -2001,6 +2013,48 @@ def rename_project(args):
                 pjoin(raft_cfg['filesystem']['projects'], args.new_id))
 
 
+def clean_project(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    log_dir = pjoin(raft_cfg['filesystem']['projects'],
+                    args.project_id, 'logs')
+    successful_run = ''
+    project_uuid = ''
+    found_latest = False
+    with open(pjoin(log_dir, '.nextflow', 'history')) as fo:
+        for line in fo.readlines():
+            line = line.split('\t')
+            if line[3] == 'OK':
+              successful_run = line[2]
+              project_uuid = line[5]
+              break
+    print("Project UUID is: {}".format(project_uuid))
+    print("Last successful run is: {}".format(successful_run))
+    os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
+    all_work_hashes = [x for x in subprocess.run('nextflow log {}'.format(project_uuid), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
+    successful_work_hashes = [x for x in subprocess.run("nextflow log -f 'workdir, status' {} | grep -E 'COMPLETED|CACHED' | cut -f 1 -d '	'".format(successful_run), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if x in all_work_hashes]
+    completed_work_hashes = [x for x in subprocess.run("nextflow log -f 'workdir, status' {} | grep -E 'COMPLETED|CACHED' | cut -f 1 -d '	'".format(project_uuid), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if x in all_work_hashes]
+    print("All run work hashes count: {}".format(len(all_work_hashes)))
+    print("Successful run work hashes count: {} ".format(len(successful_work_hashes)))
+    print("Completed run work hashes count: {} ".format(len(completed_work_hashes)))
+    cleanable_hashes = []
+    if args.keep_minimal:
+        cleanable_hashes = [x for x in all_work_hashes if x not in successful_work_hashes]
+    else:
+        cleanable_hashes = [x for x in all_work_hashes if x not in completed_work_hashes]
+    print("Cleanable run work hashes count: {}".format(len(cleanable_hashes)))
+    if not(args.no_exec):
+        for cleanable_dir in cleanable_hashes:
+            try:
+                shutil.rmtree(cleanable_dir)
+                print("Removing {}...".format(cleanable_dir))
+            except:
+                pass
+    else:
+        print("Skipping deletion due to -n/--no-exec.")
+
+
 def main():
     """
     """
@@ -2052,6 +2106,8 @@ def main():
         update_modules(args)
     elif args.command == 'rename-project':
         rename_project(args)
+    elif args.command == 'clean-project':
+        clean_project(args)
 
 
 if __name__=='__main__':
