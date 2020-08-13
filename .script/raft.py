@@ -308,7 +308,8 @@ def setup(args):
                   'references': pjoin(getcwd(), 'references'),
                   'fastqs': pjoin(getcwd(), 'fastqs'),
                   'imgs': pjoin(getcwd(), 'imgs'),
-                  'metadata': pjoin(getcwd(), 'metadata')}
+                  'metadata': pjoin(getcwd(), 'metadata'),
+                  'shared': pjoin(getcwd(), 'shared')}
 
     # This prefix should probably be user configurable
     git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
@@ -1130,6 +1131,9 @@ def run_workflow(args):
 
     # Appending global FASTQ directory (for internal FASTQ symlinking)
     nf_cmd = add_global_fq_dir(nf_cmd)
+    
+    # Appending global shared outputs directory
+    nf_cmd = add_global_shared_dir(nf_cmd)
 
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     print("Running:\n{}".format(nf_cmd))
@@ -1208,6 +1212,23 @@ def add_global_fq_dir(samp_nf_cmd):
     raft_cfg = load_raft_cfg()
     global_fq_dir = raft_cfg['filesystem']['fastqs']
     return ' '.join([samp_nf_cmd, '--global_fq_dir {}'.format(global_fq_dir)])
+
+
+def add_global_shared_dir(samp_nf_cmd):
+    """
+    Part of run-workflow mode.
+
+    Appends global fastq directory to Nextflow command.
+
+    Args:
+        samp_nf_cmd (str): Sample-specific Nextflow command.
+
+    Returns:
+        Str containing the modified Nextflow command with a working directory.
+    """
+    raft_cfg = load_raft_cfg()
+    shared_dir = raft_cfg['filesystem']['shared']
+    return ' '.join([samp_nf_cmd, '--shared_dir {}'.format(shared_dir)])
 
 
 def add_nf_work_dir(work_dir, nf_cmd):
