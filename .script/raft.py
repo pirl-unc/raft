@@ -478,8 +478,11 @@ def setup_run_once(master_cfg):
     for dir in master_cfg['filesystem'].values():
         if os.path.isdir(dir): # Need to ensure dir isn't already in RAFT dir.
             print("Symlinking {} to {}...".format(dir, getcwd()))
+            dir_basename = os.path.basename(dir)
+            if dir == 'work'
+                dir_basename = 'work'
             try:
-                os.symlink(dir, pjoin(getcwd(), os.path.basename(dir)))
+                os.symlink(dir, pjoin(getcwd(), dir_basename))
             except:
                 print("{} already exists.".format(dir))
         else:
