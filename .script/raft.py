@@ -1363,7 +1363,7 @@ def dump_to_auto_raft(args):
     """
     if args.command and args.command not in ['init-project', 'run-auto', 'package-project',
                                              'load-project', 'setup', 'push-project',
-                                             'rename-project']:
+                                             'rename-project', 'run-workflow']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = pjoin(raft_cfg['filesystem']['projects'],
                                args.project_id,
@@ -1635,9 +1635,9 @@ def add_step(args):
 
     # Step's inclusion statement for main.nf
     if args.alias:
-        inclusion_str = "include {step} as {alias} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module, alias=args.alias)
+        inclusion_str = "include {{ {step} as {alias} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module, alias=args.alias)
     else:
-        inclusion_str = "include {step} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
+        inclusion_str = "include {{ {step} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
 
     # Need to load main.nf params here to check against when getting step-specific params.
     # Seems odd to emit the undefined and defined separately. 
@@ -1884,11 +1884,11 @@ def extract_params_from_contents(contents, discard_requires):
     if [re.findall("// require:", i) for i in contents if re.findall("// require:", i) for i in contents]:
         start = contents.index("// require:") + 1
         end = contents.index("take:")
-        require_params = [i.replace('//   ','') for i in contents[start:end]]
+        require_params = [i.replace('//   ','').split(',')[0] for i in contents[start:end] if re.search('^//   params', i)]
         #print("REQUIRE PARAMS: {}".format(require_params))
     #print("TAKE PARAMS")
     params = [re.findall("(params.*?,|params.*?\)|params.*\?})", i) for i in contents if
-              re.findall("params.*,|params.*\)", i)]
+              re.findall("params.*,|params.*\)", i) and i != 'params.']
     #print("FILTERED PARAMS")
     #print(params)
     flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '').replace('/', '').replace('\\', '') for
