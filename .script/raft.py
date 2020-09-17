@@ -214,6 +214,9 @@ def get_args():
     parser_package_project.add_argument('-n', '--no-git',
                                         help="Do not include Git files.",
                                         default=False, action='store_true')
+    parser_package_project.add_argument('-c', '--no-checksums',
+                                        help="Do not include checksums.",
+                                        default=False, action='store_true')
 
 
     # Subparser for loading package (after receiving rftpkg tar file)
@@ -1135,10 +1138,13 @@ def run_workflow(args):
     # Appending global shared outputs directory
     nf_cmd = add_global_shared_dir(nf_cmd)
 
+    
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     print("Running:\n{}".format(nf_cmd))
     subprocess.run(nf_cmd, shell=True, check=False)
     print("Workflow completed! Moving reports...")
+    os.chdir(init_dir)
+    get_shared_dirs(args)
     reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
     os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
     for report in reports:
@@ -1427,14 +1433,15 @@ def package_project(args):
     # Getting required checksums. Currently only doing /datasets, but should
     # probably do other directories produced by workflow as well.
     dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices', 'workflow']
-    hashes = {}
-    with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as fo:
-        hashes = {}
-        for dir in dirs:
-            files = glob(pjoin('projects', args.project_id, dir, '**'), recursive=True)
-            sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
-            hashes.update(sub_hashes)
-        json.dump(hashes, fo, indent=4)
+    if not(args.no_checksums):
+      hashes = {}
+      with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as fo:
+          hashes = {}
+          for dir in dirs:
+              files = glob(pjoin('projects', args.project_id, dir, '**'), recursive=True)
+              sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
+              hashes.update(sub_hashes)
+          json.dump(hashes, fo, indent=4)
 
     # Get Nextflow configs, etc.
     os.mkdir(pjoin(proj_tmp_dir, 'workflow'))
@@ -1539,14 +1546,23 @@ def load_project(args):
                 pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', 'mounts.config'))
 
     # Create back-up of snapshot.raft and checksums
+
+    if os.path.isfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums')):
+        shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums'),
+                        pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums.orig'))
+
+        replace_proj_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums'), 
+                              get_orig_prod_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft.orig')),
+                              args.project_id)
+    else:
+        print("/ ! \ WARNING: Checksums file not found within RFTPKG. Checksums cannot be checked! / ! \\")
+
+
     shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft'),
                     pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft.orig'))
-    shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums'),
-                    pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums.orig'))
 
     orig_proj_id = get_orig_prod_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft'))
 
-    replace_proj_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums'), get_orig_prod_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft.orig')), args.project_id)
     replace_proj_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft'), get_orig_prod_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft.orig')), args.project_id)
 
 
@@ -2077,9 +2093,34 @@ def clean_project(args):
         print("Skipping deletion due to -n/--no-exec.")
 
 
+def get_shared_dirs(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    outputs_dir = pjoin(raft_cfg['filesystem']['projects'],
+                        args.project_id, 'outputs')
+    metas = glob(pjoin(outputs_dir, '**', 'meta'), recursive=True)
+
+    shared_dirs = []
+
+    for meta in metas:
+        with open(meta) as fo:
+            for line in fo.readlines():
+                if re.search("Output directory:", line):
+                    shared_dirs.append(line.split(' ')[2])
+
+    with open(pjoin(outputs_dir, '.' + args.project_id + '.shared'), 'w') as fo:
+        for shared_dir in shared_dirs:
+            fo.write(shared_dir)
+
+    
+
+
+
 def main():
     """
     """
+
     args = get_args()
 
     if 'project_id' in args and args.command not in ['init-project', 'load-project']:
