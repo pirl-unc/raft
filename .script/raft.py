@@ -18,6 +18,12 @@ import sys
 import tarfile
 import time
 
+from google.cloud import storage
+import istarmap
+from multiprocessing import Pool
+#from multiprocessing.pool import ThreadPool
+import tqdm
+
 # These are repeatedly called, so trying to make life easier.
 from os.path import join as pjoin
 from os import getcwd
@@ -271,6 +277,13 @@ def get_args():
     parser_clean_project.add_argument('-n', '--no-exec',
                                       help="Provide latest/completed/cleanable work directory counts but do NOT delete.",
                                       action='store_true', default = False)
+    
+    # Subparser for cleaning work directories associated with a project.
+    parser_clean_project = subparsers.add_parser('push-shared',
+                                                 help="Push shared directories from project to Google Cloud Bucket")
+    parser_clean_project.add_argument('-p', '--project-id', help="Project.")
+    parser_clean_project.add_argument('-b', '--bucket',
+                                      help="Bucket for pushed shared files.")
 
     return parser.parse_args()
 
@@ -2118,7 +2131,47 @@ def get_shared_dirs(args):
         for shared_dir in shared_dirs:
             fo.write(shared_dir)
 
-    
+def push_shared(args):
+    """
+    """
+
+    param_sets = []
+    raft_cfg = load_raft_cfg()
+    dot_shared = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', '.' + args.project_id + '.shared')
+    with open(dot_shared) as fo:
+        for line in fo.readlines():
+            line = line.strip()
+            #print(line)
+            req_files = [i for i in glob(pjoin(raft_cfg['filesystem']['shared'], line, '**', '*'), recursive=True) if os.path.isfile(i)]
+            for req_file in req_files:
+                #print(req_file)
+                #upload_blob(args.bucket, req_file, req_file.partition('shared/')[2])
+                param_sets.append((args.bucket, req_file, req_file.partition('shared/')[2]))
+#        tqdm.tqdm(pool.istarmap(upload_blob, param_sets), total=len(param_sets))
+#    print(param_sets)
+#    pool = ThreadPool()
+#    pool.starmap(upload_blob, param_sets)
+
+    with Pool(4) as pool:
+        for _ in tqdm.tqdm(pool.istarmap(upload_blob, param_sets), total=len(param_sets)):
+            pass
+            
+
+
+def upload_blob(bucket_name, source_file_name, destination_blob_name):
+    # https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/storage/cloud-client/storage_upload_file.py
+    """Uploads a file to the bucket."""
+    # bucket_name = "your-bucket-name"
+    # source_file_name = "local/path/to/file"
+    # destination_blob_name = "storage-object-name"
+
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_filename(source_file_name)
+
+     
 
 
 
@@ -2176,6 +2229,8 @@ def main():
         rename_project(args)
     elif args.command == 'clean-project':
         clean_project(args)
+    elif args.command == 'push-shared':
+        push_shared(args)
 
 
 if __name__=='__main__':
