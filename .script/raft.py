@@ -201,6 +201,8 @@ def get_args():
     parser_run_workflow.add_argument('-k', '--keep-old-outputs',
                                      help="Do not remove old outputs before running.",
                                      action='store_true')
+    parser_run_workflow.add_argument('-r', '--no-reports',
+                                     help="Do not create report files.", action='store_true')
 
 
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
@@ -1145,11 +1147,12 @@ def run_workflow(args):
     print("Workflow completed! Moving reports...")
     os.chdir(init_dir)
     get_shared_dirs(args)
-    reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
-    os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
-    for report in reports:
-        shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs', report),
-                    pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports', report))
+    if not(arg.no_reports):
+        reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
+        os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
+        for report in reports:
+            shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs', report),
+                        pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports', report))
 
 
 def extract_samp_ids(args, manifest_csv):
@@ -1294,9 +1297,11 @@ def get_base_nf_cmd(args):
 
     # Adding all components to make base command.
     resume = ''
+    reports = ''
     if not args.no_resume:
         resume = '-resume'
-    reports = '-with-trace -with-report -with-dag -with-timeline'
+    if not(args.no_reports):
+        reports = '-with-trace -with-report -with-dag -with-timeline'
     cmd = ' '.join(['nextflow', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume, reports])
     return cmd
 
