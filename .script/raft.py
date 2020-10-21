@@ -8,7 +8,7 @@ from glob import glob
 import hashlib
 import json
 import os
-import pprint
+from pprint import pprint
 import random
 import re
 import shutil
@@ -1641,178 +1641,6 @@ def get_section_insert_idx(contents, section, stop='\n'):
     
 
 
-def add_step(args):
-    """
-    Part of add-step mode.
-
-    Args:
-        args (Namespace object): User-provided arguments.
-    """
-    # TODO: MAKE SURE MODULE IS ACTUALLY LOADED. LOAD IT IF NOT ALREADY LOADED.
-    print("Adding step {} from module {} to project {}".format(args.step, args.module, args.project_id))
-    raft_cfg = load_raft_cfg()
-
-    # Relevant files
-    main_nf = pjoin(raft_cfg['filesystem']['projects'],
-                    args.project_id,
-                    'workflow',
-                    'main.nf')
-    mod_nf = pjoin(raft_cfg['filesystem']['projects'],
-                   args.project_id,
-                   'workflow',
-                   args.module,
-                   args.module + '.nf')
-
-    print("Making backup of project's main.nf...")
-    shutil.copyfile(main_nf, main_nf + '.bak')
-    
-
-    # Step's inclusion statement for main.nf
-    if args.alias:
-        inclusion_str = "include {{ {step} as {alias} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module, alias=args.alias)
-    else:
-        inclusion_str = "include {{ {step} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
-
-    # Need to load main.nf params here to check against when getting step-specific params.
-    # Seems odd to emit the undefined and defined separately. 
-    main_undef_params, main_defined_params = get_params_from_module(main_nf)
-    main_params = main_undef_params + main_defined_params
-    
-    # Getting global params from module
-    # Ideally we'd have a way to keep the default value here.
-    mod_expanded_params = {}
-    # Defined params are assumed to be defined using other, non-defined params.
-    # For example, B = A, A = '' means B is defined, A is not.
-    mod_undef_params, mod_defined_params = get_params_from_module(mod_nf)
-    mod_params = mod_undef_params + mod_defined_params
-
-    # Extract step contents from step's module file in order to make string to
-    # put within main.nf
-    step_str = ''
-    mod_contents = []
-    with open(mod_nf) as mfo:
-        mod_contents = mfo.readlines()
-        step_slice = extract_step_slice_from_contents(mod_contents, args.step)
-        if is_workflow(step_slice):
-            step_str = get_workflow_str(step_slice)
-#            steps = extract_steps_from_contents(step_slice)
-        else:
-            step_str = get_process_str(step_slice)
-
-    print("Step str: {}".format(step_str))
-    if args.alias:
-        params = step_str.partition('(')[2]
-        step_str = ''.join([args.alias, '(', params])
-    print("Adding the following step to main.nf: {}".format(step_str.rstrip()))
-
-
-    #Need to ensure module is actually loaded. Going to assume it's loaded for now.
-
-    #Including each step individually for now.
-
-    main_contents = []
-
-    with open(main_nf) as mfo:
-       main_contents = mfo.readlines()
-
-    # This section is for retreiving all of the parameters needed both for the
-    # user-specified step and any other steps called by that step.
-    # Priming list with user-specified step.
-    wf_mod_map = {}
-    step_raw_params = []
-    discovered_steps = [args.step]
-    while discovered_steps:
-       print("Discovered_steps: {}".format(discovered_steps))
-#       print("Step raw params: {}".format(step_raw_params))
-       # new_steps are steps called by the previous step. 
-       new_steps = []
-       for step in discovered_steps:
-           actual = ''
-           alias = ''
-           print("Current step: {}".format(step))
-           print("Adding parameters for step {} to main.nf.".format(step))
-           step_slice = []
-           if [re.findall('workflow {} {{\n'.format(step), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(step), i)]:
-               # If the workflow can be found in the current module's contents,
-               # then load it. This is a bit repetetive for the first step
-               # (since module is specified), but useful for getting modules
-               # for any other steps called by the initial step.
-               
-               # Do _NOT_ need to account for alias here since it's discovering the actual workflow definition.
-               step_slice = extract_step_slice_from_contents(mod_contents, step)
-           else: # This code isn't being accessed.
-               # Otherwise, determine the module for this step and load the slice from that module.
-               print("Determining module for {}...".format(step))
-               steps_module = find_step_module(mod_contents, step)
-               print("Discovered module: {}".format(steps_module))
-               print("Discovered actual and alias: {} and {}".format(actual, alias))
-               if steps_module:
-                   mod_path = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', steps_module, steps_module + '.nf')
-                   new_mod_contents = []
-                   with open(mod_path) as fo:
-                       new_mod_contents = fo.readlines()
-                   actual, alias = find_step_actual_and_alias(mod_contents, step)
-                   step_slice = extract_step_slice_from_contents(new_mod_contents, actual)
-           print("Step slice: {}".format(step_slice))
-           if step_slice:
-               step_params = ''
-               if step == args.step:
-                   step_params = extract_params_from_contents(step_slice, False)
-               else:
-                   step_params = extract_params_from_contents(step_slice, True)
-               if step_params:
-                   step_raw_params.extend(step_params)
-               steps = extract_steps_from_contents(step_slice)
-               if steps:
-                   new_steps.extend(steps)
-       discovered_steps = new_steps[:]
-       print("Discovered steps: {}".format(discovered_steps))
-
-    step_raw_params = list(set(step_raw_params))
-    #print("STEP_RAW_PARAMS: {}".format(step_raw_params))
-
-    #raw_params_to_add = [i for i in list(set(step_raw_params  + mod_params)) if i not in main_params]
-
-    #print("MOD PARAMS: {}".format(mod_params))
-    raw_params = [i for i in (set(step_raw_params + mod_params)) if i]
-    #print("RAW PARAMS: {}".format(raw_params))
-
-    # Filtering raw params by params already defined globally...
-    #step_params = [i for i in step_raw_params if i not in main_params]
-
-    expanded_params = {k:v for (k,v) in expand_params(raw_params).items() if k not in main_params}
-    expanded_undef_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
-                            sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
-    expanded_defined_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
-                              sorted(expanded_params,
-                              key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
-                              expanded_params[k] != "''"]) + '\n'
-
-
-    if step_str not in main_contents and inclusion_str not in main_contents:
-
-        inc_idx = get_section_insert_idx(main_contents, "/*Inclusions*/\n")
-        main_contents.insert(inc_idx, inclusion_str)
-
-        gen_params_idx = get_section_insert_idx(main_contents, "/*General Parameters*/\n")
-        main_contents.insert(gen_params_idx, expanded_undef_params)
-        
-        fine_params_idx = get_section_insert_idx(main_contents, "/*Fine-tuned Parameters*/\n")
-        main_contents.insert(fine_params_idx, expanded_defined_params)
-    
-        wf_idx = get_section_insert_idx(main_contents, "workflow {\n", "}\n")
-        main_contents.insert(wf_idx, step_str)
-
-
-        with open(main_nf, 'w') as ofo:
-            ofo.write(''.join(main_contents))
-    else:
-        print("/ ! \\ ERROR! / ! \\")
-        print("Step {} has already been added to Project {}.".format(step_str.split('(')[0], args.project_id))
-        print("Please use step aliasing (-a/--alias) if you intend to use this step multiple times.")
-        sys.exit(1)
-
-
 def get_wf_mod_map(args):
     """
     """
@@ -1823,13 +1651,13 @@ def get_wf_mod_map(args):
                             'workflow',
                             '*/*.nf')
                      )
-    print(nfscripts)
+#    print(nfscripts)
     for nfscript in nfscripts:
         wfs = extract_wfs_from_script(nfscript)
         for wf in wfs:
             wf_mod_map[wf] = nfscript
 
-    print(wf_mod_map.keys())
+#    print(wf_mod_map.keys())
     return wf_mod_map
         
 
@@ -1845,7 +1673,13 @@ def extract_wfs_from_script(script_path):
     return wfs
                 
 
-def another_add_step(args):
+def add_step(args):
+    """
+    Part of add-step mode.
+
+    Args:
+        args (Namespace object): User-provided arguments.
+    """
     raft_cfg = load_raft_cfg()
     # Relevant files
     main_nf = pjoin(raft_cfg['filesystem']['projects'],
@@ -1857,16 +1691,15 @@ def another_add_step(args):
                    'workflow',
                    args.module,
                    args.module + '.nf')
-    
+   
+    # Load main.nf contents 
     main_contents = []
-
     with open(main_nf) as mfo:
        main_contents = mfo.readlines()
 
     print("Making backup of project's main.nf...")
     shutil.copyfile(main_nf, main_nf + '.bak')
     
-
     # Step's inclusion statement for main.nf
     if args.alias:
         inclusion_str = "include {{ {step} as {alias} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module, alias=args.alias)
@@ -1878,69 +1711,61 @@ def another_add_step(args):
     main_undef_params, main_defined_params = get_params_from_module(main_nf)
     main_params = main_undef_params + main_defined_params
     
-    # Getting global params from module
-    # Ideally we'd have a way to keep the default value here.
-#    mod_expanded_params = {}
-    # Defined params are assumed to be defined using other, non-defined params.
-    # For example, B = A, A = '' means B is defined, A is not.
-#    mod_undef_params, mod_defined_params = get_params_from_module(mod_nf)
-#    mod_params = mod_undef_params + mod_defined_params
-
     # Extract step contents from step's module file in order to make string to
     # put within main.nf
     step_str = ''
-#    mod_contents = []
-#    with open(mod_nf) as mfo:
-#        mod_contents = mfo.readlines()
     step_slice = extract_step_slice_from_nfscript(mod_nf, args.step)
     if is_workflow(step_slice):
         step_str = get_workflow_str(step_slice)
-#         steps = extract_steps_from_contents(step_slice)
-    else:
-        step_str = get_process_str(step_slice)
-
     print("Step str: {}".format(step_str))
     if args.alias:
         params = step_str.partition('(')[2]
         step_str = ''.join([args.alias, '(', params])
     print("Adding the following step to main.nf: {}".format(step_str.rstrip()))
 
-    # Now working on determining parameterization
-
+    # Parameterization
     wf_mod_map = get_wf_mod_map(args)
-    accounted_for = []
-    discovered_steps = [args.step]
-    while discovered_steps:
-        print("This round's steps: {}".format(discovered_steps))
+    final_steps = []
+    discod_steps = [args.step]
+    while discod_steps:
+#        print("This round's steps: {}".format(discod_steps))
         new_round_steps = []
-        for step in discovered_steps:
-            print(step)
+        for step in discod_steps:
+#            print(step)
             step_slice = extract_step_slice_from_nfscript(wf_mod_map[step], step)
-            print(step_slice)
-#            new_round_steps.extend([i.replace('(', '') for i in step_slice if i in wf_mod_map.keys() and i.endswith('(')])
+#            print(step_slice)
             new_round_steps.extend([i.partition('(')[0] for i in step_slice if i.partition('(')[0] in wf_mod_map.keys()])
-            discovered_steps.remove(step) 
-            accounted_for.append(step)
-        discovered_steps.extend(new_round_steps)
-        print("Finished a round! Starting over!")
-        print("New steps being added: {}".format(new_round_steps))
-    print("Recursively detected workflows.")
-    print("Final workflow list: {}".format(accounted_for)) 
+            discod_steps.remove(step) 
+            final_steps.append(step)
+        discod_steps.extend(new_round_steps)
+#        print("Finished a round! Starting over!")
+#        print("New steps being added: {}".format(new_round_steps))
+#    print("Recursively detected workflows.")
+#    print("Final workflow list: {}".format(accounted_for)) 
 
     all_step_params = []
-    for step in accounted_for:
+    for step in final_steps:
         step_slice = extract_step_slice_from_nfscript(wf_mod_map[step], step)
         if step == args.step:
             all_step_params.extend(extract_params_from_contents(step_slice, True))
         else:
             all_step_params.extend(extract_params_from_contents(step_slice, False))
-    print(all_step_params)
+#    print(all_step_params)
 
-    filted_step_params = [i for i in all_step_params if i not in main_params]
+#    print("Main: {}".format(main_params))
+#    print("Step: {}".format(all_step_params))
 
-    expanded_params = expand_params(filted_step_params)
+    expanded_params = expand_params(all_step_params)
+#    pprint(expanded_params)
+    filted_expanded_params = {}
+#    expanded_params = { k:v for (k,v) in expanded_params if k not in main_params }
+    for k,v in expanded_params.items():
+        if k not in main_params:
+            filted_expanded_params[k] = v
 
-    print(expanded_params)
+#    print(expanded_params)
+
+    expanded_params = filted_expanded_params
 
     expanded_undef_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in             
                             sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'   
@@ -1972,11 +1797,6 @@ def another_add_step(args):
         print("Step {} has already been added to Project {}.".format(step_str.split('(')[0], args.project_id))
         print("Please use step aliasing (-a/--alias) if you intend to use this step multiple times.")
         sys.exit(1)
-
-
-    
-        
-
 
 
 def expand_params(params):
@@ -2081,8 +1901,8 @@ def find_step_actual_and_alias(contents, step):
     mod = []
  
     foo = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)]
-    pprint.pprint(contents)
-    print(foo)
+#    pprint.pprint(contents)
+#    print(foo)
     mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0]
     if not(re.findall(' as ', mod)):
         actual = step
@@ -2142,7 +1962,7 @@ def extract_params_from_contents(contents, discard_requires):
     else:
         flat = flat + require_params
     #print("FLAT!!!")
-    print(flat)
+#    print(flat)
     return(flat)
 
 
@@ -2161,7 +1981,7 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
     contents = []
     with open(nfscript_path) as fo:
         contents = [i.strip() for i in fo.readlines()]
-    print(step)
+#    print(step)
     # Need the ability to error out if step doesn't exist. Should list steps
     # from module in that case.
     try:
@@ -2423,7 +2243,7 @@ def main():
     elif args.command == 'update-mounts':
         update_mounts(args)
     elif args.command == 'add-step':
-        another_add_step(args)
+        add_step(args)
     elif args.command == 'run-workflow':
         run_workflow(args)
     elif args.command == 'run-auto':
