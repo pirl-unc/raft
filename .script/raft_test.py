@@ -53,11 +53,11 @@ class TestSetup:
         os.chdir('..')
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-#    def test_setup_user_defined_dirs(self):
-#        """
-#        Test setup mode with user-specified directory.
-#        """
-#        pass
+#def test_setup_user_defined_dirs(self):
+#    """
+#    Test setup mode with user-specified directory.
+#    """
+#    pass
        
     def test_setup_cfg_creation(self):
         """
@@ -107,10 +107,10 @@ class TestSetup:
         capd_raft_cfg = glob(os.path.join(tmp_dir, '.raft.cfg'))[0]
         cfg_md5 = md5()
         with open(capd_raft_cfg, 'rb') as fo:
-            cfg_md5.update(fo.read())
+                cfg_md5.update(fo.read())
         cfg_md5 = cfg_md5.hexdigest()
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        assert cfg_md5 == '9dabe1776b27be4dbfc491b7289ff33a'
+        assert cfg_md5 == '97be96fef060dd987ddfc07150908a32'
 
 class TestInitProject:
 
@@ -130,51 +130,51 @@ class TestInitProject:
         os.chdir('..')
         dirs = [os.path.basename(x) for x in glob(os.path.join(tmp_dir, '*'))]
         teardown_instance(self, test_name)
-        assert dirs == ['work', 'projects', 'references', 'fastqs', 'imgs', 'metadata']
-    
+        assert dirs == ['work', 'projects', 'references', 'fastqs', 'imgs', 'metadata', 'shared']
+        
     def test_init_project_duplicate_project_id(self):
         """
         """
         with pytest.raises(SystemExit):
-            test_name = 'test_init_project_duplicate_project_id'
-            tmp_dir = pjoin(BASE_DIR, test_name)
-            os.makedirs(tmp_dir)
-            os.chdir(tmp_dir)
-            setup_defaults(self, test_name)
-            #Initial
-            args = Args()
-            args.init_config = pjoin(tmp_dir, '.init.cfg')
-            args.project_id = test_name
-            args.repo_url = ''
-            raft.init_project(args)
-            #Duplicate
-            raft.init_project(args)
-            os.chdir('..')
+                test_name = 'test_init_project_duplicate_project_id'
+                tmp_dir = pjoin(BASE_DIR, test_name)
+                os.makedirs(tmp_dir)
+                os.chdir(tmp_dir)
+                setup_defaults(self, test_name)
+                #Initial
+                args = Args()
+                args.init_config = pjoin(tmp_dir, '.init.cfg')
+                args.project_id = test_name
+                args.repo_url = ''
+                raft.init_project(args)
+                #Duplicate
+                raft.init_project(args)
+                os.chdir('..')
         teardown_instance(self, test_name)
-    
+        
     def test_init_project_nameless_project_id(self):
         """
         """
         with pytest.raises(SystemExit):
-            test_name = 'test_init_project_nameless_project_id'
-            tmp_dir = pjoin(BASE_DIR, test_name)
-            os.makedirs(tmp_dir)
-            os.chdir(tmp_dir)
-            setup_defaults(self, test_name)
-            #Initial
-            args = Args()
-            args.init_config = pjoin(tmp_dir, '.init.cfg')
-            args.project_id = ''
-            args.repo_url = ''
-            raft.init_project(args)
-            os.chdir('..')
+                test_name = 'test_init_project_nameless_project_id'
+                tmp_dir = pjoin(BASE_DIR, test_name)
+                os.makedirs(tmp_dir)
+                os.chdir(tmp_dir)
+                setup_defaults(self, test_name)
+                #Initial
+                args = Args()
+                args.init_config = pjoin(tmp_dir, '.init.cfg')
+                args.project_id = ''
+                args.repo_url = ''
+                raft.init_project(args)
+                os.chdir('..')
         teardown_instance(self, test_name)
 
     def test_init_project_alt_init_cfg(self):
         """
         """
         pass
-    
+        
     def test_init_project_malformed_init_cfg(self):
         """
         """
@@ -195,42 +195,42 @@ class TestLoadReference:
         """
         """
         pass
-    
+        
     def test_load_reference_load_duplicate_ref(self):
         """
         """
         pass
-    
+        
     def test_load_reference_load_nonspecific_ref(self):
         """
         """
         pass
-    
+        
     def test_load_reference_load_missing_ref(self):
         """
         """
         pass
-    
+        
     def test_load_reference_load_to_subdir(self):
         """
         """
         pass
-    
+        
     def test_load_reference_load_to_mult_subdirs(self):
         """
         """
         pass
-    
+        
     def test_load_reference_load_symlink(self):
         """
         """
         pass
-    
+        
     def test_load_reference_load_w_invalid_project_id(self):
         """
         """
         pass
-    
+        
     def test_load_reference_chk_mounts_config(self):
         """
         """
@@ -242,42 +242,42 @@ class TestLoadMetadata:
         """
         """
         pass
-    
+        
     def test_load_metadata_load_duplicate_ref(self):
         """
         """
         pass
-    
+        
     def test_load_metadata_load_nonspecific_ref(self):
         """
         """
         pass
-    
+        
     def test_load_metadata_load_missing_ref(self):
         """
         """
         pass
-    
+        
     def test_load_metadata_load_to_subdir(self):
         """
         """
         pass
-    
+        
     def test_load_metadata_load_to_mult_subdirs(self):
         """
         """
         pass
-    
+        
     def test_load_metadata_load_symlink(self):
         """
         """
         pass
-    
+        
     def test_load_metadata_load_w_invalid_project_id(self):
         """
         """
         pass
-    
+        
     def test_load_metadata_chk_mounts_config(self):
         """
         """
@@ -339,3 +339,130 @@ class TestLoadModule:
         """
         """
         pass
+
+class TestAddStep:
+    def test_add_step_valid_step(self):
+        """
+        """
+        pass
+        
+    def test_add_step_invalid_step(self):
+        """
+        """
+        pass
+        
+    def test_add_step_valid_multiple_times(self):
+        """
+        """
+        pass
+        
+    def test_add_step_invalid_step(self):
+        """
+        """
+        pass
+        
+    def test_add_step_check_mainnf_inclusion(self):
+        """
+        """
+        pass
+        
+    def test_add_step_check_mainnf_workflow(self):
+        """
+        """
+        pass
+
+
+    def test_add_step_check_primary_parameters(self):
+        """
+        Primary parameters are implilcit "params" within the step being added.
+        """
+        pass
+        
+    def test_add_step_check_secondary_parameters(self):
+        """
+        Secondary parameters are implilcit "params" within any substeps of the step being added.
+        """
+        pass
+
+    def test_add_step_check_invalid_project(self):
+        """
+        Secondary parameters are implilcit "params" within any substeps of the step being added.
+        """
+        pass
+
+    def test_add_step_using_alias(self):
+        """
+        """
+        pass
+        
+    def test_add_step_using_taken_alias(self):
+        """
+        """
+        pass
+
+class TestRunWorkflow:
+
+    def test_run_workflow_stock(self):
+        """
+        """
+        pass
+
+    def test_run_workflow_invalid_project(self):
+        """
+        """
+        pass
+        
+    def test_run_workflow_no_resume(self):
+        """
+        """
+        pass
+
+    def test_run_workflow_no_resume(self):
+        """
+        """
+        pass
+
+    def test_run_workflow_keep_old_outputs(self):
+        """
+        """
+        pass
+        
+    def test_run_workflow_pass_nf_params(self):
+        """
+        """
+        pass
+        
+    def test_run_workflow_pass_nf_params(self):
+        """
+        """
+        pass
+
+class TestListSteps:
+    def test_list_steps_invalid_project(self):
+        """
+        """
+        pass
+
+    def test_list_steps_entire_module(self):
+        """
+        """
+        pass
+
+    def tests_list_steps_single_step(self):
+        """
+        """
+        pass
+
+    def test_list_steps_invalid_module(self):
+        """
+        """
+
+    def test_list_steps_invalid_step(self):
+        """
+        """
+        pass
+
+#class TestPackageProject:
+#class TestLoadProject:
+
+  
