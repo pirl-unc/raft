@@ -1680,7 +1680,7 @@ def add_step(args):
     main_undef_params, main_defined_params = get_params_from_module(main_nf)
     main_params = main_undef_params + main_defined_params
 
-    print("DEBUG: MAIN PARAMS: {}".format(main_params))
+#    print("DEBUG: MAIN PARAMS: {}".format(main_params))
     
     # Getting global params from primary module
     # Ideally we'd have a way to keep the default value here.
@@ -1690,7 +1690,7 @@ def add_step(args):
     mod_undef_params, mod_defined_params = get_params_from_module(mod_nf)
     mod_params = mod_undef_params + mod_defined_params
     
-    print("DEBUG: MOD PARAMS: {}".format(mod_params))
+#    print("DEBUG: MOD PARAMS: {}".format(mod_params))
 
     # Extract step contents from step's module file in order to make string to
     # put within main.nf
@@ -1708,7 +1708,7 @@ def add_step(args):
     if args.alias:
         params = step_str.partition('(')[2]
         step_str = ''.join([args.alias, '(', params])
-    print("Adding the following step to main.nf: {}".format(step_str.rstrip()))
+#    print("Adding the following step to main.nf: {}".format(step_str.rstrip()))
 
 
     #Need to ensure module is actually loaded. Going to assume it's loaded for now.
@@ -1726,29 +1726,29 @@ def add_step(args):
     step_raw_params = []
     discovered_steps = [args.step]
     while discovered_steps:
-       print("DEBUG: DISCOVERED_STEPS: {}".format(discovered_steps))
-       print("STEP_RAW_PARAMS: {}".format(step_raw_params))
+#       print("DEBUG: DISCOVERED_STEPS: {}".format(discovered_steps))
+#       print("STEP_RAW_PARAMS: {}".format(step_raw_params))
        # new_steps are steps called by the previous step. 
        new_steps = []
        for step in discovered_steps:
-           print("Adding parameters for step {} to main.nf.".format(step))
+#           print("Adding parameters for step {} to main.nf.".format(step))
            step_slice = []
            if [re.findall('workflow {} {{\n'.format(step), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(step), i)]:
-               print("DEBUG: step {} WAS FOUND IN THIS MODULE!".format(step))
+#               print("DEBUG: step {} WAS FOUND IN THIS MODULE!".format(step))
                # If the workflow can be found in the current module's contents,
                # then load it. This is a bit repetetive for the first step
                # (since module is specified), but useful for getting modules
                # for any other steps called by the initial step.
                step_slice = extract_step_slice_from_contents(mod_contents, step)
            else:
-               print("DEBUG: step {} WAS NOT FOUND IN THIS MODULE!".format(step))
+#               print("DEBUG: step {} WAS NOT FOUND IN THIS MODULE!".format(step))
                # Otherwise, determine the module for this step and load the slice from that module.
 #               steps_module = find_step_module(mod_contents, step)
                steps_module = find_step_module(args, step)
                inc_module = find_inc_module(args, step)
 #               step = get_non_aliased_step(args, step, steps_module)
                #print("DEBUG: mod_contents: {}".format(mod_contents))
-               print("DEBUG: DISCOVERED steps_module: {}".format(steps_module))
+#               print("DEBUG: DISCOVERED steps_module: {}".format(steps_module))
                if steps_module:
                    mod_path = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', steps_module, steps_module + '.nf')
                    new_mod_contents = []
@@ -1757,7 +1757,7 @@ def add_step(args):
                    step_slice = extract_step_slice_from_contents(new_mod_contents, step)
            #print("\n\n\n{}".format(step))
            if step_slice:
-               print(step_slice)
+#               print(step_slice)
                step_params = ''
                if step == args.step:
                    step_params = extract_params_from_contents(step_slice, False)
@@ -1944,8 +1944,8 @@ def get_non_aliased_step(args, step, inc_module):
     """
     real_step = ''
     raft_cfg = load_raft_cfg() 
-    print(step)
-    print(inc_module)
+#    print(step)
+#    print(inc_module)
     if not(inc_module):
         real_step = step
     else:
@@ -1954,9 +1954,9 @@ def get_non_aliased_step(args, step, inc_module):
             #print(contents)
             inc_line = [re.findall('include {{.*{}.*'.format(step), i) for i in contents if re.findall('include {{.*{}.*'.format(step), i)][0][0]
 #                inc_line = [re.findall('include.*{}.*'.format(step), i) for i in contents]
-            print("DEBUG: inc_line: {}".format(inc_line))
+#            print("DEBUG: inc_line: {}".format(inc_line))
             if re.search(' as ', inc_line):
-                print(inc_line.split(' '))
+#                print(inc_line.split(' '))
                 real_step = inc_line.split(' ')[2]
             else:
                 real_step = step
