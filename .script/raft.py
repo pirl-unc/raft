@@ -1657,17 +1657,16 @@ def add_step(args):
                     args.project_id,
                     'workflow',
                     'main.nf')
-    print("Detected project main.nf: {}".format(main_nf))
     mod_nf = pjoin(raft_cfg['filesystem']['projects'],
                    args.project_id,
                    'workflow',
                    args.module,
                    args.module + '.nf')
-    print("Detected requested module script: {}".format(mod_nf))
 
     print("Making backup of project's main.nf...")
     shutil.copyfile(main_nf, main_nf + '.bak')
     
+
     # Step's inclusion statement for main.nf
     if args.alias:
         inclusion_str = "include {{ {step} as {alias} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module, alias=args.alias)
@@ -1678,18 +1677,14 @@ def add_step(args):
     # Seems odd to emit the undefined and defined separately. 
     main_undef_params, main_defined_params = get_params_from_module(main_nf)
     main_params = main_undef_params + main_defined_params
-
-    print("DEBUG: MAIN PARAMS: {}".format(main_params))
     
-    # Getting global params from primary module
+    # Getting global params from module
     # Ideally we'd have a way to keep the default value here.
     mod_expanded_params = {}
     # Defined params are assumed to be defined using other, non-defined params.
     # For example, B = A, A = '' means B is defined, A is not.
     mod_undef_params, mod_defined_params = get_params_from_module(mod_nf)
     mod_params = mod_undef_params + mod_defined_params
-    
-    print("DEBUG: MOD PARAMS: {}".format(mod_params))
 
     # Extract step contents from step's module file in order to make string to
     # put within main.nf
@@ -1725,38 +1720,30 @@ def add_step(args):
     step_raw_params = []
     discovered_steps = [args.step]
     while discovered_steps:
-       print("DEBUG: DISCOVERED_STEPS: {}".format(discovered_steps))
-       print("STEP_RAW_PARAMS: {}".format(step_raw_params))
+       #print("STEP_RAW_PARAMS: {}".format(step_raw_params))
        # new_steps are steps called by the previous step. 
        new_steps = []
        for step in discovered_steps:
-           print("Adding parameters for step {} to main.nf.".format(step))
+           #print("Adding parameters for step {} to main.nf.".format(step))
            step_slice = []
            if [re.findall('workflow {} {{\n'.format(step), i) for i in mod_contents if re.findall('workflow {} {{\n'.format(step), i)]:
-               print("DEBUG: step {} WAS FOUND IN THIS MODULE!".format(step))
                # If the workflow can be found in the current module's contents,
                # then load it. This is a bit repetetive for the first step
                # (since module is specified), but useful for getting modules
                # for any other steps called by the initial step.
                step_slice = extract_step_slice_from_contents(mod_contents, step)
-           else:
-               print("DEBUG: step {} WAS NOT FOUND IN THIS MODULE!".format(step))
+           else: # This code isn't being accessed.
                # Otherwise, determine the module for this step and load the slice from that module.
-#               steps_module = find_step_module(mod_contents, step)
-               steps_module = find_step_module(args, step)
-               inc_module = find_inc_module(args, step)
-#               step = get_non_aliased_step(args, step, steps_module)
-               #print("DEBUG: mod_contents: {}".format(mod_contents))
-               print("DEBUG: DISCOVERED steps_module: {}".format(steps_module))
+               steps_module = find_step_module(mod_contents, step)
                if steps_module:
-                   mod_path = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', steps_module, steps_module + '.nf')
-                   new_mod_contents = []
+                   mod_path = pjoin(raft_cfg['filesystem']['analyses'], args.analysis, 'workflow', subs_module, subs_module + '.nf')
+                   mod_contents = []
                    with open(mod_path) as fo:
-                       new_mod_contents = fo.readlines()
+                       mod_contents = fo.readlines()
                    step_slice = extract_step_slice_from_contents(new_mod_contents, step)
            #print("\n\n\n{}".format(step))
            if step_slice:
-               print(step_slice)
+               #print(step_slice)
                step_params = ''
                if step == args.step:
                    step_params = extract_params_from_contents(step_slice, False)
@@ -1766,8 +1753,7 @@ def add_step(args):
                    step_raw_params.extend(step_params)
                steps = extract_steps_from_contents(step_slice)
                if steps:
-                   for step in steps:
-                       new_steps.append(get_non_aliased_step(args, step, find_inc_module(args, step)))
+                   new_steps.extend(steps)
        discovered_steps = new_steps[:]
 
     step_raw_params = list(set(step_raw_params))
@@ -1880,7 +1866,7 @@ def is_workflow(step):
     return is_workflow
 
 
-def find_step_module(args, step):
+def find_step_module(contents, step):
     """
     Part of add-step mode.
 
@@ -1893,74 +1879,12 @@ def find_step_module(args, step):
     Returns:
         Str containing parent component for step.
     """
-    raft_cfg = load_raft_cfg() 
-    steps_mod = []
-    for mod in glob(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', '*', '*' + '.nf')):
-        with open(mod) as mod_fo:
-            contents = mod_fo.readlines()
-            try:
-              steps_mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0].split('/')[1]
-            except:
-              pass
-    return steps_mod
-
-def find_inc_module(args, step):
-    """
-    Part of add-step mode.
-
-    Find a step's module based on the contents of the module in which it's being called. This is effectively parsing 'include' statements.
-
-    Args:
-        contents (list): List containing rows from a Nextflow module/component.
-        step (str): Step that requires parent component.
-
-    Returns:
-        Str containing parent component for step.
-    """
-    raft_cfg = load_raft_cfg() 
-    inc_mod = []
-    for mod in glob(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', '*', '*' + '.nf')):
-        with open(mod) as mod_fo:
-            contents = mod_fo.readlines()
-            mod_buffer = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)]
-            if mod_buffer:
-                inc_mod = mod.split('/')[-1].rstrip('.nf')
-    return inc_mod
-
-
-def get_non_aliased_step(args, step, inc_module):
-    """
-    Part of add-step mode.
-
-    Find a step's module based on the contents of the module in which it's being called. This is effectively parsing 'include' statements.
-
-    Args:
-        contents (list): List containing rows from a Nextflow module/component.
-        step (str): Step that requires parent component.
-
-    Returns:
-        Str containing parent component for step.
-    """
-    real_step = ''
-    raft_cfg = load_raft_cfg() 
-    print(step)
-    print(inc_module)
-    if not(inc_module):
-        real_step = step
-    else:
-        with open(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', inc_module, inc_module + '.nf')) as mod_fo:
-            contents = mod_fo.readlines()
-            #print(contents)
-            inc_line = [re.findall('include {{.*{}.*'.format(step), i) for i in contents if re.findall('include {{.*{}.*'.format(step), i)][0][0]
-#                inc_line = [re.findall('include.*{}.*'.format(step), i) for i in contents]
-            print("DEBUG: inc_line: {}".format(inc_line))
-            if re.search(' as ', inc_line):
-                print(inc_line.split(' '))
-                real_step = inc_line.split(' ')[2]
-            else:
-                real_step = step
-    return real_step
-
+    mod = []
+    try:
+        mod = [re.findall('include .*{}.*'.format(sub), i) for i in contents if re.findall('include .*{}.*'.format(sub), i)][0][0].split('/')[1]
+    except:
+        pass
+    return mod
 
 def extract_steps_from_contents(contents):
     """
@@ -1973,7 +1897,7 @@ def extract_steps_from_contents(contents):
         contents (list): List containing the rows from a workflow's entry in a component.
     """
     #print(contents)
-    wfs = [re.findall('^[\w_]+\(.*', i) for i in contents if re.findall('^[\w_]+\(.*', i) and not re.search('if\(', i)]
+    wfs = [re.findall('^[\w_]+\(.*', i) for i in contents if re.findall('^[\w_]+\(.*', i)]
     flat = [i.partition('(')[0] for j in wfs for i in j]
     return(flat)
 
