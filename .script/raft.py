@@ -1747,9 +1747,9 @@ def add_step(args):
     for step in final_steps:
         step_slice = extract_step_slice_from_nfscript(wf_mod_map[step], step)
         if step == args.step:
-            all_step_params.extend(extract_params_from_contents(step_slice, True))
-        else:
             all_step_params.extend(extract_params_from_contents(step_slice, False))
+        else:
+            all_step_params.extend(extract_params_from_contents(step_slice, True))
 #    print(all_step_params)
 
 #    print("Main: {}".format(main_params))
