@@ -1160,7 +1160,7 @@ def run_workflow(args):
     print("Workflow completed! Moving reports...")
     os.chdir(init_dir)
     get_shared_dirs(args)
-    if not(args.no_reports):
+    if not(arg.no_reports):
         reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
         os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
         for report in reports:
@@ -1606,9 +1606,8 @@ def get_orig_prod_id(fle):
         contents = fo.readlines()
         first = contents[0].strip()
         ind = ''
-        try:
-            ind = first.split(' ').index('-p')
-        except:
+        ind = first.split(' ').index('-p')
+        if not ind:
             ind = first.split(' ').index('--project-id')
         return first.split(' ')[ind +1] 
 
