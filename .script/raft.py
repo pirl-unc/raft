@@ -109,6 +109,26 @@ def get_args():
     parser_load_metadata.add_argument('-m', '--mode',
                                       help="Mode (copy or symlink). Default: copy",
                                       default='symlink')
+    
+
+    # Subparser for loading a complete dataset into an analysis.
+    parser_load_metadata = subparsers.add_parser('load-dataset',
+                                                 help="Loads dataset into aa project.")
+    parser_load_metadata.add_argument('-d', '--dataset-id',
+                                      help="Dataset identifier. Check docs for more info.",
+                                      required=True)
+    parser_load_metadata.add_argument('-p', '--project-id',
+                                      help="Project to add metadata to.",
+                                      required=True)
+    parser_load_metadata.add_argument('-r', '--repo',
+                                      help="Repo to load module from",
+                                      default='')
+    parser_load_metadata.add_argument('-b', '--branches',
+                                      help="Branch to load for module",
+                                      default='master')
+    parser_load_metadata.add_argument('-m', '--mode',
+                                      help="Mode (copy or symlink). Default: copy",
+                                      default='symlink')
 
 
     # Subparser for loading component into an analysis.
@@ -2212,7 +2232,17 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
     blob.upload_from_filename(source_file_name)
 
      
-
+def load_dataset(args):
+    """
+    Steps:
+      - load all files from metadata/<args.dataset_id> into projects/<args.project_id>/metadata/<args.dataset_id>
+      - add step t projects/<args.project_id>/workflow/main.nf with alias for prep_dataset as prep_<args.dataset_id>
+    """
+    print(args)
+    args.module = args.dataset_id
+    print(args)
+    load_module(args)
+    
 
 
 def main():
@@ -2271,6 +2301,8 @@ def main():
         clean_project(args)
     elif args.command == 'push-shared':
         push_shared(args)
+    elif args.command == 'load-dataset':
+        load_dataset(args)
 
 
 if __name__=='__main__':
