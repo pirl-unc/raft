@@ -573,7 +573,14 @@ def mk_main_wf_and_cfg(args):
     proj_wf_path = pjoin(raft_cfg['filesystem']['projects'],
                                   args.project_id,
                                   'workflow')
-    shutil.copyfile(tmplt_wf_file, pjoin(proj_wf_path, 'main.nf'))
+    with open(tmplt_wf_file) as origfo:
+        with open(pjoin(proj_wf_path, 'main.nf'), 'w') as outfo:
+            for line in origfo.readlines():
+                if line == "params.project_dir = ''\n":
+                    line = "params.project_identifier = '{}'\nparams.project_dir = ''\n".format(args.project_id)
+                outfo.write(line)
+#    shutil.copyfile(tmplt_wf_file, pjoin(proj_wf_path, 'main.nf'))
+    
     shutil.copyfile(tmplt_cfg_file, pjoin(proj_wf_path, 'nextflow.config'))
 
     # Adding Singularity info.
