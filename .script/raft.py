@@ -1872,6 +1872,8 @@ def add_step(args):
     step_str = ''
     step_slice = extract_step_slice_from_nfscript(mod_nf, args.step)
 #    if is_workflow(step_slice):
+    if not(step_slice):
+        sys.exit("ERROR: Step {} could not be found in module {}.".format(args.step, args.module))
     step_str = get_workflow_str(step_slice)
     #print("Step str: {}".format(step_str))
     if args.alias:
