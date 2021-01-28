@@ -1742,9 +1742,9 @@ def add_step(args):
     # put within main.nf
     step_str = ''
     step_slice = extract_step_slice_from_nfscript(mod_nf, args.step)
-    if is_workflow(step_slice):
-        step_str = get_workflow_str(step_slice)
-    print("Step str: {}".format(step_str))
+#    if is_workflow(step_slice):
+    step_str = get_workflow_str(step_slice)
+    #print("Step str: {}".format(step_str))
     if args.alias:
         params = step_str.partition('(')[2]
         step_str = ''.join([args.alias, '(', params])
@@ -2238,10 +2238,20 @@ def load_dataset(args):
       - load all files from metadata/<args.dataset_id> into projects/<args.project_id>/metadata/<args.dataset_id>
       - add step t projects/<args.project_id>/workflow/main.nf with alias for prep_dataset as prep_<args.dataset_id>
     """
-    print(args)
+    raft_cfg = load_raft_cfg()
     args.module = args.dataset_id
-    print(args)
+    args.delay = 0
     load_module(args)
+    dataset_files = [x.split('/')[-1] for x in glob(pjoin(raft_cfg['filesystem']['metadata'], args.dataset_id, '*'))]
+    args.sub_dir = args.dataset_id
+    for dataset_file in dataset_files:
+        args.file = dataset_file
+        print("Loading dataset file {}...".format(args.file))
+        load_metadata(args)
+    args.step = 'prep_dataset'
+    args.alias = 'prep_{}'.format(args.dataset_id)
+    add_step(args)
+    
     
 
 
