@@ -1139,11 +1139,14 @@ def run_workflow(args):
     all_samp_ids = []
     processed_samp_ids = []
     
-#    # Clearing zero-sized intermediates if needed.
-#    if args.remake_intermediates:
-#        shared_dirs = get_shared_dirs(args)
-#        print(shared_dirs)
-#        remove_zero_sized_intermediates(args, shared_dirs)
+    # Clearing zero-sized intermediates if needed.
+    # This is intended for cases where intermediates are replaced with
+    # zero-sized files. This won't be used for now, but going to keep the code
+    # available.
+    if args.remake_intermediates:
+        shared_dirs = get_shared_dirs(args)
+        print(shared_dirs)
+        remove_zero_sized_intermediates(args, shared_dirs)
 
     if not args.keep_previous_outputs:
         #Check for directory instead of try/except.
