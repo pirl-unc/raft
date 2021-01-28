@@ -204,11 +204,23 @@ def get_args():
     parser_run_workflow.add_argument('-p', '--project-id',
                                      help="Project.",
                                      required=True)
-    parser_run_workflow.add_argument('-k', '--keep-old-outputs',
-                                     help="Do not remove old outputs before running.",
+    parser_run_workflow.add_argument('-k', '--keep-previous-outputs',
+                                     help="Do not remove previous outputs before running.",
                                      action='store_true')
     parser_run_workflow.add_argument('-r', '--no-reports',
                                      help="Do not create report files.", action='store_true')
+    parser_run_workflow.add_argument('-ki', '--keep-intermediates',
+                                     help="Keep intermediates files.",
+                                     action='store_true')
+    parser_run_workflow.add_argument('--confirm-intermediates-deletion',
+                                     help="Deletion intermediates files.",
+                                     action='store_true')
+    parser_run_workflow.add_argument('-d', '--delete-suffixes',
+                                     help="Comma-separated list of suffixes to delelte.",
+                                     default='bam,sam,fq,fq.gz,fastq,fastq.gz')
+    parser_run_workflow.add_argument('--remake-intermediates',
+                                     help="Clear out zero-sized intermediate placeholders.",
+                                     action='store_true')
 
 
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
@@ -1119,8 +1131,14 @@ def run_workflow(args):
     init_dir = getcwd()
     all_samp_ids = []
     processed_samp_ids = []
+    
+    # Clearing zero-sized intermediates if needed.
+    if args.remake_intermediates:
+        shared_dirs = get_shared_dirs(args)
+        print(shared_dirs)
+        remove_zero_sized_intermediates(args, shared_dirs)
 
-    if not args.keep_old_outputs:
+    if not args.keep_previous_outputs:
         #Check for directory instead of try/except.
         try:
             shutil.rmtree(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs'))
@@ -1156,17 +1174,124 @@ def run_workflow(args):
     
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     print("Running:\n{}".format(nf_cmd))
-    subprocess.run(nf_cmd, shell=True, check=False)
-    print("Workflow completed! Moving reports...")
-    os.chdir(init_dir)
-    get_shared_dirs(args)
-    if not(args.no_reports):
-        reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
-        os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
-        for report in reports:
-            shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs', report),
-                        pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports', report))
+    nf_exit_code = subprocess.run(nf_cmd, shell=True, check=False)
+    if not(nf_exit_code.returncode):
+        print("Workflow completed!\n")
+        os.chdir(init_dir)
+        work_dirs = get_work_dirs(args)
+        os.chdir(init_dir)
+        shared_dirs = get_shared_dirs(args)
+        if not(args.no_reports):
+            print("Moving reports to {}\n".format(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports')))
+            reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
+            os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
+            for report in reports:
+                if os.path.exists(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs', report)):
+                    shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs', report),
+                                pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports', report))
+        if not(args.keep_intermediates) and args.delete_suffixes:
+            print("Intermediate file suffixes: {}".format(args.delete_suffixes))
+            print("Total shared directories generated: {}".format(len(shared_dirs)))
+            intermediate_shared_dirs = get_intermediate_shared_dirs(args, shared_dirs)
+            intermediate_work_dirs = get_intermediate_work_dirs(args, work_dirs)
+            print("Shared files eligible for deletion: {}".format(len(intermediate_shared_dirs)))
+            print("Work files eligible for deletion: {}".format(len(intermediate_work_dirs)))
+            eligible_dirs = intermediate_shared_dirs + intermediate_work_dirs
+            saveable_space = 0
+            for intermediate_dir in eligible_dirs:
+#                print(intermediate_dir)
+#                saveable_space += get_size(intermediate_dir)
+                saveable_space += os.path.getsize(intermediate_dir)
+            print("Deleting intermediates will save {:.3f} GBs.".format(saveable_space/1000000000))
+            if args.confirm_intermediates_deletion:
+                print("Deleting intermediate directories and files...")
+                for intermediate_dir in eligible_dirs:
+                    os.remove(intermediate_dir)
+                    touch(intermediate_dir)
+            else:
+                print("Rerun with --confirm-intermediates-deletion to remove intermediates.")
+        else:
+            print("Keeping intermediate files.")
 
+
+def get_work_dirs(args):
+    """
+    Get all work dirs associated with the latest run of the project."
+    """
+    raft_cfg = load_raft_cfg()
+    work_dirs = []
+    log_dir = pjoin(raft_cfg['filesystem']['projects'],
+                    args.project_id, 'logs')
+    project_uuid = ''
+    with open(pjoin(log_dir, '.nextflow', 'history')) as fo:
+        for line in reversed(fo.read().split('\n')):
+            if line:
+                line = line.split('\t')
+                if line[3] == 'OK':
+#                  successful_run = line[2]
+                  project_uuid = line[5]
+                  break
+#    print("Project UUID is: {}".format(project_uuid))
+#    print("Last successful run is: {}".format(successful_run))
+    os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
+    work_dirs = [x for x in subprocess.run('nextflow log {}'.format(project_uuid), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
+    return work_dirs 
+
+
+def get_size(start_path = '.'):
+    """
+    https://stackoverflow.com/a/1392549
+    """
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(start_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+
+    return total_size
+
+
+def remove_zero_sized_intermediates(args, shared_dirs):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    intermediate_suffixes = args.delete_suffixes.split(',')
+    for shared_dir in shared_dirs:
+        print(shared_dir)
+        for outp_file in glob(pjoin(raft_cfg['filesystem']['shared'], shared_dir, '*')):
+            for suffix in intermediate_suffixes:
+                if outp_file.endswith(suffix) and not(os.path.islink(outp_file)) and os.path.getsize(outp_file)  == 0:
+                    os.remove(outp_file)
+    
+
+def get_intermediate_shared_dirs(args, shared_dirs):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    intermediate_shared_dirs = []
+    intermediate_suffixes = args.delete_suffixes.split(',')
+    for shared_dir in shared_dirs:
+        for outp_file in glob(pjoin(raft_cfg['filesystem']['shared'], shared_dir, '*')):
+            for suffix in intermediate_suffixes:
+                if outp_file.endswith(suffix) and not(os.path.islink(outp_file)) and os.path.getsize(outp_file) > 0:
+                    intermediate_shared_dirs.append(pjoin(raft_cfg['filesystem']['shared'], shared_dir, outp_file))
+    return list(set(intermediate_shared_dirs))
+
+def get_intermediate_work_dirs(args, work_dirs):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    intermediate_work_dirs = []
+    intermediate_suffixes = args.delete_suffixes.split(',')
+    for work_dir in work_dirs:
+        for outp_file in glob(pjoin(raft_cfg['filesystem']['work'], work_dir, '*')):
+            for suffix in intermediate_suffixes:
+                if outp_file.endswith(suffix) and not(os.path.islink(outp_file)) and os.path.getsize(outp_file) > 0:
+                    intermediate_work_dirs.append(pjoin(raft_cfg['filesystem']['work'], work_dir, outp_file))
+    return list(set(intermediate_work_dirs))
+   
 
 def extract_samp_ids(args, manifest_csv):
     """
@@ -2164,6 +2289,8 @@ def get_shared_dirs(args):
         for shared_dir in shared_dirs:
             fo.write(shared_dir)
 
+    return [x.rstrip() for x in shared_dirs]
+
 def push_shared(args):
     """
     """
@@ -2204,7 +2331,13 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
 
     blob.upload_from_filename(source_file_name)
 
-     
+
+def touch(path):
+    """
+    https://stackoverflow.com/a/12654798
+    """
+    with open(path, 'a'):
+        os.utime(path, None) 
 
 
 
