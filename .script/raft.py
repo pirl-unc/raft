@@ -1139,11 +1139,11 @@ def run_workflow(args):
     all_samp_ids = []
     processed_samp_ids = []
     
-    # Clearing zero-sized intermediates if needed.
-    if args.remake_intermediates:
-        shared_dirs = get_shared_dirs(args)
-        print(shared_dirs)
-        remove_zero_sized_intermediates(args, shared_dirs)
+#    # Clearing zero-sized intermediates if needed.
+#    if args.remake_intermediates:
+#        shared_dirs = get_shared_dirs(args)
+#        print(shared_dirs)
+#        remove_zero_sized_intermediates(args, shared_dirs)
 
     if not args.keep_previous_outputs:
         #Check for directory instead of try/except.
@@ -1214,7 +1214,8 @@ def run_workflow(args):
                 print("Deleting intermediate directories and files...")
                 for intermediate_dir in eligible_dirs:
                     os.remove(intermediate_dir)
-                    touch(intermediate_dir)
+                    #There's an issue here with checksums that breaks _uniq_dir processes.
+            #        touch(intermediate_dir)
             else:
                 print("Rerun with --confirm-intermediates-deletion to remove intermediates.")
         else:
