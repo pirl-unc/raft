@@ -1,5 +1,5 @@
 #!/usr/bin/env nextflow
-nextflow.preview.dsl=2
+nextflow.enable.dsl=2
 
 /*General Parameters*/
 params.project_dir = ''
@@ -15,6 +15,7 @@ params.analyses_dir = "${params.output_dir}/analyses"
 params.batch_dir = "${params.output_dir}/batch"
 params.gene_sigs_dir = "${params.batch_dir}/gene_signatures"
 params.samps_out_dir = "${params.output_dir}/samples"
+params.qc_out_dir = "${params.output_dir}/qc"
 
 /*Fine-tuned Parameters*/
 
