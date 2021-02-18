@@ -2293,11 +2293,13 @@ def clean_project(args):
     print("Cleanable run work hashes count: {}".format(len(cleanable_hashes)))
     if not(args.no_exec):
         for cleanable_dir in cleanable_hashes:
-            try:
-                shutil.rmtree(cleanable_dir)
-                print("Removing {}...".format(cleanable_dir))
-            except:
-                pass
+            print("Removing extra files from {}...".format(cleanable_dir))
+            cleanable_files = [i for i in os.listdir(cleanable_dir) if i not in ['meta'] and not(re.search('command', i))]
+            for i in cleanable_files:
+                try:
+                    shutil.rmtree(cleanable_file)
+                except:
+                    pass
     else:
         print("Skipping deletion due to -n/--no-exec.")
 
