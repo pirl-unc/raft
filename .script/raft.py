@@ -8,6 +8,7 @@ from glob import glob
 import hashlib
 import json
 import os
+import pathlib
 from pprint import pprint
 import random
 import re
@@ -316,6 +317,15 @@ def get_args():
     parser_clean_project.add_argument('-p', '--project-id', help="Project.")
     parser_clean_project.add_argument('-b', '--bucket',
                                       help="Bucket for pushed shared files.")
+    
+
+    # Subparser for cleaning shared directory.
+    parser_clean_project = subparsers.add_parser('clean-shared',
+                                                 help="Clean /shared directory.")
+    parser_clean_project.add_argument('-n', '--no-exec',
+                                      help="List deletable files, but don't delete")
+    parser_clean_project.add_argument('-s', '--size',
+                                      help="Determine storage space used by deletable files.")
 
     return parser.parse_args()
 
@@ -1543,7 +1553,7 @@ def dump_to_auto_raft(args):
     """
     if args.command and args.command not in ['init-project', 'run-auto', 'package-project',
                                              'load-project', 'setup', 'push-project',
-                                             'rename-project', 'run-workflow']:
+                                             'rename-project', 'run-workflow', 'clean-shared']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = pjoin(raft_cfg['filesystem']['projects'],
                                args.project_id,
@@ -2393,6 +2403,44 @@ def touch(path):
     with open(path, 'a'):
         os.utime(path, None) 
 
+def clean_shared(args):
+    """
+    1. Get list of projects
+    2. Ensure no projects are being actively run
+    3. Get total /shared list
+    4. Get union of project-specific shared list
+    5. Deletable directories are those in total, but not in project union.
+    """
+    raft_cfg = load_raft_cfg()
+    print(raft_cfg['filesystem']['projects'])
+    projects = [x for x in os.listdir(raft_cfg['filesystem']['projects'])]
+    print("Found {} projects.".format(len(projects)))
+    print("Ensuring no projects are running...")
+    current_epoch = int(time.time())
+    epoch_diffs = []
+    for project in projects:
+        try:
+            log_epoch = os.path.getmtime(pjoin(raft_cfg['filesystem']['projects'], project, 'logs', '.nextflow.log'))
+        except:
+            log_epoch = 0
+        epoch_diffs.append(current_epoch - log_epoch)
+    except_epoch_diff = [x for x in epoch_diffs if x < 1800]
+    if except_epoch_diff:
+        print("A project's log file has been modified in the last 30 minutes. Run with -f to force /shared cleaning.")
+    project_shared_dirs = [x for x in pathlib.Path(raft_cfg['filesystem']['projects']).glob(pjoin('*', 'outputs', '*shared'))]
+    shared_union = []
+    for shared_list in project_shared_dirs:
+        with open(shared_list) as slo:
+            for line in slo.readlines():
+                shared_union.append(line.rstrip())
+    shared_union = list(set(shared_union))
+    print("Number of shared dirs utilized by projects: {}".format(len(shared_union)))
+    all_shared_dirs = os.listdir(raft_cfg['filesystem']['shared'])
+    print("Number of all shared dirs: {}".format(len(all_shared_dirs)))
+    deletable_shared_dirs = list(set(all_shared_dirs) - set(shared_union))
+    print("Number of deletable shared dirs: {}".format(len(deletable_shared_dirs)))
+   
+
 
 def main():
     """
@@ -2452,6 +2500,8 @@ def main():
         push_shared(args)
     elif args.command == 'load-dataset':
         load_dataset(args)
+    elif args.command == 'clean-shared':
+        clean_shared(args)
 
 
 if __name__=='__main__':
