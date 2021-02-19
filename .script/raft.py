@@ -2381,6 +2381,7 @@ def load_dataset(args):
         args.file = dataset_file
         print("Loading dataset file {}...".format(args.file))
         load_metadata(args)
+    args.module = args.dataset_id
     args.step = 'prep_dataset'
     args.alias = 'prep_{}'.format(args.dataset_id)
     add_step(args)
