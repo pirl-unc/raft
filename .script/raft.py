@@ -2438,7 +2438,7 @@ def clean_shared(args):
                 shared_union.append(line.rstrip())
     shared_union = list(set(shared_union))
     print("Number of shared dirs utilized by projects: {}".format(len(shared_union)))
-    all_shared_dirs = os.listdir(raft_cfg['filesystem']['shared'])
+    all_shared_dirs = glob(pjoin(raft_cfg['filesystem']['shared'], '**'), recursive=True)
     print("Number of all shared dirs: {}".format(len(all_shared_dirs)))
     deletable_shared_dirs = list(set(all_shared_dirs) - set(shared_union))
     print("Number of deletable shared dirs: {}".format(len(deletable_shared_dirs)))
