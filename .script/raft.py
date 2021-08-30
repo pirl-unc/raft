@@ -242,6 +242,9 @@ def get_args():
     parser_run_workflow.add_argument('--remake-intermediates',
                                      help="Clear out zero-sized intermediate placeholders.",
                                      action='store_true')
+    parser_run_workflow.add_argument('--project-work',
+                                     help="Put /work directory in project directory.",
+                                     action='store_true')
 
 
     # Subparser for packaging analysis (to generate sharable rftpkg tar file)
@@ -1031,7 +1034,7 @@ def recurs_load_modules(args):
             deps = []
             with open(mod) as mfo:
                 for line in mfo:
-                    if re.search('^include', line):
+                    if re.search('^include.*nf.*', line):
                         dep = line.split()[-1].replace("'", '').split('/')[1]
                         if dep not in deps:
                             deps.append(dep)
@@ -1203,6 +1206,8 @@ def run_workflow(args):
 
     # Appending work directory
     work_dir = raft_cfg['filesystem']['work']
+    if args.project_work or not(args.project_work):
+        work_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'work')
     nf_cmd = add_nf_work_dir(work_dir, nf_cmd)
 
     # Appending global FASTQ directory (for internal FASTQ symlinking)
@@ -1217,10 +1222,6 @@ def run_workflow(args):
     nf_exit_code = subprocess.run(nf_cmd, shell=True, check=False)
     if not(nf_exit_code.returncode):
         print("Workflow completed!\n")
-        os.chdir(init_dir)
-        work_dirs = get_work_dirs(args)
-        os.chdir(init_dir)
-        shared_dirs = get_shared_dirs(args)
         if not(args.no_reports):
             print("Moving reports to {}\n".format(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports')))
             reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
@@ -1230,6 +1231,10 @@ def run_workflow(args):
                     shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs', report),
                                 pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports', report))
         if not(args.keep_intermediates) and args.delete_suffixes:
+            os.chdir(init_dir)
+            work_dirs = get_work_dirs(args)
+            os.chdir(init_dir)
+            shared_dirs = get_shared_dirs(args)
             print("Intermediate file suffixes: {}".format(args.delete_suffixes))
             print("Total shared directories generated: {}".format(len(shared_dirs)))
             intermediate_shared_dirs = get_intermediate_shared_dirs(args, shared_dirs)
@@ -1481,7 +1486,8 @@ def get_base_nf_cmd(args):
         resume = '-resume'
     if not(args.no_reports):
         reports = '-with-trace -with-report -with-dag -with-timeline'
-    cmd = ' '.join(['nextflow', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume, reports])
+    cmd = ' '.join(['nextflow -Dnxf.pool.type=sync run', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume, reports])
+#    cmd = ' '.join(['nextflow run', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume, reports])
     return cmd
 
 
@@ -2414,34 +2420,48 @@ def clean_shared(args):
     4. Get union of project-specific shared list
     5. Deletable directories are those in total, but not in project union.
     """
-    raft_cfg = load_raft_cfg()
-    print(raft_cfg['filesystem']['projects'])
-    projects = [x for x in os.listdir(raft_cfg['filesystem']['projects'])]
-    print("Found {} projects.".format(len(projects)))
-    print("Ensuring no projects are running...")
-    current_epoch = int(time.time())
-    epoch_diffs = []
-    for project in projects:
-        try:
+    raft_cfg = load_raft_cfg()                                                                      
+    projects = [x for x in os.listdir(raft_cfg['filesystem']['projects'])]                          
+    print("Found {} projects.".format(len(projects)))                                               
+    print("Ensuring no projects are running...")                                                    
+    current_epoch = int(time.time())                                                                
+    epoch_diffs = []                                                                                
+    for project in projects:                                                                        
+        try:                                                                                        
             log_epoch = os.path.getmtime(pjoin(raft_cfg['filesystem']['projects'], project, 'logs', '.nextflow.log'))
-        except:
-            log_epoch = 0
-        epoch_diffs.append(current_epoch - log_epoch)
-    except_epoch_diff = [x for x in epoch_diffs if x < 1800]
-    if except_epoch_diff:
+        except:                                                                                     
+            log_epoch = 0                                                                           
+        epoch_diffs.append(current_epoch - log_epoch)                                               
+    except_epoch_diff = [x for x in epoch_diffs if x < 1800]                                        
+    if except_epoch_diff:                                                                           
         print("A project's log file has been modified in the last 30 minutes. Run with -f to force /shared cleaning.")
+                                                                                                    
+                                                                                                    
     project_shared_dirs = [x for x in pathlib.Path(raft_cfg['filesystem']['projects']).glob(pjoin('*', 'outputs', '*shared'))]
-    shared_union = []
-    for shared_list in project_shared_dirs:
-        with open(shared_list) as slo:
-            for line in slo.readlines():
-                shared_union.append(line.rstrip())
-    shared_union = list(set(shared_union))
-    print("Number of shared dirs utilized by projects: {}".format(len(shared_union)))
-    all_shared_dirs = glob(pjoin(raft_cfg['filesystem']['shared'], '**'), recursive=True)
-    print("Number of all shared dirs: {}".format(len(all_shared_dirs)))
-    deletable_shared_dirs = list(set(all_shared_dirs) - set(shared_union))
+    shared_union = []                                                                               
+    for shared_list in project_shared_dirs:                                                         
+        with open(shared_list) as slo:                                                              
+            for line in slo.readlines():                                                            
+                shared_union.append(line.rstrip())                                                  
+    shared_union = list(set(shared_union))                                                          
+    print("Number of shared dirs utilized by projects: {}".format(len(shared_union)))               
+                                                                                                    
+    all_shared_dirs = list(set([os.path.join(dp) for dp, dn, fn in os.walk(raft_cfg['filesystem']['shared']) for f in fn]))
+    no_prefix_all_shared_dirs = [x.replace(raft_cfg['filesystem']['shared'] + '/', '') for x in all_shared_dirs]
+#    all_shared_dirs = os.listdir(raft_cfg['filesystem']['shared'])                                 
+    print("Number of all shared dirs: {}".format(len(no_prefix_all_shared_dirs)))                   
+#    deletable_shared_dirs = list(set(no_prefix_all_shared_dirs) - set(shared_union))               
+                                                                                                    
+    deletable_shared_dirs = []                                                                      
+    for sd in no_prefix_all_shared_dirs:                                                            
+        del_sd = True                                                                               
+        for used_dir in shared_union:                                                               
+            if sd.startswith(used_dir):                                                             
+                del_sd = False                                                                      
+        if del_sd:                                                                                  
+            deletable_shared_dirs.append(sd)                                                        
     print("Number of deletable shared dirs: {}".format(len(deletable_shared_dirs)))
+    print("Deletable shared dirs examples: {}".format(deletable_shared_dirs[:10]))
    
 
 
