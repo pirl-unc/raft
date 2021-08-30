@@ -110,7 +110,7 @@ def get_args():
     parser_load_metadata.add_argument('-m', '--mode',
                                       help="Mode (copy or symlink). Default: copy",
                                       default='symlink')
-    
+
 
     # Subparser for loading a complete dataset into an analysis.
     parser_load_metadata = subparsers.add_parser('load-dataset',
@@ -209,7 +209,7 @@ def get_args():
                                                 help="Run workflow")
     # At least one of these should be required, but should they be mutually exclusive?
     # Above comment is old -- but this does seem like a reasonable way to filter samples.
-    parser_run_workflow.add_argument('--no-resume', 
+    parser_run_workflow.add_argument('--no-resume',
                                      help="Do not use Nextflow's -resume.",
                                      default=False,
                                      action='store_true')
@@ -271,7 +271,7 @@ def get_args():
     parser_load_project.add_argument('--repo-url', help="Git repo url.")
     parser_load_project.add_argument('--branch', help="Git repo branch.", default='master')
 
-    
+
     # Subparser for pushing package
     parser_push_project = subparsers.add_parser('push-project',
                                                 help="Push project to repo(see documentation).")
@@ -280,7 +280,7 @@ def get_args():
     parser_push_project.add_argument('--repo', help="Repo push to.")
     parser_push_project.add_argument('-c', '--comment', help="Commit comment.")
     parser_push_project.add_argument('-b', '--branch', help="Git branch.")
-    
+
 
     # Subparser for pulling package from repo
     parser_pull_project = subparsers.add_parser('pull-project',
@@ -299,9 +299,9 @@ def get_args():
     parser_rename_project = subparsers.add_parser('rename-project',
                                                  help="Rename a project exhaustively.")
     parser_rename_project.add_argument('-p', '--project-id', help="Project.")
-    parser_rename_project.add_argument('-n', '--new-id', help="New identifier.") 
+    parser_rename_project.add_argument('-n', '--new-id', help="New identifier.")
 
-    
+
 
     # Subparser for cleaning work directories associated with a project.
     parser_clean_project = subparsers.add_parser('clean-project',
@@ -313,14 +313,14 @@ def get_args():
     parser_clean_project.add_argument('-n', '--no-exec',
                                       help="Provide latest/completed/cleanable work directory counts but do NOT delete.",
                                       action='store_true', default = False)
-    
+
     # Subparser for cleaning work directories associated with a project.
     parser_clean_project = subparsers.add_parser('push-shared',
                                                  help="Push shared directories from project to Google Cloud Bucket")
     parser_clean_project.add_argument('-p', '--project-id', help="Project.")
     parser_clean_project.add_argument('-b', '--bucket',
                                       help="Bucket for pushed shared files.")
-    
+
 
     # Subparser for cleaning shared directory.
     parser_clean_project = subparsers.add_parser('clean-shared',
@@ -625,7 +625,7 @@ def mk_main_wf_and_cfg(args):
                     line = "params.project_identifier = '{}'\nparams.project_dir = ''\n".format(args.project_id)
                 outfo.write(line)
 #    shutil.copyfile(tmplt_wf_file, pjoin(proj_wf_path, 'main.nf'))
-    
+
     shutil.copyfile(tmplt_cfg_file, pjoin(proj_wf_path, 'nextflow.config'))
 
     # Adding Singularity info.
@@ -869,7 +869,7 @@ def load_manifest(args):
     #        pass
     #    if proj_hdr not in contents:
     # This header may evolve in the future, but is largely sufficient for now.
-    
+
     hdrl = ['Sample_ID', 'Patient_ID', 'File_Prefix', 'Dataset', 'Treatment', 'Sample_Type', 'Sequencing_Method', 'Tissue']
     proj_hdr = ','.join(hdrl) + '\n'
     reconfiged_mani = []
@@ -934,7 +934,7 @@ def load_manifest(args):
 def load_metadata(args):
     """
     Part of the load-metadata mode.
-    
+
     NOTE: This is effectively load_samples without the sample-level checks.
           These can probably be easily consolidated.
 
@@ -955,7 +955,7 @@ def load_reference(args):
     Given a user-provided reference file:
         - Copy/symlink reference file to project's /reference directory.
         - Update project's mounts.config file if reference file is symlinked.
-    
+
     Args:
         args (Namespace object): User-provided arguments.
     """
@@ -976,7 +976,7 @@ def load_files(args, out_dir):
     base = out_dir # output dir is input dir
 
     full_base = raft_cfg['filesystem'][base]
-    
+
     globbed_files =  glob(pjoin(full_base, '**', args.file), recursive = True)
     if len(globbed_files) == 0:
         sys.exit("Cannot find {} in {}/**".format(args.file, full_base))
@@ -1055,7 +1055,7 @@ def list_steps(args):
        args (Namespace object): User-provided arguments
     """
     raft_cfg = load_raft_cfg()
-    
+
     glob_term = '*/'
     if args.module:
         glob_term = args.module + '/'
@@ -1088,8 +1088,8 @@ def get_module_branch(args):
     else:
         branch = args.branches
     return branch
-         
-    
+
+
 def load_module(args):
     """
     Part of the load-module mode.
@@ -1107,8 +1107,8 @@ def load_module(args):
     # Should probably check here and see if the specified analysis even exists...
     workflow_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
 
-    branch = get_module_branch(args) 
-    
+    branch = get_module_branch(args)
+
     print("Loading module {} (branch {}) into project {}".format(args.module, branch, args.project_id))
 
     if not glob(pjoin(workflow_dir, args.module)):
@@ -1152,8 +1152,8 @@ def run_auto(args):
     Perhaps this should be part of load-metadata?
     """
     raft_cfg = load_raft_cfg()
-    #auto_raft = pjoin(raft_cfg['filesystem']['projects'], 
-    
+    #auto_raft = pjoin(raft_cfg['filesystem']['projects'],
+
 
 
 def run_workflow(args):
@@ -1171,7 +1171,7 @@ def run_workflow(args):
     init_dir = getcwd()
     all_samp_ids = []
     processed_samp_ids = []
-    
+
     # Clearing zero-sized intermediates if needed.
     # This is intended for cases where intermediates are replaced with
     # zero-sized files. This won't be used for now, but going to keep the code
@@ -1212,11 +1212,11 @@ def run_workflow(args):
 
     # Appending global FASTQ directory (for internal FASTQ symlinking)
     nf_cmd = add_global_fq_dir(nf_cmd)
-    
+
     # Appending global shared outputs directory
     nf_cmd = add_global_shared_dir(nf_cmd)
 
-    
+
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     print("Running:\n{}".format(nf_cmd))
     nf_exit_code = subprocess.run(nf_cmd, shell=True, check=False)
@@ -1281,7 +1281,7 @@ def get_work_dirs(args):
 #    print("Last successful run is: {}".format(successful_run))
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     work_dirs = [x for x in subprocess.run('nextflow log {}'.format(project_uuid), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
-    return work_dirs 
+    return work_dirs
 
 
 def get_size(start_path = '.'):
@@ -1310,7 +1310,7 @@ def remove_zero_sized_intermediates(args, shared_dirs):
             for suffix in intermediate_suffixes:
                 if outp_file.endswith(suffix) and not(os.path.islink(outp_file)) and os.path.getsize(outp_file)  == 0:
                     os.remove(outp_file)
-    
+
 
 def get_intermediate_shared_dirs(args, shared_dirs):
     """
@@ -1337,7 +1337,7 @@ def get_intermediate_work_dirs(args, work_dirs):
                 if outp_file.endswith(suffix) and not(os.path.islink(outp_file)) and os.path.getsize(outp_file) > 0:
                     intermediate_work_dirs.append(pjoin(raft_cfg['filesystem']['work'], work_dir, outp_file))
     return list(set(intermediate_work_dirs))
-   
+
 
 def extract_samp_ids(args, manifest_csv):
     """
@@ -1653,7 +1653,7 @@ def package_project(args):
                     pjoin(proj_dir, '.raft', 'snapshot.raft.actual'))
     snapshot_postproc(pjoin(proj_dir, '.raft', 'snapshot.raft.actual'),
                       pjoin(proj_dir, '.raft', 'snapshot.raft.postproc'))
-    
+
     shutil.copyfile(pjoin(proj_dir, '.raft', 'snapshot.raft.postproc'),
                     pjoin(proj_tmp_dir, 'snapshot.raft'))
     shutil.copyfile(pjoin(proj_dir, '.raft', 'snapshot.raft.actual'),
@@ -1719,7 +1719,7 @@ def load_project(args):
                     args.project_id,
                     'rftpkgs',
                     os.path.basename(args.rftpkg))
-        
+
 
     # Extract and distribute tarball contents
     tar = tarfile.open(tarball)
@@ -1741,7 +1741,7 @@ def load_project(args):
         shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums'),
                         pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums.orig'))
 
-        replace_proj_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums'), 
+        replace_proj_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'checksums'),
                               get_orig_prod_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft.orig')),
                               args.project_id)
     else:
@@ -1764,12 +1764,12 @@ def replace_proj_id(fle, old_proj_id, new_proj_id):
         with open(fle) as fo:
             contents = fo.readlines()
             for line in contents:
-                line = line.replace('-p {}'.format(old_proj_id), '-p {}'.format(new_proj_id)) 
+                line = line.replace('-p {}'.format(old_proj_id), '-p {}'.format(new_proj_id))
                 line = line.replace('projects/{}'.format(old_proj_id), 'projects/{}'.format(new_proj_id))
                 tfo.write(line)
 
     shutil.move(pjoin(raft_cfg['filesystem']['projects'], new_proj_id, 'tmp', 'tmp_file'), fle)
-            
+
 
 def get_orig_prod_id(fle):
     """
@@ -1781,7 +1781,7 @@ def get_orig_prod_id(fle):
         ind = first.split(' ').index('-p')
         if not ind:
             ind = first.split(' ').index('--project-id')
-        return first.split(' ')[ind +1] 
+        return first.split(' ')[ind +1]
 
 def get_params_from_module(module_path):
     """
@@ -1797,7 +1797,7 @@ def get_params_from_module(module_path):
                     defined_params.append(line.partition(' ')[0])
 
     return undef_params, defined_params
-    
+
 
 def get_section_insert_idx(contents, section, stop='\n'):
     """
@@ -1810,7 +1810,7 @@ def get_section_insert_idx(contents, section, stop='\n'):
     start = contents.index(section)
     insert_idx = contents[start:].index(stop)
     return start + insert_idx
-    
+
 
 
 def get_wf_mod_map(args):
@@ -1831,7 +1831,7 @@ def get_wf_mod_map(args):
 
 #    print(wf_mod_map.keys())
     return wf_mod_map
-        
+
 
 
 def extract_wfs_from_script(script_path):
@@ -1843,7 +1843,7 @@ def extract_wfs_from_script(script_path):
             if re.search('^workflow', line):
                 wfs.append(line.replace('workflow ', '').split('{')[0].strip())
     return wfs
-                
+
 
 def add_step(args):
     """
@@ -1863,15 +1863,15 @@ def add_step(args):
                    'workflow',
                    args.module,
                    args.module + '.nf')
-   
-    # Load main.nf contents 
+
+    # Load main.nf contents
     main_contents = []
     with open(main_nf) as mfo:
        main_contents = mfo.readlines()
 
     print("Making backup of project's main.nf...")
     shutil.copyfile(main_nf, main_nf + '.bak')
-    
+
     # Step's inclusion statement for main.nf
     if args.alias:
         inclusion_str = "include {{ {step} as {alias} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module, alias=args.alias)
@@ -1879,10 +1879,10 @@ def add_step(args):
         inclusion_str = "include {{ {step} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
 
     # Need to load main.nf params here to check against when getting step-specific params.
-    # Seems odd to emit the undefined and defined separately. 
+    # Seems odd to emit the undefined and defined separately.
     main_undef_params, main_defined_params = get_params_from_module(main_nf)
     main_params = main_undef_params + main_defined_params
-    
+
     # Extract step contents from step's module file in order to make string to
     # put within main.nf
     step_str = ''
@@ -1909,13 +1909,13 @@ def add_step(args):
             step_slice = extract_step_slice_from_nfscript(wf_mod_map[step], step)
 #            print(step_slice)
             new_round_steps.extend([i.partition('(')[0] for i in step_slice if i.partition('(')[0] in wf_mod_map.keys()])
-            discod_steps.remove(step) 
+            discod_steps.remove(step)
             final_steps.append(step)
         discod_steps.extend(new_round_steps)
 #        print("Finished a round! Starting over!")
 #        print("New steps being added: {}".format(new_round_steps))
 #    print("Recursively detected workflows.")
-#    print("Final workflow list: {}".format(accounted_for)) 
+#    print("Final workflow list: {}".format(accounted_for))
 
     all_step_params = []
     for step in final_steps:
@@ -1941,14 +1941,14 @@ def add_step(args):
 
     expanded_params = filted_expanded_params
 
-    expanded_undef_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in             
-                            sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'   
-    expanded_defined_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in           
-                              sorted(expanded_params,                                               
-                              key = lambda i: (i.split('$')[-1], len(i.split('$')))) if             
-                              expanded_params[k] != "''"]) + '\n' 
-   
-    # Applying changes to main.nf 
+    expanded_undef_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
+                            sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
+    expanded_defined_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
+                              sorted(expanded_params,
+                              key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
+                              expanded_params[k] != "''"]) + '\n'
+
+    # Applying changes to main.nf
     if step_str not in main_contents and inclusion_str not in main_contents:
 
         inc_idx = get_section_insert_idx(main_contents, "/*Inclusions*/\n")
@@ -1956,10 +1956,10 @@ def add_step(args):
 
         gen_params_idx = get_section_insert_idx(main_contents, "/*General Parameters*/\n")
         main_contents.insert(gen_params_idx, expanded_undef_params)
-        
+
         fine_params_idx = get_section_insert_idx(main_contents, "/*Fine-tuned Parameters*/\n")
         main_contents.insert(fine_params_idx, expanded_defined_params)
-    
+
         wf_idx = get_section_insert_idx(main_contents, "workflow {\n", "}\n")
         main_contents.insert(wf_idx, step_str)
 
@@ -2073,7 +2073,7 @@ def find_step_actual_and_alias(contents, step):
         Str containing parent component for step.
     """
     mod = []
- 
+
     foo = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)]
 #    pprint.pprint(contents)
 #    print(foo)
@@ -2239,7 +2239,7 @@ def chk_proj_id_exists(project_id):
     raft_cfg = load_raft_cfg()
     if not os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], project_id)):
         sys.exit("Check your project identifier (-p/--project-id). Project {} cannot be found in {}"
-                 .format(project_id, raft_cfg['filesystem']['projects'])) 
+                 .format(project_id, raft_cfg['filesystem']['projects']))
 
 
 def update_modules(args):
@@ -2366,7 +2366,7 @@ def push_shared(args):
     with Pool(4) as pool:
         for _ in tqdm.tqdm(pool.istarmap(upload_blob, param_sets), total=len(param_sets)):
             pass
-            
+
 
 
 def upload_blob(bucket_name, source_file_name, destination_blob_name):
@@ -2403,14 +2403,14 @@ def load_dataset(args):
     args.step = 'prep_dataset'
     args.alias = 'prep_{}'.format(args.dataset_id)
     add_step(args)
-    
-    
+
+
 def touch(path):
     """
     https://stackoverflow.com/a/12654798
     """
     with open(path, 'a'):
-        os.utime(path, None) 
+        os.utime(path, None)
 
 def clean_shared(args):
     """
@@ -2420,49 +2420,49 @@ def clean_shared(args):
     4. Get union of project-specific shared list
     5. Deletable directories are those in total, but not in project union.
     """
-    raft_cfg = load_raft_cfg()                                                                      
-    projects = [x for x in os.listdir(raft_cfg['filesystem']['projects'])]                          
-    print("Found {} projects.".format(len(projects)))                                               
-    print("Ensuring no projects are running...")                                                    
-    current_epoch = int(time.time())                                                                
-    epoch_diffs = []                                                                                
-    for project in projects:                                                                        
-        try:                                                                                        
+    raft_cfg = load_raft_cfg()
+    projects = [x for x in os.listdir(raft_cfg['filesystem']['projects'])]
+    print("Found {} projects.".format(len(projects)))
+    print("Ensuring no projects are running...")
+    current_epoch = int(time.time())
+    epoch_diffs = []
+    for project in projects:
+        try:
             log_epoch = os.path.getmtime(pjoin(raft_cfg['filesystem']['projects'], project, 'logs', '.nextflow.log'))
-        except:                                                                                     
-            log_epoch = 0                                                                           
-        epoch_diffs.append(current_epoch - log_epoch)                                               
-    except_epoch_diff = [x for x in epoch_diffs if x < 1800]                                        
-    if except_epoch_diff:                                                                           
+        except:
+            log_epoch = 0
+        epoch_diffs.append(current_epoch - log_epoch)
+    except_epoch_diff = [x for x in epoch_diffs if x < 1800]
+    if except_epoch_diff:
         print("A project's log file has been modified in the last 30 minutes. Run with -f to force /shared cleaning.")
-                                                                                                    
-                                                                                                    
+
+
     project_shared_dirs = [x for x in pathlib.Path(raft_cfg['filesystem']['projects']).glob(pjoin('*', 'outputs', '*shared'))]
-    shared_union = []                                                                               
-    for shared_list in project_shared_dirs:                                                         
-        with open(shared_list) as slo:                                                              
-            for line in slo.readlines():                                                            
-                shared_union.append(line.rstrip())                                                  
-    shared_union = list(set(shared_union))                                                          
-    print("Number of shared dirs utilized by projects: {}".format(len(shared_union)))               
-                                                                                                    
+    shared_union = []
+    for shared_list in project_shared_dirs:
+        with open(shared_list) as slo:
+            for line in slo.readlines():
+                shared_union.append(line.rstrip())
+    shared_union = list(set(shared_union))
+    print("Number of shared dirs utilized by projects: {}".format(len(shared_union)))
+
     all_shared_dirs = list(set([os.path.join(dp) for dp, dn, fn in os.walk(raft_cfg['filesystem']['shared']) for f in fn]))
     no_prefix_all_shared_dirs = [x.replace(raft_cfg['filesystem']['shared'] + '/', '') for x in all_shared_dirs]
-#    all_shared_dirs = os.listdir(raft_cfg['filesystem']['shared'])                                 
-    print("Number of all shared dirs: {}".format(len(no_prefix_all_shared_dirs)))                   
-#    deletable_shared_dirs = list(set(no_prefix_all_shared_dirs) - set(shared_union))               
-                                                                                                    
-    deletable_shared_dirs = []                                                                      
-    for sd in no_prefix_all_shared_dirs:                                                            
-        del_sd = True                                                                               
-        for used_dir in shared_union:                                                               
-            if sd.startswith(used_dir):                                                             
-                del_sd = False                                                                      
-        if del_sd:                                                                                  
-            deletable_shared_dirs.append(sd)                                                        
+#    all_shared_dirs = os.listdir(raft_cfg['filesystem']['shared'])
+    print("Number of all shared dirs: {}".format(len(no_prefix_all_shared_dirs)))
+#    deletable_shared_dirs = list(set(no_prefix_all_shared_dirs) - set(shared_union))
+
+    deletable_shared_dirs = []
+    for sd in no_prefix_all_shared_dirs:
+        del_sd = True
+        for used_dir in shared_union:
+            if sd.startswith(used_dir):
+                del_sd = False
+        if del_sd:
+            deletable_shared_dirs.append(sd)
     print("Number of deletable shared dirs: {}".format(len(deletable_shared_dirs)))
     print("Deletable shared dirs examples: {}".format(deletable_shared_dirs[:10]))
-   
+
 
 
 def main():
