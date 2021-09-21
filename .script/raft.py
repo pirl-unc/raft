@@ -32,6 +32,7 @@ from os import getcwd
 
 def get_args():
     """
+    Collecting user-defined arguments.
     """
     parser = argparse.ArgumentParser(prog="RAFT",
                                      description="""Reproducible
@@ -318,6 +319,7 @@ def get_args():
     parser_clean_project = subparsers.add_parser('push-shared',
                                                  help="Push shared directories from project to Google Cloud Bucket")
     parser_clean_project.add_argument('-p', '--project-id', help="Project.")
+    parser_clean_project.add_argument('-d', '--dir', help="Directory.")
     parser_clean_project.add_argument('-b', '--bucket',
                                       help="Bucket for pushed shared files.")
 
@@ -329,6 +331,17 @@ def get_args():
                                       help="List deletable files, but don't delete")
     parser_clean_project.add_argument('-s', '--size',
                                       help="Determine storage space used by deletable files.")
+    
+    # Subparser for copying parameters between projects.
+    parser_copy_params = subparsers.add_parser('copy-parameters',
+                                                 help="copy parameters between projects.")
+    parser_copy_params.add_argument('-s', '--source-project',
+                                      help="Source project or main.nf")
+    parser_copy_params.add_argument('-d', '--destination-project',
+                                      help="Destination project")
+    parser_copy_params.add_argument('-n', '--no-exec',
+                                      help="List the old and new parameters values, but do not write them.",
+                                      action='store_true', default = False)
 
     return parser.parse_args()
 
@@ -1559,7 +1572,8 @@ def dump_to_auto_raft(args):
     """
     if args.command and args.command not in ['init-project', 'run-auto', 'package-project',
                                              'load-project', 'setup', 'push-project',
-                                             'rename-project', 'run-workflow', 'clean-shared']:
+                                             'rename-project', 'run-workflow', 'clean-shared',
+                                             'copy-parameters', 'push-shared']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = pjoin(raft_cfg['filesystem']['projects'],
                                args.project_id,
@@ -2348,18 +2362,27 @@ def push_shared(args):
 
     param_sets = []
     raft_cfg = load_raft_cfg()
-    dot_shared = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', '.' + args.project_id + '.shared')
-    with open(dot_shared) as fo:
-        for line in fo.readlines():
-            line = line.strip()
-            #print(line)
-            req_files = [i for i in glob(pjoin(raft_cfg['filesystem']['shared'], line, '**', '*'), recursive=True) if os.path.isfile(i)]
-            for req_file in req_files:
-                #print(req_file)
-                #upload_blob(args.bucket, req_file, req_file.partition('shared/')[2])
-                param_sets.append((args.bucket, req_file, req_file.partition('shared/')[2]))
+    if args.project_id:
+        dot_shared = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', '.' + args.project_id + '.shared')
+        with open(dot_shared) as fo:
+            for line in fo.readlines():
+                line = line.strip()
+                #print(line)
+                req_files = [i for i in glob(pjoin(raft_cfg['filesystem']['shared'], line, '**', '*'), recursive=True) if os.path.isfile(i)]
+                for req_file in req_files:
+                    #print(req_file)
+                    #upload_blob(args.bucket, req_file, req_file.partition('shared/')[2])
+                    param_sets.append((args.bucket, req_file, req_file.partition('shared/')[2]))
+    else:
+        req_files = [i for i in glob(pjoin(raft_cfg['filesystem']['shared'], args.dir, '**', '*'), recursive=True) if os.path.isfile(i)]
+        print(req_files)
+        for req_file in req_files:
+            print(req_file)
+            #upload_blob(args.bucket, req_file, req_file.partition('shared/')[2])
+            param_sets.append((args.bucket, req_file, req_file.partition('shared/')[2]))
+      
 #        tqdm.tqdm(pool.istarmap(upload_blob, param_sets), total=len(param_sets))
-#    print(param_sets)
+    print(param_sets)
 #    pool = ThreadPool()
 #    pool.starmap(upload_blob, param_sets)
 
@@ -2463,6 +2486,33 @@ def clean_shared(args):
     print("Number of deletable shared dirs: {}".format(len(deletable_shared_dirs)))
     print("Deletable shared dirs examples: {}".format(deletable_shared_dirs[:10]))
 
+def copy_parameters(args):
+    """
+    """
+    raft_cfg = load_raft_cfg()
+    source_params = {}
+    with open(pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')) as fo:
+        for line in fo.readlines():
+            line = line.rstrip()
+            if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)):
+                print(line)
+                line = line.partition(' = ')
+                source_params[line[0]] = line[2]
+
+    #pprint(source_params)
+
+    
+    with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')) as dfo:
+        with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params'), 'w') as tfo:
+            for line in dfo.readlines():
+                parted_line = line.rstrip().partition(' = ')
+                if parted_line[0] in source_params.keys() and source_params[parted_line[0]] != parted_line[2]:
+                    print("Hit! Param: {} Source: {} Dest: {}".format(parted_line[0], source_params[parted_line[0]], parted_line[2]))
+                    tfo.write("{} = {}\n".format(parted_line[0], source_params[parted_line[0]]))
+                else:
+                    tfo.write(line)
+
+
 
 
 def main():
@@ -2471,7 +2521,7 @@ def main():
 
     args = get_args()
 
-    if 'project_id' in args and args.command not in ['init-project', 'load-project']:
+    if 'project_id' in args and args.command not in ['init-project', 'load-project', 'copy-parameters', 'push-shared']:
         chk_proj_id_exists(args.project_id)
 
     # Only dump to auto.raft if RAFT successfully completes.
@@ -2525,6 +2575,8 @@ def main():
         load_dataset(args)
     elif args.command == 'clean-shared':
         clean_shared(args)
+    elif args.command == 'copy-parameters':
+        copy_parameters(args)
 
 
 if __name__=='__main__':
