@@ -2340,7 +2340,7 @@ def get_shared_dirs(args):
     raft_cfg = load_raft_cfg()
     outputs_dir = pjoin(raft_cfg['filesystem']['projects'],
                         args.project_id, 'outputs')
-    metas = glob(pjoin(outputs_dir, '**', 'meta'), recursive=True)
+    metas = glob(pjoin(outputs_dir, '**', '*meta'), recursive=True)
 
     shared_dirs = []
 
