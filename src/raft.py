@@ -149,6 +149,9 @@ def get_args():
     parser_load_module.add_argument('-d', '--delay',
                                     help="Delay (in seconds) before git pulls. (Default = 15s).",
                                     default=30)
+    parser_load_module.add_argument('-k', '--ssh-key',
+                                    help="Path to local public SSH key if required.",
+                                    default="~/.ssh/id_rsa.pub")
 
 
     # Subparser for listing module steps.
@@ -1175,7 +1178,8 @@ def load_module(args):
             try:
                 Repo.clone_from(pjoin(args.repo, subgroup, args.module),
                                 pjoin(workflow_dir, args.module),
-                                branch=branch)
+                                branch=branch,
+                                env={"GIT_SSH_COMMAND": 'ssh -i {}'.format(args.ssh_key)})
                 time.sleep(args.delay)
                 found = 1
             except:
