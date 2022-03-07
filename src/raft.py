@@ -391,7 +391,7 @@ def setup(args):
                 "metadata": "",
                 "logs": "",
                 "rftpkgs": "",
-                ".raft", ""}
+                ".raft": ""}
 
     with open(pjoin(getcwd(), '.init.cfg'), 'w') as fo:
         json.dump(init_cfg, fo)
@@ -425,7 +425,7 @@ def setup(args):
         fo.write('workflow {\n')
         fo.write('}\n')
 
-    with open(pjoin(getcwd(), '.nextflow.config'), 'w' as fo:
+    with open(pjoin(getcwd(), '.nextflow.config'), 'w') as fo:
         fo.write("manifest.mainScript = 'main.nf'\n")
         fo.write("\n")
         fo.write("process {\n")
