@@ -381,6 +381,57 @@ def setup(args):
                   'metadata': pjoin(getcwd(), 'metadata'),
                   'shared': pjoin(getcwd(), 'shared')}
 
+
+    init_cfg = {"indicies": "",
+                "references": "",
+                "fastqs": "",
+                "tmp": "",
+                "outputs": "",
+                "workflow": "",
+                "metadata": "",
+                "logs": "",
+                "rftpkgs": "",
+                ".raft", ""}
+
+    with open(pjoin(getcwd(), '.init.cfg'), 'w') as fo:
+        json.dump(init_cfg, fo)
+
+    with open(pjoin(getcwd(), '.init.wf'), 'w') as fo:
+        fo.write('#!/usr/bin/env nextflow\n')
+        fo.write('nextflow.enable.dsl=2\n')
+        fo.write('\n')
+        fo.write('/*General Parameters*/\n')
+        fo.write("params.project_dir = ''\n")
+        fo.write('params.fq_dir = "${params.project_dir}/fastqs"\n')
+        fo.write("params.global_fq_dir = ''\n")
+        fo.write("params.shared_dir = ''\n")
+        fo.write('params.metadata_dir = "${params.project_dir}/metadata"\n')
+        fo.write('params.indices_out_dir = "${params.project_dir}/indices"\n')
+        fo.write('params.ref_dir = "${params.project_dir}/references"\n')
+        fo.write('params.output_dir = "${params.project_dir}/outputs"\n')
+        fo.write('params.dsp_output_dir = "${params.output_dir}/dataset_prep"\n')
+        fo.write('params.analyses_dir = "${params.output_dir}/analyses"\n')
+        fo.write('params.batch_dir = "${params.output_dir}/batch"\n')
+        fo.write('params.gene_sigs_dir = "${params.batch_dir}/gene_signatures"\n')
+        fo.write('params.samps_out_dir = "${params.output_dir}/samples"\n')
+        fo.write('params.qc_out_dir = "${params.output_dir}/qc"\n')
+        fo.write('\n')
+        fo.write('/*Fine-tuned Parameters*/\n')
+        fo.write('\n')
+        fo.write('/*Inclusions*/\n')
+        fo.write('\n')
+        fo.write('/*Workflows*/\n')
+        fo.write('\n')
+        fo.write('workflow {\n')
+        fo.write('}\n')
+
+    with open(pjoin(getcwd(), '.nextflow.config'), 'w' as fo:
+        fo.write("manifest.mainScript = 'main.nf'\n")
+        fo.write("\n")
+        fo.write("process {\n")
+        fo.write("}\n")
+        
+
     # This prefix should probably be user configurable
     git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
     #nextflow-components is a subgroup, not a repo.
