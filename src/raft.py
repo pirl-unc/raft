@@ -117,7 +117,7 @@ def get_args():
                                       default='')
     parser_load_dataset.add_argument('-b', '--branches',
                                       help="Branch to load for module",
-                                      default='master')
+                                      default='main')
     parser_load_dataset.add_argument('-m', '--mode',
                                       help="Mode (copy or symlink). Default: symlink",
                                       default='symlink')
@@ -136,8 +136,8 @@ def get_args():
                                     help="Module to add to project.",
                                     required=True)
     parser_load_module.add_argument('-b', '--branches',
-                                    help="Branches to checkout per module (see documentat). Default='master'.",
-                                    default='master')
+                                    help="Branches to checkout per module (see documentat). Default='main'.",
+                                    default='main')
     parser_load_module.add_argument('-n', '--no-deps',
                                     help="Do not automatically load dependencies.",
                                     default=False)
@@ -251,7 +251,7 @@ def get_args():
     parser_load_proj.add_argument('-p', '--project-id', help="Project.")
     parser_load_proj.add_argument('-r', '--rftpkg', help="rftpkg file.")
     parser_load_proj.add_argument('--repo-url', help="Git repo url.")
-    parser_load_proj.add_argument('--branch', help="Git repo branch.", default='master')
+    parser_load_proj.add_argument('--branch', help="Git repo branch.")
 
 
     # Subparser for pushing package
@@ -1078,7 +1078,7 @@ def recurs_load_modules(args):
                     if re.search('^include.*nf.*', line):
                         dep = line.split()[-1].replace("'", '').split('/')[1]
                         if dep not in deps:
-                            print("Adding {} to dependency list...".format(dep))
+#                            print("Adding {} to dependency list...".format(dep))
                             deps.append(dep)
         for dep in deps:
             curr_deps = [i.split('/')[-1] for i in glob(pjoin(wf_dir, '*'))]
