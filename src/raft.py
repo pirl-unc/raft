@@ -1235,7 +1235,7 @@ def run_workflow(args):
         except:
             pass
 
-    if args.manifest_csvs:
+    if args.manifest:
         manifest_csvs = [i for i in args.manifest_csvs.split(',')]
         for manifest_csv in manifest_csvs:
             all_samp_ids.extend(extract_samp_ids(args, manifest_csv))
