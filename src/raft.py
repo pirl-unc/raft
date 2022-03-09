@@ -1824,9 +1824,9 @@ def get_wf_mod_map(args):
                             'workflow',
                             '*/*.nf'))
     for nf_script in nf_scripts:
-        wfs = extract_wfs_from_script(nfscript)
+        wfs = extract_wfs_from_script(nf_script)
         for wf in wfs:
-            wf_mod_map[wf] = nfscript
+            wf_mod_map[wf] = nf_script
 
     return wf_mod_map
 
