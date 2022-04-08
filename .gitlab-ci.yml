@@ -14,20 +14,22 @@ before_script:
   - virtualenv venv
   - source venv/bin/activate
 
-test:
+stages:
+ - Static Analysis
+ - Test
+
+reqs:
+  stage: .pre
   script:
     - pip install -r requirements.txt
 
-run:
+install
+  stage: .pre:
   script:
     - pip install dist/*whl
   artifacts:
     paths:
       - dist/*.whl
-
-stages:
- - Static Analysis
- - Test
 
 flake8:
   stage: Static Analysis
