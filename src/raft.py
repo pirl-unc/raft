@@ -429,7 +429,7 @@ def get_user_raft_paths(raft_paths):
     Returns:
         Dictionary containing RAFT paths as keys and user-specified directories as values.
     """
-    print("""/!\ WARNING: The work directory will be large. Choose accordingly. /!\\""")
+    print("WARNING: The work directory will be large. Choose accordingly.")
     for raft_path, default in raft_paths.items():
         user_spec_path = input("Provide a global (among projects) directory for {raft_path} (Default: {default}): ")
         # Should be doing some sanity checking here to ensure the path can exist.
@@ -1116,7 +1116,7 @@ def run_workflow(args):
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     print("Running:\n{}".format(nf_cmd))
     nf_exit_code = subprocess.run(nf_cmd, shell=True, check=False)
-    if not(nf_exit_code.returncode):
+    if not nf_exit_code.returncode:
         print("Workflow completed!\n")
         if not(args.no_reports):
             print("Moving reports to {}\n".format(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports')))
@@ -1512,7 +1512,7 @@ def load_project(args):
                               get_orig_prod_id(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft.orig')),
                               args.project_id)
     else:
-        print("/ ! \ WARNING: Checksums file not found within RFTPKG. Checksums cannot be checked! / ! \\")
+        print("Checksums file not found within RFTPKG. Checksums cannot be checked.")
 
 
     shutil.copyfile(pjoin(raft_cfg['filesystem']['projects'], args.project_id, '.raft', 'snapshot.raft'),
@@ -2115,8 +2115,8 @@ def extract_params_from_proj_or_cfg(fo):
     # line conditions
     for line in fo.readlines():
         line = line.rstrip()
-        if (line.startswith('params.') and 
-            not(line.partition(' = ')[2].startswith('params')) and 
+        if (line.startswith('params.') and
+            not(line.partition(' = ')[2].startswith('params')) and
             not(re.search('project_identifier', line))):
             line = line.partition(' = ')
             source_params[line[0]] = line[2]
