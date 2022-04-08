@@ -50,7 +50,7 @@ def get_args():
 
     # Subparser for initializing a project.
     parser_init_project = subparsers.add_parser('init-project',
-                                                 help="Initialize a RAFT project.")
+                                                help="Initialize a RAFT project.")
     parser_init_project.add_argument('-c', '--init-config',
                                      help="Project config file (see documentation).",
                                      default=pjoin(getcwd(), '.init.cfg'))
@@ -86,8 +86,8 @@ def get_args():
                                        help="Project identifier",
                                        required=True)
     parser_load_reference.add_argument('-m', '--mode',
-                                      help="Mode (copy or symlink). Default: symlink",
-                                      default='symlink')
+                                       help="Mode (copy or symlink). Default: symlink",
+                                       default='symlink')
 
 
     # Subparser for loading metadata into a project.
@@ -220,12 +220,12 @@ def get_args():
 
     # Subparser for packaging project (to generate sharable rftpkg tar file)
     parser_package_project = subparsers.add_parser('package-project',
-                                                    help="Package project (see documentation).")
+                                                   help="Package project (see documentation).")
     parser_package_project.add_argument('-p', '--project-id',
-                                         help="Project identifier")
+                                        help="Project identifier")
     parser_package_project.add_argument('-o', '--output',
-                                         help="Output file.",
-                                         default='')
+                                        help="Output file.",
+                                        default='')
     parser_package_project.add_argument('-n', '--no-git',
                                         help="Do not include Git files.",
                                         default=False,
@@ -263,14 +263,14 @@ def get_args():
 
 
     parser_update_modules = subparsers.add_parser('update-modules',
-                                                 help="Pull the latest commits for each module.")
+                                                  help="Pull the latest commits for each module.")
     parser_update_modules.add_argument('-p', '--project-id', help="Project identifier")
     parser_update_modules.add_argument('-m', '--modules',
-                                     help="List of modules to update (Default = all)",
-                                     default='')
+                                       help="List of modules to update (Default = all)",
+                                       default='')
 
     parser_rename_project = subparsers.add_parser('rename-project',
-                                                 help="Rename a project exhaustively.")
+                                                  help="Rename a project exhaustively.")
     parser_rename_project.add_argument('-p', '--project-id', help="Project identifier")
     parser_rename_project.add_argument('-n', '--new-id', help="New project identifier")
 
@@ -282,10 +282,10 @@ def get_args():
     parser_clean_project.add_argument('-p', '--project-id', help="Project.")
     parser_clean_project.add_argument('-k', '--keep-latest',
                                       help="Keep only directories from latest successful run.",
-                                      action='store_true', default = False)
+                                      action='store_true', default=False)
     parser_clean_project.add_argument('-n', '--no-exec',
                                       help="Provide latest/completed/cleanable work directory counts but do NOT delete.",
-                                      action='store_true', default = False)
+                                      action='store_true', default=False)
 
  
     # Subparser for copying parameters between projects or from a config file.
@@ -391,7 +391,7 @@ def setup(args):
         fo.write("\n")
         fo.write("process {\n")
         fo.write("}\n")
-        
+
 
     git_prefix = 'https://gitlab.com/bgv-lens/nextflow'
     #nextflow-components is a subgroup, not a repo.
@@ -562,7 +562,6 @@ def mk_repo(args):
     """
     raft_cfg = load_raft_cfg()
     local_repo = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs')
-    #repo = Repo(local_repo)
     repo = Repo.init(local_repo)
     if args.repo_url:
         repo.create_remote('origin', args.repo_url)
@@ -580,9 +579,7 @@ def mk_main_wf_and_cfg(args):
     raft_cfg = load_raft_cfg()
     tmplt_wf_file = os.path.join(os.getcwd(), '.init.wf')
     tmplt_cfg_file = os.path.join(os.getcwd(), '.nextflow.config')
-    proj_wf_path = pjoin(raft_cfg['filesystem']['projects'],
-                                  args.project_id,
-                                  'workflow')
+    proj_wf_path = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
     with open(tmplt_wf_file) as origfo:
         with open(pjoin(proj_wf_path, 'main.nf'), 'w') as outfo:
             for line in origfo.readlines():
@@ -650,7 +647,7 @@ def mk_proj_dir(proj_id):
 
     try:
         os.mkdir(proj_dir)
-    except:
+    except FileExistsError:
         sys.exit("Project directory already exists. Please try another.")
 
     return proj_dir
@@ -715,7 +712,6 @@ def mk_mounts_cfg(dir, bind_dirs):
         bind_dirs (list): Directories to be included in mounts.config file.
     """
     raft_cfg = load_raft_cfg()
-    imgs_dir = raft_cfg['filesystem']['imgs']
     out = []
     out.append('{}\n'.format(','.join(bind_dirs)))
 
@@ -860,7 +856,7 @@ def load_manifest(args):
                         #Just adding each file individually for now...
                         bind_dirs.append(os.path.dirname(os.path.realpath(hit)))
                 else:
-                    print("""Unable to find FASTQs for prefix {} in /fastqs. Check your metadata csv!\n""".format(prefix))
+                    print("Unable to find FASTQs for prefix {} in /fastqs. Check your metadata!\n".format(prefix))
 
     bind_dirs = list(set(bind_dirs))
 
@@ -997,7 +993,9 @@ def recurs_load_modules(args):
 
 def list_steps(args):
     """
-    List the process and workflows available from a Nextflow component. Requires project since it assumes users may modify componenets in a project-specific manner.
+    List the process and workflows available from a Nextflow component.
+    Requires project since it assumes users may modify componenets in a
+    project-specific manner.
 
     Args:
        args (Namespace object): User-provided arguments
