@@ -320,7 +320,6 @@ def setup(args):
                   'metadata': pjoin(getcwd(), 'metadata'),
                   'shared': pjoin(getcwd(), 'shared')}
 
-
     init_cfg = {"indicies": "",
                 "references": "",
                 "fastqs": "",
@@ -805,7 +804,7 @@ def load_manifest(args):
         hdr = hdr.strip('\n').split(',')
         # Will certainly need a better way to do this, but this will work for now.
         cols_to_check = [i for i in range(len(hdr)) if hdr[i] in ['File_Prefix']]
-        col_idx_map = {i:j for j,i in enumerate(hdr)}
+        col_idx_map = {i: j for j, i in enumerate(hdr)}
 
         for row in fo:
             row = row.strip('\n').split(',')
@@ -984,16 +983,13 @@ def list_steps(args):
         glob_term = args.module + '/'
 
     globbed_mods = glob(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', glob_term))
-    #print(globbed_mods)
     for mod in globbed_mods:
         with open(pjoin(mod, mod.split('/')[-2] + '.nf')) as fo:
             for line in fo:
                 if re.search('^workflow', line):
                     comment = "module: {}\ntype: workflow\nstep: {}\n".format(mod.split('/')[-2], line.split(' ')[1])
-                    #print(comment)
                 elif re.search('^process', line):
                     comment = "module: {}\ntype: process\nstep: {}\n".format(mod.split('/')[-2], line.split(' ')[1])
-                    #print(comment)
 
 
 def get_module_branch(args):
@@ -1146,8 +1142,8 @@ def get_work_dirs(args):
             if line:
                 line = line.split('\t')
                 if line[3] == 'OK':
-                  project_uuid = line[5]
-                  break
+                    project_uuid = line[5]
+                    break
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     work_dirs = [x for x in subprocess.run('nextflow log {}'.format(project_uuid), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
     return work_dirs
@@ -1462,7 +1458,7 @@ def load_project(args):
     Part of load-project mode.
     """
     raft_cfg = load_raft_cfg()
-    #Should really be using .init.cfg from package here...
+    # Should really be using .init.cfg from package here...
     fixt_args = {'init_config': os.path.join(os.getcwd(), '.init.cfg'),
                  'project_id': args.project_id,
                  'repo_url': ''}
@@ -1491,7 +1487,6 @@ def load_project(args):
                     args.project_id,
                     'rftpkgs',
                     os.path.basename(args.rftpkg))
-
 
     # Extract and distribute tarball contents
     tar = tarfile.open(tarball)
@@ -1553,7 +1548,7 @@ def get_orig_prod_id(fle):
         ind = first.split(' ').index('-p')
         if not ind:
             ind = first.split(' ').index('--project-id')
-        return first.split(' ')[ind +1]
+        return first.split(' ')[ind+1]
 
 
 def get_params_from_module(module_path):
@@ -1585,7 +1580,6 @@ def get_section_insert_idx(contents, section, stop='\n'):
     return start + insert_idx
 
 
-
 def get_wf_mod_map(args):
     """
     """
@@ -1601,7 +1595,6 @@ def get_wf_mod_map(args):
             wf_mod_map[wf] = nf_script
 
     return wf_mod_map
-
 
 
 def extract_wfs_from_script(script_path):
@@ -1637,7 +1630,7 @@ def add_step(args):
     # Load main.nf contents
     main_contents = []
     with open(main_nf) as mfo:
-       main_contents = mfo.readlines()
+        main_contents = mfo.readlines()
 
     print("Making backup of project's main.nf...")
     shutil.copyfile(main_nf, main_nf + '.bak')
@@ -1759,7 +1752,6 @@ def expand_params(params):
     """
     expanded_params = {}
     for param in params:
-        #print(param)
         param = param.partition('.')[2]
         param = param.split('$')
         expanded_params['params.' + '$'.join(param)] = "''"
@@ -1767,7 +1759,6 @@ def expand_params(params):
             for i in range(0,len(param) - 1):
                 expanded_params['params.' + '$'.join(param[:i+1] + [param[-1]])] = 'params.' + '$'.join(param[:i] + [param[-1]])
             expanded_params['params.' + param[-1]] = "''"
-        #print(expanded_params)
     return expanded_params
 
 
@@ -1807,7 +1798,7 @@ def find_step_module(contents, step):
     mod = []
     try:
         mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0].split('/')[1]
-    except:
+    except FileNotFoundError:
         pass
     return mod
 
@@ -1922,7 +1913,6 @@ def get_workflow_str(wf_slice):
     if '// require:' in wf_slice:
         require_idx = wf_slice.index('// require:')
         take_idx = wf_slice.index('take:')
-        main_idx = wf_slice.index('main:')
         wf_list = [wf_slice[0].replace("workflow ", "").replace(" {",""), '(',
                    ", ".join([x.replace('//  ', '').strip() for x in wf_slice[require_idx+1:take_idx]]), ')\n']
     else:
@@ -2020,7 +2010,6 @@ def clean_project(args):
                     args.project_id, 'logs')
     successful_run = ''
     project_uuid = ''
-    found_latest = False
     with open(pjoin(log_dir, '.nextflow', 'history')) as fo:
         for line in reversed(fo.read().split('\n')):
             if line:
@@ -2123,10 +2112,11 @@ def extract_params_from_proj_or_cfg(fo):
     # line conditions
     for line in fo.readlines():
         line = line.rstrip()
-        if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)) :
+        if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)):
             line = line.partition(' = ')
             source_params[line[0]] = line[2]
     return source_params
+
 
 def main():
     """
