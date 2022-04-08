@@ -258,7 +258,7 @@ def get_args():
 
     # Subparser for cleaning work directories associated with a project.
     parser_clean_project = subparsers.add_parser('clean-project',
-                                                 help="Remove unneeded (failed/aborted) work directories for a project.")
+                                                 help="Remove failed/aborted work directories for a project.")
     parser_clean_project.add_argument('-p', '--project-id', help="Project.")
     parser_clean_project.add_argument('-k', '--keep-latest',
                                       help="Keep only directories from latest successful run.",
@@ -271,13 +271,14 @@ def get_args():
     parser_copy_params = subparsers.add_parser('copy-parameters',
                                                help="copy parameters between projects.")
     parser_copy_params.add_argument('-s', '--source-project',
-                                      help="Source project identifier")
-    parser_copy_params.add_argument('-d', '--destination-project',
-                                      help="Destination project identifier")
+                                    help="Source project identifier")
+    parser_copy_params.add_argument('-d', '--dest-project',
+                                    help="Destination project identifier")
     parser_copy_params.add_argument('-c', '--source-config',
-                                      help="Source configuration file (to copy parameters from)")
+                                    help="Source configuration file (to copy parameters from)")
 
     return parser.parse_args()
+
 
 def setup(args):
     """
@@ -370,9 +371,8 @@ def setup(args):
         fo.write("process {\n")
         fo.write("}\n")
 
-
     git_prefix = 'https://gitlab.com/bgv-lens/nextflow'
-    #nextflow-components is a subgroup, not a repo.
+    # nextflow-components is a subgroup, not a repo.
     nf_repos = {'nextflow_modules': pjoin(git_prefix, 'Modules')}
     nf_subs = {'nextflow_module_subgroups': ['Tools', 'Projects', 'Datasets']}
 
@@ -1757,7 +1757,7 @@ def expand_params(params):
         expanded_params['params.' + '$'.join(param)] = "''"
         if len(param) > 1:
             for i in range(0,len(param) - 1):
-                expanded_params['params.' + '$'.join(param[:i+1] + [param[-1]])] = 'params.' + '$'.join(param[:i] + [param[-1]])
+                expanded_params['params.'+'$'.join(param[:i+1]+[param[-1]])] = 'params.'+'$'.join(param[:i]+[param[-1]])
             expanded_params['params.' + param[-1]] = "''"
     return expanded_params
 
@@ -2080,11 +2080,12 @@ def touch(path):
 def copy_parameters(args):
     """
     """
-    src_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')
-    orig_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')
-    new_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params')
-
     raft_cfg = load_raft_cfg()
+
+    src_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')
+    orig_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.dest_project, 'workflow', 'main.nf')
+    new_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.dest_project, 'workflow', 'main.nf.copy_params')
+
     source_params = {}
     if args.source_project:
         with open(src_proj_main) as fo:
