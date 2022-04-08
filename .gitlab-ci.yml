@@ -23,7 +23,7 @@ reqs:
   script:
     - pip install -r requirements.txt
 
-install
+install:
   stage: .pre
   script:
     - pip install dist/*whl
@@ -45,18 +45,6 @@ pytest:
   stage: Test
   script:
   - pytest
-
-
-test:
-  script:
-    - pip install -r requirements.txt
-
-run:
-  script:
-    - pip install dist/*whl
-  artifacts:
-    paths:
-      - dist/*.whl
 
 #pages:
 #  script:
