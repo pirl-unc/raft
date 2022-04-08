@@ -3,13 +3,10 @@
 # Run this *in* the RAFT directory, or bad things will happen (or nothing at all).
 
 import argparse
-from git import Repo
 from glob import glob
 import hashlib
 import json
 import os
-import pathlib
-from pprint import pprint
 import random
 import re
 import shutil
@@ -18,6 +15,8 @@ import subprocess
 import sys
 import tarfile
 import time
+
+from git import Repo
 
 # These are repeatedly called, so trying to make life easier.
 from os.path import join as pjoin
@@ -388,7 +387,7 @@ def setup(args):
     if os.path.isfile(cfg_path):
         bkup_cfg_path = cfg_path + '.orig'
         print("A configuration file already exists.")
-        print("Copying original to {}.".format(bkup_cfg_path))
+        print("Copying original to {bkup_cfg_path}.")
         os.rename(cfg_path, bkup_cfg_path)
 
     if not args.default:
@@ -403,7 +402,7 @@ def setup(args):
                   'nextflow_subgroups': nf_subs,
                   'analysis_repos': raft_repos}
 
-    print("Saving configuration file to {}...".format(cfg_path))
+    print("Saving configuration file to {cfg_path}...")
     dump_cfg(cfg_path, master_cfg)
 
     print("Executing configuration file...")
@@ -433,8 +432,7 @@ def get_user_raft_paths(raft_paths):
     """
     print("""/!\ WARNING: The work directory will be large. Choose accordingly. /!\\""")
     for raft_path, default in raft_paths.items():
-        user_spec_path = input("Provide a global (among projects) directory for {} (Default: {}): "
-                               .format(raft_path, default))
+        user_spec_path = input("Provide a global (among projects) directory for {raft_path} (Default: {default}): ")
         # Should be doing some sanity checking here to ensure the path can exist.
         if user_spec_path:
             if re.search('~', user_spec_path):
@@ -459,8 +457,7 @@ def get_user_nf_repos(nf_repos, nf_subs):
     """
     # Allow users to specify their own Nextflow workflows and modules repos.
     for nf_repo, default in nf_repos.items():
-        user_spec_repo = input("\nProvide a repository for Nextflow {}\n(Default: {}):"
-                               .format(nf_repo, default))
+        user_spec_repo = input("\nProvide a repository for Nextflow {nf_repo}\n(Default: {default}):")
         if user_spec_repo:
             nf_repos[nf_repo] = user_spec_repo
 
@@ -2049,7 +2046,7 @@ def clean_project(args):
     print("Cleanable run work hashes count: {}".format(len(cleanable_hashes)))
     if not(args.no_exec):
         for cleanable_dir in cleanable_hashes:
-            print("Removing extra files from {}...".format(cleanable_dir))
+            print(f"Removing extra files from {cleanable_dir}...")
             cleanable_files = [i for i in os.listdir(cleanable_dir) if i not in ['meta'] and not(re.search('command', i))]
             for cleanable_file in cleanable_files:
                 try:
