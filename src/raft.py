@@ -716,7 +716,7 @@ def update_mounts_cfg(mounts_cfg, bind_dirs):
         paths = line.split(',')
         bind_dirs_to_add = []
         for bind_dir in bind_dirs:
-            if not(any([bind_dir.startswith(path) for path in paths])):
+            if not any([bind_dir.startswith(path) for path in paths]):
                 bind_dirs_to_add.append(bind_dir)
             for path in paths:
                 if path.startswith(bind_dir):
@@ -909,7 +909,7 @@ def load_files(args, out_dir):
     globbed_file = globbed_files[0]
 
     abs_out_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, out_dir)
-    if args.sub_dir and not(os.path.exists(pjoin(abs_out_dir, args.sub_dir))):
+    if args.sub_dir and not os.path.exists(pjoin(abs_out_dir, args.sub_dir)):
         os.makedirs(pjoin(abs_out_dir, args.sub_dir))
 
     result_file = pjoin(abs_out_dir, args.sub_dir, os.path.basename(globbed_file))
@@ -1041,7 +1041,7 @@ def load_module(args):
                 found = 1
             except:
                 pass
-        if not(found):
+        if not found:
             sys.exit("/ ! \\ ERROR: Could not find module {} in any subgroups specified in RAFT config / ! \\".format(args.module))
         nf_cfg = pjoin(raft_cfg['filesystem']['projects'],
                        args.project_id,
@@ -1118,7 +1118,7 @@ def run_workflow(args):
     nf_exit_code = subprocess.run(nf_cmd, shell=True, check=False)
     if not nf_exit_code.returncode:
         print("Workflow completed!\n")
-        if not(args.no_reports):
+        if not args.no_reports:
             print("Moving reports to {}\n".format(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports')))
             reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
             os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
@@ -1258,7 +1258,7 @@ def get_base_nf_cmd(args):
     reports = ''
     if not args.no_resume:
         resume = '-resume'
-    if not(args.no_reports):
+    if not args.no_reports:
         reports = '-with-trace -with-report -with-dag -with-timeline'
     cmd = ' '.join(['nextflow -Dnxf.pool.type=sync run', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume, reports])
     return cmd
@@ -1356,7 +1356,7 @@ def snapshot_postproc(inf, outf):
             new_contents = []
             contents = ifo.readlines()
             for line_idx, line in enumerate(contents):
-                if not(re.search("run-workflow", line)):
+                if not re.search("run-workflow", line):
                     new_contents.append(line)
                 elif line_idx == len(contents) - 1:
                     line = line.strip().replace('n=', 'n="')
@@ -1388,7 +1388,7 @@ def package_project(args):
     for mfile in metadata_files:
         mfilel = mfile.split('/')
         msuffix = '/'.join(mfilel[mfilel.index('metadata')+1:])
-        if not(os.path.islink(mfile)) and not(os.path.isdir(mfile)):
+        if not os.path.islink(mfile) and not os.path.isdir(mfile):
             basedir = pjoin(proj_tmp_dir, 'metadata', os.path.dirname(msuffix))
             if '/' in msuffix:
                 os.makedirs(pjoin(proj_tmp_dir, 'metadata', os.path.dirname(msuffix)))
@@ -1397,7 +1397,7 @@ def package_project(args):
     # Getting required checksums. Currently only doing /datasets, but should
     # probably do other directories produced by workflow as well.
     dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices', 'workflow']
-    if not(args.no_checksums):
+    if not args.no_checksums:
         hashes = {}
         with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as fo:
             hashes = {}
@@ -1650,7 +1650,7 @@ def add_step(args):
     # put within main.nf
     step_str = ''
     step_slice = extract_step_slice_from_nfscript(mod_nf, args.step)
-    if not(step_slice):
+    if not step_slice:
         sys.exit("ERROR: Step {} could not be found in module {}.".format(args.step, args.module))
     step_str = get_workflow_str(step_slice)
     if args.alias:
@@ -1819,7 +1819,7 @@ def find_step_actual_and_alias(contents, step):
     mod = []
 
     mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0]
-    if not(re.findall(' as ', mod)):
+    if not re.findall(' as ', mod):
         actual = step
         alias = ''
     else:
@@ -2034,10 +2034,10 @@ def clean_project(args):
     else:
         cleanable_hashes = [x for x in all_work_hashes if x not in completed_work_hashes]
     print("Cleanable run work hashes count: {}".format(len(cleanable_hashes)))
-    if not(args.no_exec):
+    if not args.no_exec:
         for cleanable_dir in cleanable_hashes:
             print(f"Removing extra files from {cleanable_dir}...")
-            cleanable_files = [i for i in os.listdir(cleanable_dir) if i not in ['meta'] and not(re.search('command', i))]
+            cleanable_files = [i for i in os.listdir(cleanable_dir) if i not in ['meta'] and not re.search('command', i)]
             for cleanable_file in cleanable_files:
                 try:
                     shutil.rmtree(cleanable_file)
@@ -2116,8 +2116,8 @@ def extract_params_from_proj_or_cfg(fo):
     for line in fo.readlines():
         line = line.rstrip()
         if (line.startswith('params.') and
-            not(line.partition(' = ')[2].startswith('params')) and
-            not(re.search('project_identifier', line))):
+            not line.partition(' = ')[2].startswith('params') and
+            not (re.search('project_identifier', line)):
             line = line.partition(' = ')
             source_params[line[0]] = line[2]
     return source_params
