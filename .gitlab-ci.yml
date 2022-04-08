@@ -23,8 +23,8 @@ reqs:
   script:
     - pip install -r requirements.txt
 
-install
-  stage: .pre:
+install:
+  stage: .pre
   script:
     - pip install dist/*whl
   artifacts:
@@ -34,29 +34,17 @@ install
 flake8:
   stage: Static Analysis
   script:
-  - flake8 --max-line-length=120 --max-complexity 8 raft/src/*.py
+  - flake8 --max-line-length=120 --max-complexity 8 src/raft.py
 
 pylint:
   stage: Static Analysis
   script:
-  - pylint -d C0301 -d R0902 raft/src/*.py
+  - pylint -d C0301 -d R0902 src/raft.py
 
 pytest:
   stage: Test
   script:
   - pytest
-
-
-test:
-  script:
-    - pip install -r requirements.txt
-
-run:
-  script:
-    - pip install dist/*whl
-  artifacts:
-    paths:
-      - dist/*.whl
 
 #pages:
 #  script:
