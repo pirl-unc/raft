@@ -41,8 +41,7 @@ def get_args():
 
     # Subparser for initial RAFT setup.
     parser_setup = subparsers.add_parser('setup',
-                                         help="""RAFT setup
-                                                 and configuration.""")
+                                         help="""RAFT setup and configuration.""")
     parser_setup.add_argument('-d', '--default',
                               help="Use default paths for setup.",
                               action='store_true',
@@ -56,7 +55,7 @@ def get_args():
                                      help="Project config file (see documentation).",
                                      default=pjoin(getcwd(), '.init.cfg'))
     parser_init_project.add_argument('-p', '--project-id',
-                                     help="Project identifier.",
+                                     help="Project identifier",
                                      required=True)
     parser_init_project.add_argument('-r', '--repo-url',
                                      help="Git repo url for remote pushing/pulling.",
@@ -67,16 +66,16 @@ def get_args():
     parser_load_manifest = subparsers.add_parser('load-manifest',
                                                  help="Load manifest into a project.")
     parser_load_manifest.add_argument('-c', '--manifest-csv',
-                                      help="Manifest CSV (see documentation).",
-                                     required=True)
+                                      help="Manifest CSV (see documentation)",
+                                      required=True)
     parser_load_manifest.add_argument('-p', '--project-id',
-                                      help="Project identifier.",
+                                      help="Project identifier",
                                       required=True)
 
 
-    # Subparser for loading reference files/dirs into an analysis.
+    # Subparser for loading reference files/dirs into a project.
     parser_load_reference = subparsers.add_parser('load-reference',
-                                                  help="Loads ref files/dirs into an analysis.")
+                                                  help="Loads ref files/dirs into a project.")
     parser_load_reference.add_argument('-f', '--file',
                                        help="Reference file or directory (see documentation).",
                                        required=True)
@@ -84,103 +83,103 @@ def get_args():
                                        help="Subdirectory for reference file or directory.",
                                        default='')
     parser_load_reference.add_argument('-p', '--project-id',
-                                       help="Project to add reference to.",
+                                       help="Project identifier",
                                        required=True)
     parser_load_reference.add_argument('-m', '--mode',
                                       help="Mode (copy or symlink). Default: symlink",
                                       default='symlink')
 
 
-    # Subparser for loading metadata into an analysis.
+    # Subparser for loading metadata into a project.
     parser_load_metadata = subparsers.add_parser('load-metadata',
-                                                 help="Loads metadata into an analysis.")
+                                                 help="Loads metadata into a project.")
     parser_load_metadata.add_argument('-f', '--file',
                                       help="Metadata file. Check docs for more info.",
                                       required=True)
     parser_load_metadata.add_argument('-s', '--sub-dir',
                                       help="Subdirectory for metadata file.", default='')
     parser_load_metadata.add_argument('-p', '--project-id',
-                                      help="Project to add metadata to.",
+                                      help="Project identifier.",
                                       required=True)
     parser_load_metadata.add_argument('-m', '--mode',
                                       help="Mode (copy or symlink). Default: copy",
                                       default='symlink')
 
 
-    # Subparser for loading a complete dataset into an analysis.
-    parser_load_metadata = subparsers.add_parser('load-dataset',
-                                                 help="Loads dataset into aa project.")
-    parser_load_metadata.add_argument('-d', '--dataset-id',
-                                      help="Dataset identifier. Check docs for more info.",
-                                      required=True)
-    parser_load_metadata.add_argument('-p', '--project-id',
-                                      help="Project to add metadata to.",
-                                      required=True)
-    parser_load_metadata.add_argument('-r', '--repo',
-                                      help="Repo to load module from",
-                                      default='')
-    parser_load_metadata.add_argument('-b', '--branches',
-                                      help="Branch to load for module",
-                                      default='master')
-    parser_load_metadata.add_argument('-m', '--mode',
-                                      help="Mode (copy or symlink). Default: copy",
-                                      default='symlink')
+    # Subparser for loading a complete dataset into a project.
+    parser_load_dataset = subparsers.add_parser('load-dataset',
+                                                help="Loads dataset into aa project.")
+    parser_load_dataset.add_argument('-d', '--dataset-id',
+                                     help="Dataset identifier. Check docs for more info.",
+                                     required=True)
+    parser_load_dataset.add_argument('-p', '--project-id',
+                                     help="Project identifier",
+                                     required=True)
+    parser_load_dataset.add_argument('-r', '--repo',
+                                     help="Repo to load module from",
+                                     default='')
+    parser_load_dataset.add_argument('-b', '--branch',
+                                     help="Branch to load for module",
+                                     default='master')
+    parser_load_dataset.add_argument('-m', '--mode',
+                                     help="Mode (copy or symlink). Default: copy",
+                                     default='symlink')
 
 
-    # Subparser for loading component into an analysis.
+    # Subparser for loading component into a project.
     parser_load_module = subparsers.add_parser('load-module',
-                                               help="Clones Nextflow module into analysis.")
+                                               help="Clones Nextflow module into project.")
     parser_load_module.add_argument('-p', '--project-id',
-                                    help="Project to load module(s) into.",
+                                    help="Project identifier",
                                     required=True)
     parser_load_module.add_argument('-r', '--repo',
                                     help="Module repository.",
                                     default='')
     parser_load_module.add_argument('-m', '--module',
-                                    help="Module to add to analysis.",
+                                    help="Module to add to project.",
                                     required=True)
     # Need support for commits and tags here as well.
     parser_load_module.add_argument('-b', '--branches',
-                                    help="Branches to checkout per module (see documentat). Default='master'.",
-                                    default='master')
+                                    help="Branches to checkout per module (see documentat). Default='main'.",
+                                    default='main')
     parser_load_module.add_argument('-n', '--no-deps',
                                     help="Do not automatically load dependencies.",
                                     default=False)
     parser_load_module.add_argument('-d', '--delay',
                                     help="Delay (in seconds) before git pulls. (Default = 15s).",
-                                    default=30)
+                                    default=15)
 
 
     # Subparser for listing module steps.
     parser_list_steps = subparsers.add_parser('list-steps',
                                               help="List module's processes and workflows.")
     parser_list_steps.add_argument('-p', '--project-id',
-                                   help="Project.",
+                                   help="Project identifier",
                                    required=True)
     parser_list_steps.add_argument('-m', '--module',
-                                   help="Module.")
+                                   help="Module")
     parser_list_steps.add_argument('-s', '--step',
-                                   help="Step.")
+                                   help="Step")
 
 
-    # Subparser for updating analysis-specific mounts.config file.
+    # Subparser for updating project-specific mounts.config file.
     parser_update_mounts = subparsers.add_parser('update-mounts',
-                                                 help="""Updates analysis-specific mounts.config
+                                                 help="""Updates project-specific mounts.config
                                                          file with symlinks found in a directory.""")
     parser_update_mounts.add_argument('-p', '--project-id',
-                                      help="Project Identifier.",
+                                      help="Project identifier",
                                       required=True)
     parser_update_mounts.add_argument('-d', '--dir',
                                       help="Directory containing symlinks for mounts.config.",
                                       required=True)
 
 
-    # Subparser for adding a step into workflow step of an analysis.
+    # Subparser for adding a step into workflow step of a project.
     parser_add_step = subparsers.add_parser('add-step',
-                                            help="""Add step (process/workflow) to analysis
+                                            help="""Add step (process/workflow) to project
                                                     (see documentation).""")
     parser_add_step.add_argument('-p', '--project-id',
-                                 help="Project to add step to.",
+                                 help="Project identifier",
                                  required=True)
     parser_add_step.add_argument('-m', '--module',
                                  help="Module containing step (process/workflow).",
@@ -189,80 +188,59 @@ def get_args():
                                  help="Process/workflow to add.",
                                  required=True)
     parser_add_step.add_argument('-S', '--subworkflow',
-                                 help="Subworkflow to add step to (if needed)",
+                                 help="Subworkflow to add step to (default: main)",
                                  default='main')
     parser_add_step.add_argument('-a', '--alias',
                                  help="Assign an alias to step.",
                                  default='')
-#    parser_add_step.add_argument('-n', '--no-populate',
-#                                 help="Load step without placeholder variables.",
-#                                 action='store_true')
 
 
     # Subparser for running workflow.
     parser_run_workflow = subparsers.add_parser('run-workflow',
                                                 help="Run workflow")
-    # At least one of these should be required, but should they be mutually exclusive?
-    # Above comment is old -- but this does seem like a reasonable way to filter samples.
     parser_run_workflow.add_argument('--no-resume',
                                      help="Do not use Nextflow's -resume.",
                                      default=False,
                                      action='store_true')
-    parser_run_workflow.add_argument('-c', '--manifest-csvs',
-                                     help="Comma-separated list of manifest CSV(s)")
-    parser_run_workflow.add_argument('-s', '--samples',
-                                     help="Comma-separated list of sample(s).")
     parser_run_workflow.add_argument('-w', '--workflow',
-                                     help="Workflow to run.",
+                                     help="Workflow to run (default: main).",
                                      default='main')
     parser_run_workflow.add_argument('-n', '--nf-params',
-                                     help="Param string passed to Nextflow (see documentation).")
+                                     help="Parameter string passed to Nextflow (see documentation).")
     parser_run_workflow.add_argument('-p', '--project-id',
-                                     help="Project.",
+                                     help="Project identifier",
                                      required=True)
     parser_run_workflow.add_argument('-k', '--keep-previous-outputs',
                                      help="Do not remove previous outputs before running.",
                                      action='store_true')
     parser_run_workflow.add_argument('-r', '--no-reports',
-                                     help="Do not create report files.", action='store_true')
-    parser_run_workflow.add_argument('-ki', '--keep-intermediates',
-                                     help="Keep intermediates files.",
-                                     action='store_true')
-    parser_run_workflow.add_argument('--confirm-intermediates-deletion',
-                                     help="Deletion intermediates files.",
-                                     action='store_true')
-    parser_run_workflow.add_argument('-d', '--delete-suffixes',
-                                     help="Comma-separated list of suffixes to delelte.",
-                                     default='bam,sam,fq,fq.gz,fastq,fastq.gz')
-    parser_run_workflow.add_argument('--remake-intermediates',
-                                     help="Clear out zero-sized intermediate placeholders.",
-                                     action='store_true')
-    parser_run_workflow.add_argument('--project-work',
-                                     help="Put /work directory in project directory.",
+                                     help="Do not create report files.",
                                      action='store_true')
 
 
-    # Subparser for packaging analysis (to generate sharable rftpkg tar file)
+    # Subparser for packaging project (to generate sharable rftpkg tar file)
     parser_package_project = subparsers.add_parser('package-project',
                                                     help="Package project (see documentation).")
     parser_package_project.add_argument('-p', '--project-id',
-                                         help="Project.")
+                                         help="Project identifier")
     parser_package_project.add_argument('-o', '--output',
                                          help="Output file.",
                                          default='')
     parser_package_project.add_argument('-n', '--no-git',
                                         help="Do not include Git files.",
-                                        default=False, action='store_true')
+                                        default=False,
+                                        action='store_true')
     parser_package_project.add_argument('-c', '--no-checksums',
                                         help="Do not include checksums.",
-                                        default=False, action='store_true')
+                                        default=False,
+                                        action='store_true')
 
 
     # Subparser for loading package (after receiving rftpkg tar file)
     parser_load_project = subparsers.add_parser('load-project',
                                                 help="Load project (see documentation).")
-    parser_load_project.add_argument('-p', '--project-id', help="Project.")
-    parser_load_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
+    parser_load_project.add_argument('-p', '--project-id', help="Project identifier")
+    parser_load_project.add_argument('-r', '--rftpkg', help="rftpkg file")
     parser_load_project.add_argument('--repo-url', help="Git repo url.")
     parser_load_project.add_argument('--branch', help="Git repo branch.", default='master')
 
@@ -270,7 +248,7 @@ def get_args():
     # Subparser for pushing package
     parser_push_project = subparsers.add_parser('push-project',
                                                 help="Push project to repo(see documentation).")
-    parser_push_project.add_argument('-p', '--project-id', help="Project.")
+    parser_push_project.add_argument('-p', '--project-id', help="Project identifier")
     parser_push_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
     parser_push_project.add_argument('--repo', help="Repo push to.")
     parser_push_project.add_argument('-c', '--comment', help="Commit comment.")
@@ -280,21 +258,21 @@ def get_args():
     # Subparser for pulling package from repo
     parser_pull_project = subparsers.add_parser('pull-project',
                                                 help="Pull project from repo (see documentation).")
-    parser_pull_project.add_argument('-p', '--project-id', help="Project.")
-    parser_pull_project.add_argument('-r', '--rftpkg', help="rftpkg file.")
+    parser_pull_project.add_argument('-p', '--project-id', help="Project identifier")
+    parser_pull_project.add_argument('-r', '--rftpkg', help="rftpkg file")
 
 
     parser_update_modules = subparsers.add_parser('update-modules',
                                                  help="Pull the latest commits for each module.")
-    parser_update_modules.add_argument('-p', '--project-id', help="Project.")
+    parser_update_modules.add_argument('-p', '--project-id', help="Project identifier")
     parser_update_modules.add_argument('-m', '--modules',
                                      help="List of modules to update (Default = all)",
                                      default='')
 
     parser_rename_project = subparsers.add_parser('rename-project',
                                                  help="Rename a project exhaustively.")
-    parser_rename_project.add_argument('-p', '--project-id', help="Project.")
-    parser_rename_project.add_argument('-n', '--new-id', help="New identifier.")
+    parser_rename_project.add_argument('-p', '--project-id', help="Project identifier")
+    parser_rename_project.add_argument('-n', '--new-id', help="New project identifier")
 
 
 
@@ -309,33 +287,16 @@ def get_args():
                                       help="Provide latest/completed/cleanable work directory counts but do NOT delete.",
                                       action='store_true', default = False)
 
-    # Subparser for cleaning work directories associated with a project.
-    parser_clean_project = subparsers.add_parser('push-shared',
-                                                 help="Push shared directories from project to Google Cloud Bucket")
-    parser_clean_project.add_argument('-p', '--project-id', help="Project.")
-    parser_clean_project.add_argument('-d', '--dir', help="Directory.")
-    parser_clean_project.add_argument('-b', '--bucket',
-                                      help="Bucket for pushed shared files.")
-
-
-    # Subparser for cleaning shared directory.
-    parser_clean_project = subparsers.add_parser('clean-shared',
-                                                 help="Clean /shared directory.")
-    parser_clean_project.add_argument('-n', '--no-exec',
-                                      help="List deletable files, but don't delete")
-    parser_clean_project.add_argument('-s', '--size',
-                                      help="Determine storage space used by deletable files.")
-    
-    # Subparser for copying parameters between projects.
+ 
+    # Subparser for copying parameters between projects or from a config file.
     parser_copy_params = subparsers.add_parser('copy-parameters',
-                                                 help="copy parameters between projects.")
+                                               help="copy parameters between projects.")
     parser_copy_params.add_argument('-s', '--source-project',
-                                      help="Source project or main.nf")
+                                      help="Source project identifier")
     parser_copy_params.add_argument('-d', '--destination-project',
-                                      help="Destination project")
-    parser_copy_params.add_argument('-n', '--no-exec',
-                                      help="List the old and new parameters values, but do not write them.",
-                                      action='store_true', default = False)
+                                      help="Destination project identifier")
+    parser_copy_params.add_argument('-c', '--source-config',
+                                      help="Source configuration file (to copy parameters from)")
 
     return parser.parse_args()
 
@@ -373,8 +334,7 @@ def setup(args):
         print("Using defaults due to -d/--default flag...")
 
     # DEFAULTS
-    raft_paths = {'work': pjoin(getcwd(), 'work'),
-                  'projects': pjoin(getcwd(), 'projects'),
+    raft_paths = {'projects': pjoin(getcwd(), 'projects'),
                   'references': pjoin(getcwd(), 'references'),
                   'fastqs': pjoin(getcwd(), 'fastqs'),
                   'imgs': pjoin(getcwd(), 'imgs'),
@@ -388,10 +348,11 @@ def setup(args):
                 "tmp": "",
                 "outputs": "",
                 "workflow": "",
+                "work": "",
                 "metadata": "",
                 "logs": "",
                 "rftpkgs": "",
-                ".raft": ""}
+                "raft": ""}
 
     with open(pjoin(getcwd(), '.init.cfg'), 'w') as fo:
         json.dump(init_cfg, fo)
@@ -432,8 +393,7 @@ def setup(args):
         fo.write("}\n")
         
 
-    # This prefix should probably be user configurable
-    git_prefix = 'git@sc.unc.edu:benjamin-vincent-lab/Nextflow'
+    git_prefix = 'https://gitlab.com/bgv-lens/nextflow'
     #nextflow-components is a subgroup, not a repo.
     nf_repos = {'nextflow_modules': pjoin(git_prefix, 'Modules')}
     nf_subs = {'nextflow_module_subgroups': ['Tools', 'Projects', 'Datasets']}
@@ -458,10 +418,6 @@ def setup(args):
         # Setting up Nextflow module repositories.
         nf_repos, nf_subs = get_user_nf_repos(nf_repos, nf_subs)
 
-        # Setting any RAFT repositories
-        #raft_repos = get_user_raft_repos(raft_repos)
-
-    # Would like to have master_cfg constructed in its own function eventually.
     master_cfg = {'filesystem': raft_paths,
                   'nextflow_repos': nf_repos,
                   'nextflow_subgroups': nf_subs,
@@ -495,7 +451,7 @@ def get_user_raft_paths(raft_paths):
     Returns:
         Dictionary containing RAFT paths as keys and user-specified directories as values.
     """
-    print("""/!\ WARNING: The work directory will be large. Select accordingly. /!\\""")
+    print("""/!\ WARNING: The work directory will be large. Choose accordingly. /!\\""")
     for raft_path, default in raft_paths.items():
         user_spec_path = input("Provide a global (among projects) directory for {} (Default: {}): "
                                .format(raft_path, default))
@@ -510,9 +466,6 @@ def get_user_raft_paths(raft_paths):
 def get_user_nf_repos(nf_repos, nf_subs):
     """
     Part of setup mode.
-
-    Ideally, Nextflow repos should have more flexibility within RAFT. This is
-    sufficient for usage within LCCC/BGV, though.
 
     Prompts user for desired Nextflow reposities.
     Examples include:
@@ -539,35 +492,6 @@ def get_user_nf_repos(nf_repos, nf_subs):
             nf_subs[nf_sub] = user_spec_subs
 
     return nf_repos, nf_subs
-
-
-def get_user_raft_repos(raft_repos):
-    """
-    Part of setup mode.
-
-    Prompts user for desired RAFT-specific repositories. These are repositories
-    for pushing/pulling RAFT analysis packages (rftpkgs).
-
-    Args:
-        raft_repos (dict): Empty dictionary.
-
-    Returns:
-        Dictionary containing user-specified repo names as keys and
-        user-specific git urls (or null) as values. Null values are intended to
-        be used to generate local repositories.
-    """
-    message = ["\nProvide any git repositories you'd like RAFT to access.",
-               "These are for pushing RAFT/analysis packages and are not required",
-               "for pulling RAFT packages from public repositories.",
-               "/!\\ Make sure ssh/pgp credentials in place before using these repos /!\\"]
-    print('\n'.join(message))
-    repo_qry = input("Would you like to add a repository now? (Y/N)")
-    while repo_qry == 'Y':
-        repo_name = input("Provide local name (e.g. public, private, repo1):")
-        repo_url = input("Provide git url (or hit <ENTER> for local init):")
-        raft_repos[repo_name] = repo_url
-        repo_qry = input("Would you like to add an additional repository? (Y/N)")
-    return raft_repos
 
 
 def dump_cfg(cfg_path, master_cfg):
@@ -607,16 +531,6 @@ def setup_run_once(master_cfg):
             print("Making {}...".format(dir))
             os.mkdir(dir)
 
-#    for name, repo_url in master_cfg['analysis_repos'].items():
-#        if repo_url:
-#            try:
-#                Repo.clone_from(repo_url, pjoin(master_cfg['filesystem']['repos'], name))
-#            except:
-#                print("Unable to create repo {} from url {}. Review your .raft.cfg."
-#                      .format(name, repo_url))
-#        else:
-#            Repo.init(pjoin(master_cfg['filesystem']['repos'], name))
-
 
 def init_project(args):
     """
@@ -652,18 +566,11 @@ def mk_repo(args):
     repo = Repo.init(local_repo)
     if args.repo_url:
         repo.create_remote('origin', args.repo_url)
-#    readme_md = pjoin(local_repo, 'README.md')
-#    with open(readme_md, 'w') as fo:
-#        fo.write("RAFT rftpkg repo for {}".format(args.project_id))
-#    repo.index.add(readme_md)
-#    repo.index.commit("Initial commit")
-#    if args.repo_url:
-#        repo.git.push('origin', repo.head.ref)
 
 
 def mk_main_wf_and_cfg(args):
     """
-    Part of the init-analysis mode.
+    Part of the init-project mode.
 
     Copies default main.nf template and creates sparse nextflow.config.
 
@@ -682,35 +589,34 @@ def mk_main_wf_and_cfg(args):
                 if line == "params.project_dir = ''\n":
                     line = "params.project_identifier = '{}'\nparams.project_dir = ''\n".format(args.project_id)
                 outfo.write(line)
-#    shutil.copyfile(tmplt_wf_file, pjoin(proj_wf_path, 'main.nf'))
 
     shutil.copyfile(tmplt_cfg_file, pjoin(proj_wf_path, 'nextflow.config'))
 
-    # Adding Singularity info.
+    # Adding Singularity info and making nextflow.config.
     imgs_dir = raft_cfg['filesystem']['imgs']
-    out = ["manifest.mainScript = 'main.nf'\n\n"]
-    out.append('singularity {\n')
-    out.append('  cacheDir = "{}"\n'.format(imgs_dir))
-    out.append("  autoMount = 'true'\n")
-    out.append('}\n')
+    cfg_out = ["manifest.mainScript = 'main.nf'\n\n"]
+    cfg_out.append('singularity {\n')
+    cfg_out.append('  cacheDir = "{}"\n'.format(imgs_dir))
+    cfg_out.append("  autoMount = 'true'\n")
+    cfg_out.append('}\n')
 
     with open(pjoin(proj_wf_path, 'nextflow.config')) as fo:
-        out.extend(fo.readlines()[1:])
-    proc_idx = out.index("process {\n")
+        cfg_out.extend(fo.readlines()[1:])
+    proc_idx = cfg_out.index("process {\n")
     mounts_cfg_path = pjoin(proj_wf_path, 'mounts.config')
-    out.insert(proc_idx + 1, "containerOptions = '-B `cat {}`'\n".format(mounts_cfg_path))
-    with open(pjoin(proj_wf_path, 'nextflow.config'), 'w') as fo:
-        for row in out:
-            fo.write(row)
+    cfg_out.insert(proc_idx + 1, "containerOptions = '-B `cat {}`'\n".format(mounts_cfg_path))
 
+    with open(pjoin(proj_wf_path, 'nextflow.config'), 'w') as fo:
+        for row in cfg_out:
+            fo.write(row)
 
 
 def mk_auto_raft(args):
     """
-    Part of the init-analysis mode.
+    Part of the init-project mode.
 
     Makes auto.raft file (within Analysis /.raft directory). auto.raft keeps
-    track of RAFT commands executed within an analysis.
+    track of RAFT commands executed within a project.
 
     Args:
         args (Namespace object): User-provided arguments
@@ -725,22 +631,22 @@ def mk_auto_raft(args):
         fo.write("{}\n".format(' '.join(sys.argv)))
 
 
-def mk_proj_dir(name):
+def mk_proj_dir(proj_id):
     """
-    Part of the init-analysis mode.
+    Part of the init-project mode.
 
-    Makes the analysis directory within the RAFT /analyses directory.
+    Makes the project directory within the RAFT /projects directory.
 
     Args:
-        name (str): Analysis name.
+        name (str): Project identifier.
 
     Returns:
-        str containing the generated analysis path.
+        str containing the generated project path.
     """
     proj_dir = ''
     raft_cfg = load_raft_cfg()
     global_dir = raft_cfg['filesystem']['projects']
-    proj_dir = pjoin(global_dir, name)
+    proj_dir = pjoin(global_dir,proj_id)
 
     try:
         os.mkdir(proj_dir)
@@ -752,15 +658,15 @@ def mk_proj_dir(name):
 
 def fill_dir(args, dir, init_cfg):
     """
-    Part of the init-analysis mode.
+    Part of the init-project mode.
 
-    Populates an analysis directory with template defined in init_cfg. Returns
+    Populates a project directory with template defined in init_cfg. Returns
     a list of directories to be included in the mounts.config file for the
-    analysis.
+    project.
 
     Args:
-        args ():
-        dir (str): Analysis path.
+        args (Namespace object):
+        dir (str): Project path.
         init_cfg (str): Initialization configuration path. File should be in
                         JSON format.
 
@@ -775,19 +681,16 @@ def fill_dir(args, dir, init_cfg):
     req_sub_dirs = {}
     with open(init_cfg) as fo:
         req_sub_dirs = json.load(fo)
-    # Adding global work directory.
     for name, sdir in req_sub_dirs.items():
         # If the desired directory has an included path, link that path to
-        # within the analysis directory. This should include some sanity
+        # within the project directory. This should include some sanity
         # checking to ensure the sub_dir directory even exists.
         if sdir:
             os.symlink(sdir, pjoin(dir, name))
-            #bind_dirs.append(pjoin(dir, name))
         # Else if the desired directory doesn't have an included path, simply
-        # make a directory by that name within the analysis directory.
+        # make a directory by that name within the project directory.
         elif not sdir:
             os.mkdir(pjoin(dir, name))
-            #bind_dirs.append(pjoin(dir, name))
     bind_dirs.append(pjoin(raft_cfg['filesystem']['projects'], args.project_id))
     bind_dirs.append(raft_cfg['filesystem']['work'])
     bind_dirs.append(getcwd())
@@ -825,7 +728,7 @@ def update_mounts_cfg(mounts_cfg, bind_dirs):
     """
     Part of update-mounts mode.
 
-    Updates a mount.config file for an analysis.
+    Updates a mount.config file for a project.
 
     This is primarily intended to update the mount.config file with absolute
     paths for symlinked FASTQs, but can also be used generally.
@@ -860,7 +763,7 @@ def update_mounts(args):
     Part of the update-mounts mode.
 
     This functions finds the real paths of all symlinks within the specified
-    directory and adds them the the analysis-specific mounts.config file.
+    directory and adds them the the project-specific mounts.config file.
 
     Args:
         args (Namespace object)
@@ -910,23 +813,12 @@ def load_manifest(args):
 
     # Glob the manifest from the global metadata directory.
     global_csv = glob(pjoin(raft_cfg['filesystem']['metadata'], '**', args.manifest_csv), recursive=True)[0]
-    print("Copying metadata file into analysis metadata directory...")
+    print("Copying metadata file into project metadata directory...")
     if os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id)):
-        # If the specified analysis doesn't exist, then should it be created automatically?
+        # If the specified project doesn't exist, then should it be created automatically?
         metadata_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'metadata')
         shutil.copyfile(global_csv,
                         pjoin(metadata_dir, os.path.basename(args.manifest_csv)))
-
-    # Extract header from overall mani if it already exists. Ideally we'd get
-    # the union of all input files.
-    #with open(overall_mani, 'w') as mfo:
-    #    contents = ''
-    #    try:
-    #        contents = mfo.readlines()
-    #    except:
-    #        pass
-    #    if proj_hdr not in contents:
-    # This header may evolve in the future, but is largely sufficient for now.
 
     hdrl = ['Sample_ID', 'Patient_ID', 'File_Prefix', 'Dataset', 'Treatment', 'Sample_Type', 'Sequencing_Method', 'Tissue']
     proj_hdr = ','.join(hdrl) + '\n'
@@ -1071,11 +963,9 @@ def recurs_load_modules(args):
     """
     Recurively loads Nextflow modules. This occurs in multiple iterations such
     that each time a dependencies is loaded/cloned, another iteration is initated. This
-    continues until a wave in which no new dependencies are loaded/cloned. There's
+    continues until an instance in which no new dependencies are loaded/cloned. There's
     probably a more intelligent way of doing this, but this should be able to
-    handle the multiple layers of dependencies we're working with. A notable blind
-    spot is the ability to specify the branch to use for each tool (defaults to
-    master).
+    handle the multiple layers of dependencies we're working with. 
 
     Args:
         args (Namespace object): User-provided arguments.
@@ -1107,7 +997,7 @@ def recurs_load_modules(args):
 
 def list_steps(args):
     """
-    List the process and workflows available from a Nextflow component. Requires analysis since it assumes users may modify componenets in an analysis-specific manner.
+    List the process and workflows available from a Nextflow component. Requires project since it assumes users may modify componenets in a project-specific manner.
 
     Args:
        args (Namespace object): User-provided arguments
@@ -1134,7 +1024,7 @@ def list_steps(args):
 def get_module_branch(args):
     """
     """
-    branch = 'master'
+    branch = 'main'
     if re.search(':', args.branches):
         branch_lookup = {}
         arged_branches = args.branches.split(',')
@@ -1154,7 +1044,7 @@ def load_module(args):
 
     Loads a Nextflow module into a project's workflow directory.
     Allows users to specify a specific branch to checkout.
-    Automatically loads 'master' branch of module's repo unless specified by user.
+    Automatically loads 'main' branch of module's repo unless specified by user.
 
     Args:
         args (Namespace object): User-provided arguments.
@@ -1162,7 +1052,7 @@ def load_module(args):
     raft_cfg = load_raft_cfg()
     if not args.repo:
         args.repo = raft_cfg['nextflow_repos']['nextflow_modules']
-    # Should probably check here and see if the specified analysis even exists...
+    # Should probably check here and see if the specified project even exists...
     workflow_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
 
     branch = get_module_branch(args)
@@ -1180,7 +1070,7 @@ def load_module(args):
                 found = 1
             except:
                 pass
-        if found == 0:
+        if not(found):
             sys.exit("/ ! \\ ERROR: Could not find module {} in any subgroups specified in RAFT config / ! \\".format(args.module))
         nf_cfg = pjoin(raft_cfg['filesystem']['projects'],
                        args.project_id,
@@ -1198,19 +1088,19 @@ def load_module(args):
     recurs_load_modules(args)
 
 
-def run_auto(args):
-    """
-    Given a loaded analysis, run auto.raft steps. This is a bit dangerous since
-    malicious code could be implanted into an auto.raft file, but can be made
-    safer by ensuring all commands are called through RAFT (in other words,
-    ensure steps are valid RAFT modes before running).
-
-    There are other considerations -- sometimes metadata may already be within
-    the metadata directory, so they won't need to be loaded a second time.
-    Perhaps this should be part of load-metadata?
-    """
-    raft_cfg = load_raft_cfg()
-    #auto_raft = pjoin(raft_cfg['filesystem']['projects'],
+#def run_auto(args):
+#    """
+#    Given a loaded project, run auto.raft steps. This is a bit dangerous since
+#    malicious code could be implanted into an auto.raft file, but can be made
+#    safer by ensuring all commands are called through RAFT (in other words,
+#    ensure steps are valid RAFT modes before running).
+#
+#    There are other considerations -- sometimes metadata may already be within
+#    the metadata directory, so they won't need to be loaded a second time.
+#    Perhaps this should be part of load-metadata?
+#    """
+#    raft_cfg = load_raft_cfg() 
+#    auto_raft = pjoin(raft_cfg['filesystem']['projects'],
 
 
 
@@ -1230,14 +1120,6 @@ def run_workflow(args):
     all_samp_ids = []
     processed_samp_ids = []
 
-    # Clearing zero-sized intermediates if needed.
-    # This is intended for cases where intermediates are replaced with
-    # zero-sized files. This won't be used for now, but going to keep the code
-    # available.
-    if args.remake_intermediates:
-        shared_dirs = get_shared_dirs(args)
-        print(shared_dirs)
-        remove_zero_sized_intermediates(args, shared_dirs)
 
     if not args.keep_previous_outputs:
         #Check for directory instead of try/except.
@@ -1246,26 +1128,12 @@ def run_workflow(args):
         except:
             pass
 
-    if args.manifest_csvs:
-        manifest_csvs = [i for i in args.manifest_csvs.split(',')]
-        for manifest_csv in manifest_csvs:
-            all_samp_ids.extend(extract_samp_ids(args, manifest_csv))
-
-    if args.samples:
-        all_samp_ids.extend([i for i in args.samples.split(',')])
-
-    # If there are no samples provided by the user (e.g. no -s or -c), then
-    # we can assume this workflow is not meant to be run on a sample-level.
-    # This can probably be cleaned up a bit, but this is functional for
-    # now.
-
     # Getting base command
     nf_cmd = get_base_nf_cmd(args)
 
     # Appending work directory
-    work_dir = raft_cfg['filesystem']['work']
-    if args.project_work or not(args.project_work):
-        work_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'work')
+#    work_dir = raft_cfg['filesystem']['work']
+    work_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'work')
     nf_cmd = add_nf_work_dir(work_dir, nf_cmd)
 
     # Appending global FASTQ directory (for internal FASTQ symlinking)
@@ -1288,34 +1156,6 @@ def run_workflow(args):
                 if os.path.exists(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs', report)):
                     shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs', report),
                                 pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports', report))
-        if not(args.keep_intermediates) and args.delete_suffixes:
-            os.chdir(init_dir)
-            work_dirs = get_work_dirs(args)
-            os.chdir(init_dir)
-            shared_dirs = get_shared_dirs(args)
-            print("Intermediate file suffixes: {}".format(args.delete_suffixes))
-            print("Total shared directories generated: {}".format(len(shared_dirs)))
-            intermediate_shared_dirs = get_intermediate_shared_dirs(args, shared_dirs)
-            intermediate_work_dirs = get_intermediate_work_dirs(args, work_dirs)
-            print("Shared files eligible for deletion: {}".format(len(intermediate_shared_dirs)))
-            print("Work files eligible for deletion: {}".format(len(intermediate_work_dirs)))
-            eligible_dirs = intermediate_shared_dirs + intermediate_work_dirs
-            saveable_space = 0
-            for intermediate_dir in eligible_dirs:
-#                print(intermediate_dir)
-#                saveable_space += get_size(intermediate_dir)
-                saveable_space += os.path.getsize(intermediate_dir)
-            print("Deleting intermediates will save {:.3f} GBs.".format(saveable_space/1000000000))
-            if args.confirm_intermediates_deletion:
-                print("Deleting intermediate directories and files...")
-                for intermediate_dir in eligible_dirs:
-                    os.remove(intermediate_dir)
-                    #There's an issue here with checksums that breaks _uniq_dir processes.
-            #        touch(intermediate_dir)
-            else:
-                print("Rerun with --confirm-intermediates-deletion to remove intermediates.")
-        else:
-            print("Keeping intermediate files.")
 
 
 def get_work_dirs(args):
@@ -1332,11 +1172,8 @@ def get_work_dirs(args):
             if line:
                 line = line.split('\t')
                 if line[3] == 'OK':
-#                  successful_run = line[2]
                   project_uuid = line[5]
                   break
-#    print("Project UUID is: {}".format(project_uuid))
-#    print("Last successful run is: {}".format(successful_run))
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
     work_dirs = [x for x in subprocess.run('nextflow log {}'.format(project_uuid), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
     return work_dirs
@@ -1355,97 +1192,6 @@ def get_size(start_path = '.'):
                 total_size += os.path.getsize(fp)
 
     return total_size
-
-
-def remove_zero_sized_intermediates(args, shared_dirs):
-    """
-    """
-    raft_cfg = load_raft_cfg()
-    intermediate_suffixes = args.delete_suffixes.split(',')
-    for shared_dir in shared_dirs:
-        print(shared_dir)
-        for outp_file in glob(pjoin(raft_cfg['filesystem']['shared'], shared_dir, '*')):
-            for suffix in intermediate_suffixes:
-                if outp_file.endswith(suffix) and not(os.path.islink(outp_file)) and os.path.getsize(outp_file)  == 0:
-                    os.remove(outp_file)
-
-
-def get_intermediate_shared_dirs(args, shared_dirs):
-    """
-    """
-    raft_cfg = load_raft_cfg()
-    intermediate_shared_dirs = []
-    intermediate_suffixes = args.delete_suffixes.split(',')
-    for shared_dir in shared_dirs:
-        for outp_file in glob(pjoin(raft_cfg['filesystem']['shared'], shared_dir, '*')):
-            for suffix in intermediate_suffixes:
-                if outp_file.endswith(suffix) and not(os.path.islink(outp_file)) and os.path.getsize(outp_file) > 0:
-                    intermediate_shared_dirs.append(pjoin(raft_cfg['filesystem']['shared'], shared_dir, outp_file))
-    return list(set(intermediate_shared_dirs))
-
-def get_intermediate_work_dirs(args, work_dirs):
-    """
-    """
-    raft_cfg = load_raft_cfg()
-    intermediate_work_dirs = []
-    intermediate_suffixes = args.delete_suffixes.split(',')
-    for work_dir in work_dirs:
-        for outp_file in glob(pjoin(raft_cfg['filesystem']['work'], work_dir, '*')):
-            for suffix in intermediate_suffixes:
-                if outp_file.endswith(suffix) and not(os.path.islink(outp_file)) and os.path.getsize(outp_file) > 0:
-                    intermediate_work_dirs.append(pjoin(raft_cfg['filesystem']['work'], work_dir, outp_file))
-    return list(set(intermediate_work_dirs))
-
-
-def extract_samp_ids(args, manifest_csv):
-    """
-    Part of run-workflow mode.
-
-    Given a manifest csv, extract and return sample identifiers.
-
-    Args:
-        args (Namespace object): User-provided arguments.
-        manifest_csv (str): Path to manifest csv file.
-
-    Returns:
-        List containing sample identifiers extracted from manifest csv.
-    """
-    raft_cfg = load_raft_cfg()
-    samp_ids = []
-    with open(pjoin(raft_cfg['filesystem']['analyses'],
-                    args.analysis,
-                    'metadata',
-                    os.path.basename(manifest_csv))) as fo:
-        hdr = fo.readline().rstrip('\n').split(',')
-        pat_idx = hdr.index("Patient ID")
-        for line in fo:
-            line = line.rstrip('\n').split(',')
-            samp_ids.append(line[pat_idx])
-    return samp_ids
-
-
-def add_log_dir(samp_id, args, samp_nf_cmd):
-    """
-    Part of run-workflow mode.
-
-    Appends logging functionality to Nextflow command.
-
-    Args:
-        samp_id (str): Sample identifier.
-        args (Namespace object): User-provided arguments.
-        samp_nf_cmd (str): Sample-specific Nextflow command.
-
-    Returns:
-        Str containing the modified Nextflow command with logging functionality.
-    """
-    raft_cfg = load_raft_cfg()
-
-    log_dir = pjoin(raft_cfg['filesystem']['analyses'],
-                    args.analysis,
-                    'logs',
-                    '{}.log'.format(samp_id))
-
-    return ' '.join([samp_nf_cmd, '> {} 2>&1 &'.format(log_dir)])
 
 
 def add_global_fq_dir(samp_nf_cmd):
@@ -1531,7 +1277,7 @@ def get_base_nf_cmd(args):
     #Ensure only one nf is discoverd here! If more than one is discovered, then should multiple be run?
     discovered_nf = glob(pjoin(workflow_dir, 'main.nf'))[0]
 
-    # Adding analysis directory
+    # Adding project directory
     proj_dir_str = ''
     if not re.search('--project_dir', args.nf_params):
         proj_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id)
@@ -1545,7 +1291,6 @@ def get_base_nf_cmd(args):
     if not(args.no_reports):
         reports = '-with-trace -with-report -with-dag -with-timeline'
     cmd = ' '.join(['nextflow -Dnxf.pool.type=sync run', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume, reports])
-#    cmd = ' '.join(['nextflow run', discovered_nf, ' '.join(new_cmd), proj_dir_str, resume, reports])
     return cmd
 
 
@@ -1553,7 +1298,7 @@ def update_nf_cfg(nf_cfg, mod_cfg):
     """
     Part of load-module mode.
 
-    Updates the analysis-specific nextflow.config file with information from a
+    Updates the project-specific nextflow.config file with information from a
     specific module's config file (named <module>.config).
 
     This is currently designed to only pull in configuration parameters if they
@@ -1617,8 +1362,7 @@ def dump_to_auto_raft(args):
     """
     if args.command and args.command not in ['init-project', 'run-auto', 'package-project',
                                              'load-project', 'setup', 'push-project',
-                                             'rename-project', 'run-workflow', 'clean-shared',
-                                             'copy-parameters', 'push-shared']:
+                                             'rename-project', 'run-workflow', 'copy-parameters']:
         raft_cfg = load_raft_cfg()
         auto_raft_path = pjoin(raft_cfg['filesystem']['projects'],
                                args.project_id,
@@ -1629,6 +1373,7 @@ def dump_to_auto_raft(args):
             comment_out = '#'
         with open(auto_raft_path, 'a') as fo:
             fo.write("{}{}\n".format(comment_out, ' '.join(sys.argv)))
+
 
 def snapshot_postproc(inf, outf):
     """
@@ -1729,19 +1474,13 @@ def package_project(args):
             taro.add(os.path.join(proj_tmp_dir, i), arcname = i)
 
 
-#https://stackoverflow.com/a/3431838
 def md5(fname):
+#https://stackoverflow.com/a/3431838
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
-
-
-#https://stackoverflow.com/a/3431835
-def file_as_bytes(file):
-    with file:
-        return file.read()
 
 
 def load_project(args):
@@ -1755,7 +1494,7 @@ def load_project(args):
                  'repo_url': ''}
     fixt_args = argparse.Namespace(**fixt_args)
 
-    # Initialize analysis
+    # Initialize project
     init_project(fixt_args)
     # Moving mounts.config so that can be protected and reintroduced after copying over workflow.config.
     shutil.move(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', 'mounts.config'),
@@ -1763,7 +1502,7 @@ def load_project(args):
 
     tarball = ''
     if args.rftpkg:
-        # Copy rftpkg into analysis
+        # Copy rftpkg into project
         shutil.copyfile(args.rftpkg,
                         pjoin(raft_cfg['filesystem']['projects'],
                               args.project_id,
@@ -1842,6 +1581,7 @@ def get_orig_prod_id(fle):
             ind = first.split(' ').index('--project-id')
         return first.split(' ')[ind +1]
 
+
 def get_params_from_module(module_path):
     """
     """
@@ -1877,18 +1617,15 @@ def get_wf_mod_map(args):
     """
     raft_cfg = load_raft_cfg()
     wf_mod_map = {}
-    nfscripts =  glob(pjoin(raft_cfg['filesystem']['projects'],
+    nf_scripts =  glob(pjoin(raft_cfg['filesystem']['projects'],
                             args.project_id,
                             'workflow',
-                            '*/*.nf')
-                     )
-#    print(nfscripts)
-    for nfscript in nfscripts:
-        wfs = extract_wfs_from_script(nfscript)
+                            '*/*.nf'))
+    for nf_script in nf_scripts:
+        wfs = extract_wfs_from_script(nf_script)
         for wf in wfs:
-            wf_mod_map[wf] = nfscript
+            wf_mod_map[wf] = nf_script
 
-#    print(wf_mod_map.keys())
     return wf_mod_map
 
 
@@ -1946,11 +1683,9 @@ def add_step(args):
     # put within main.nf
     step_str = ''
     step_slice = extract_step_slice_from_nfscript(mod_nf, args.step)
-#    if is_workflow(step_slice):
     if not(step_slice):
         sys.exit("ERROR: Step {} could not be found in module {}.".format(args.step, args.module))
     step_str = get_workflow_str(step_slice)
-    #print("Step str: {}".format(step_str))
     if args.alias:
         params = step_str.partition('(')[2]
         step_str = ''.join([args.alias, '(', params])
@@ -1961,20 +1696,13 @@ def add_step(args):
     final_steps = []
     discod_steps = [args.step]
     while discod_steps:
-#        print("This round's steps: {}".format(discod_steps))
         new_round_steps = []
         for step in discod_steps:
-#            print(step)
             step_slice = extract_step_slice_from_nfscript(wf_mod_map[step], step)
-#            print(step_slice)
             new_round_steps.extend([i.partition('(')[0] for i in step_slice if i.partition('(')[0] in wf_mod_map.keys()])
             discod_steps.remove(step)
             final_steps.append(step)
         discod_steps.extend(new_round_steps)
-#        print("Finished a round! Starting over!")
-#        print("New steps being added: {}".format(new_round_steps))
-#    print("Recursively detected workflows.")
-#    print("Final workflow list: {}".format(accounted_for))
 
     all_step_params = []
     for step in final_steps:
@@ -1983,20 +1711,12 @@ def add_step(args):
             all_step_params.extend(extract_params_from_contents(step_slice, False))
         else:
             all_step_params.extend(extract_params_from_contents(step_slice, True))
-#    print(all_step_params)
-
-#    print("Main: {}".format(main_params))
-#    print("Step: {}".format(all_step_params))
 
     expanded_params = expand_params(all_step_params)
-#    pprint(expanded_params)
     filted_expanded_params = {}
-#    expanded_params = { k:v for (k,v) in expanded_params if k not in main_params }
     for k,v in expanded_params.items():
         if k not in main_params and k != 'params.':
             filted_expanded_params[k] = v
-
-#    print(expanded_params)
 
     expanded_params = filted_expanded_params
 
@@ -2118,6 +1838,7 @@ def find_step_module(contents, step):
         pass
     return mod
 
+
 def find_step_actual_and_alias(contents, step):
     """
     Part of add-step mode.
@@ -2134,8 +1855,6 @@ def find_step_actual_and_alias(contents, step):
     mod = []
 
     foo = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)]
-#    pprint.pprint(contents)
-#    print(foo)
     mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0]
     if not(re.findall(' as ', mod)):
         actual = step
@@ -2158,7 +1877,6 @@ def extract_steps_from_contents(contents):
     Args:
         contents (list): List containing the rows from a workflow's entry in a component.
     """
-    #print(contents)
     wfs = [re.findall('^[\w_]+\(.*', i) for i in contents if re.findall('^[\w_]+\(.*', i)]
     flat = [i.partition('(')[0] for j in wfs for i in j]
     return(flat)
@@ -2174,19 +1892,13 @@ def extract_params_from_contents(contents, discard_requires):
     Args:
         contents (list): List containing the rows from a workflow's entry in a component.
     """
-#    print("EXTRACT_PARAMS_FROM_CONTENTS")
-#    print(contents)
     require_params = []
     if [re.findall("// require:", i) for i in contents if re.findall("// require:", i) for i in contents]:
         start = contents.index("// require:") + 1
         end = contents.index("take:")
         require_params = [i.replace('//   ','').split(',')[0] for i in contents[start:end] if re.search('^//   params', i)]
-        #print("REQUIRE PARAMS: {}".format(require_params))
-    #print("TAKE PARAMS")
     params = [re.findall("(params.*?,|params.*?\)|params.*\?})", i) for i in contents if
               re.findall("params.*,|params.*\)", i) and i != 'params.']
-    #print("FILTERED PARAMS")
-    #print(params)
     flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '').replace('/', '').replace('\\', '') for
             j in params for i in j]
     ### THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
@@ -2194,8 +1906,6 @@ def extract_params_from_contents(contents, discard_requires):
         flat = [i for i in flat if i not in require_params]
     else:
         flat = flat + require_params
-    #print("FLAT!!!")
-#    print(flat)
     return(flat)
 
 
@@ -2214,7 +1924,6 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
     contents = []
     with open(nfscript_path) as fo:
         contents = [i.strip() for i in fo.readlines()]
-#    print(step)
     # Need the ability to error out if step doesn't exist. Should list steps
     # from module in that case.
     try:
@@ -2222,9 +1931,6 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
         step_end = contents.index("}", step_start)
         step_slice = contents[step_start:step_end]
     except:
-#        step_start = contents.index("process {} {{".format(step))
-#        step_end = contents.index('"""', step_start)
-#        step_slice = contents[step_start:step_end]
        pass
     return step_slice
 
@@ -2379,78 +2085,6 @@ def clean_project(args):
         print("Skipping deletion due to -n/--no-exec.")
 
 
-def get_shared_dirs(args):
-    """
-    """
-    raft_cfg = load_raft_cfg()
-    outputs_dir = pjoin(raft_cfg['filesystem']['projects'],
-                        args.project_id, 'outputs')
-    metas = glob(pjoin(outputs_dir, '**', '*meta'), recursive=True)
-
-    shared_dirs = []
-
-    for meta in metas:
-        with open(meta) as fo:
-            for line in fo.readlines():
-                if re.search("Output directory:", line):
-                    shared_dirs.append(line.split(' ')[2])
-
-    with open(pjoin(outputs_dir, '.' + args.project_id + '.shared'), 'w') as fo:
-        for shared_dir in shared_dirs:
-            fo.write(shared_dir)
-
-    return [x.rstrip() for x in shared_dirs]
-
-def push_shared(args):
-    """
-    """
-
-    param_sets = []
-    raft_cfg = load_raft_cfg()
-    if args.project_id:
-        dot_shared = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', '.' + args.project_id + '.shared')
-        with open(dot_shared) as fo:
-            for line in fo.readlines():
-                line = line.strip()
-                #print(line)
-                req_files = [i for i in glob(pjoin(raft_cfg['filesystem']['shared'], line, '**', '*'), recursive=True) if os.path.isfile(i)]
-                for req_file in req_files:
-                    #print(req_file)
-                    #upload_blob(args.bucket, req_file, req_file.partition('shared/')[2])
-                    param_sets.append((args.bucket, req_file, req_file.partition('shared/')[2]))
-    else:
-        req_files = [i for i in glob(pjoin(raft_cfg['filesystem']['shared'], args.dir, '**', '*'), recursive=True) if os.path.isfile(i)]
-        print(req_files)
-        for req_file in req_files:
-            print(req_file)
-            #upload_blob(args.bucket, req_file, req_file.partition('shared/')[2])
-            param_sets.append((args.bucket, req_file, req_file.partition('shared/')[2]))
-      
-#        tqdm.tqdm(pool.istarmap(upload_blob, param_sets), total=len(param_sets))
-    print(param_sets)
-#    pool = ThreadPool()
-#    pool.starmap(upload_blob, param_sets)
-
-    with Pool(4) as pool:
-        for _ in tqdm.tqdm(pool.istarmap(upload_blob, param_sets), total=len(param_sets)):
-            pass
-
-
-
-def upload_blob(bucket_name, source_file_name, destination_blob_name):
-    # https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/storage/cloud-client/storage_upload_file.py
-    """Uploads a file to the bucket."""
-    # bucket_name = "your-bucket-name"
-    # source_file_name = "local/path/to/file"
-    # destination_blob_name = "storage-object-name"
-
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
-
-    blob.upload_from_filename(source_file_name)
-
-
 def load_dataset(args):
     """
     Steps:
@@ -2480,84 +2114,41 @@ def touch(path):
     with open(path, 'a'):
         os.utime(path, None)
 
-def clean_shared(args):
-    """
-    1. Get list of projects
-    2. Ensure no projects are being actively run
-    3. Get total /shared list
-    4. Get union of project-specific shared list
-    5. Deletable directories are those in total, but not in project union.
-    """
-    raft_cfg = load_raft_cfg()
-    projects = [x for x in os.listdir(raft_cfg['filesystem']['projects'])]
-    print("Found {} projects.".format(len(projects)))
-    print("Ensuring no projects are running...")
-    current_epoch = int(time.time())
-    epoch_diffs = []
-    for project in projects:
-        try:
-            log_epoch = os.path.getmtime(pjoin(raft_cfg['filesystem']['projects'], project, 'logs', '.nextflow.log'))
-        except:
-            log_epoch = 0
-        epoch_diffs.append(current_epoch - log_epoch)
-    except_epoch_diff = [x for x in epoch_diffs if x < 1800]
-    if except_epoch_diff:
-        print("A project's log file has been modified in the last 30 minutes. Run with -f to force /shared cleaning.")
-
-
-    project_shared_dirs = [x for x in pathlib.Path(raft_cfg['filesystem']['projects']).glob(pjoin('*', 'outputs', '*shared'))]
-    shared_union = []
-    for shared_list in project_shared_dirs:
-        with open(shared_list) as slo:
-            for line in slo.readlines():
-                shared_union.append(line.rstrip())
-    shared_union = list(set(shared_union))
-    print("Number of shared dirs utilized by projects: {}".format(len(shared_union)))
-
-    all_shared_dirs = list(set([os.path.join(dp) for dp, dn, fn in os.walk(raft_cfg['filesystem']['shared']) for f in fn]))
-    no_prefix_all_shared_dirs = [x.replace(raft_cfg['filesystem']['shared'] + '/', '') for x in all_shared_dirs]
-#    all_shared_dirs = os.listdir(raft_cfg['filesystem']['shared'])
-    print("Number of all shared dirs: {}".format(len(no_prefix_all_shared_dirs)))
-#    deletable_shared_dirs = list(set(no_prefix_all_shared_dirs) - set(shared_union))
-
-    deletable_shared_dirs = []
-    for sd in no_prefix_all_shared_dirs:
-        del_sd = True
-        for used_dir in shared_union:
-            if sd.startswith(used_dir):
-                del_sd = False
-        if del_sd:
-            deletable_shared_dirs.append(sd)
-    print("Number of deletable shared dirs: {}".format(len(deletable_shared_dirs)))
-    print("Deletable shared dirs examples: {}".format(deletable_shared_dirs[:10]))
 
 def copy_parameters(args):
     """
     """
     raft_cfg = load_raft_cfg()
     source_params = {}
-    with open(pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')) as fo:
-        for line in fo.readlines():
-            line = line.rstrip()
-            if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)):
-                print(line)
-                line = line.partition(' = ')
-                source_params[line[0]] = line[2]
+    if args.source_project:
+        with open(pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')) as fo:
+            for line in fo.readlines():
+                line = line.rstrip()
+                if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)):
+                    line = line.partition(' = ')
+                    source_params[line[0]] = line[2]
+    elif args.source_config:
+        with open(args.source_config) as fo:
+            for line in fo.readlines():
+                line = line.rstrip()
+                if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)):
+                    line = line.partition(' = ')
+                    source_params[line[0]] = line[2]
 
     #pprint(source_params)
 
-    
+
     with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')) as dfo:
         with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params'), 'w') as tfo:
             for line in dfo.readlines():
                 parted_line = line.rstrip().partition(' = ')
                 if parted_line[0] in source_params.keys() and source_params[parted_line[0]] != parted_line[2]:
-                    print("Hit! Param: {} Source: {} Dest: {}".format(parted_line[0], source_params[parted_line[0]], parted_line[2]))
                     tfo.write("{} = {}\n".format(parted_line[0], source_params[parted_line[0]]))
                 else:
                     tfo.write(line)
-
-
+    print("Done copying parameters.")
+    print("Verify parameters in {} and".format(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params')))
+    print("copy {} to {} to complete.".format(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params'), pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')))
 
 
 def main():
@@ -2566,7 +2157,7 @@ def main():
 
     args = get_args()
 
-    if 'project_id' in args and args.command not in ['init-project', 'load-project', 'copy-parameters', 'push-shared']:
+    if 'project_id' in args and args.command not in ['init-project', 'load-project', 'copy-parameters']:
         chk_proj_id_exists(args.project_id)
 
     # Only dump to auto.raft if RAFT successfully completes.
@@ -2598,8 +2189,8 @@ def main():
         add_step(args)
     elif args.command == 'run-workflow':
         run_workflow(args)
-    elif args.command == 'run-auto':
-        run_auto(args)
+#    elif args.command == 'run-auto':
+#        run_auto(args)
     elif args.command == 'package-project':
         package_project(args)
     elif args.command == 'load-project':
@@ -2614,12 +2205,8 @@ def main():
         rename_project(args)
     elif args.command == 'clean-project':
         clean_project(args)
-    elif args.command == 'push-shared':
-        push_shared(args)
     elif args.command == 'load-dataset':
         load_dataset(args)
-    elif args.command == 'clean-shared':
-        clean_shared(args)
     elif args.command == 'copy-parameters':
         copy_parameters(args)
 
