@@ -35,12 +35,12 @@ flake8:
   stage: Static Analysis
   script:
   - pwd
-  - flake8 --max-line-length=120 --max-complexity 8 raft/src/*.py
+  - flake8 --max-line-length=120 --max-complexity 8 src/*.py
 
 pylint:
   stage: Static Analysis
   script:
-  - pylint -d C0301 -d R0902 raft/src/*.py
+  - pylint -d C0301 -d R0902 src/*.py
 
 pytest:
   stage: Test
