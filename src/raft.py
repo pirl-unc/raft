@@ -1721,9 +1721,9 @@ def add_step(args):
     expanded_undef_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
                             sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
     expanded_defined_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
-                              sorted(expanded_params,
-                              key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
-                              expanded_params[k] != "''"]) + '\n'
+                                                          sorted(expanded_params,
+                                                          key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
+                                                          expanded_params[k] != "''"]) + '\n'
 
     # Applying changes to main.nf
     if step_str not in main_contents and inclusion_str not in main_contents:
@@ -1929,7 +1929,7 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
         step_end = contents.index("}", step_start)
         step_slice = contents[step_start:step_end]
     except:
-       pass
+        pass
     return step_slice
 
 
@@ -2052,9 +2052,9 @@ def clean_project(args):
             if line:
                 line = line.split('\t')
                 if line[3] == 'OK':
-                  successful_run = line[2]
-                  project_uuid = line[5]
-                  break
+                    successful_run = line[2]
+                    project_uuid = line[5]
+                    break
     print("Project UUID is: {}".format(project_uuid))
     print("Last successful run is: {}".format(successful_run))
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
@@ -2065,7 +2065,7 @@ def clean_project(args):
     print("Successful run work hashes count: {} ".format(len(successful_work_hashes)))
     print("Completed run work hashes count: {} ".format(len(completed_work_hashes)))
     cleanable_hashes = []
-    if args.keep_latest and input("/ ! \ This will only keep work directories from the latest successful run! / ! \ \nAre you sure? ") in ['YES', 'yes', 'Yes', 'Y', 'y']:
+    if args.keep_latest and input("This will only keep work directories from the latest successful run!\nAre you sure? ") in ['YES', 'yes', 'Yes', 'Y', 'y']:
         cleanable_hashes = [x for x in all_work_hashes if x not in successful_work_hashes]
     else:
         cleanable_hashes = [x for x in all_work_hashes if x not in completed_work_hashes]
@@ -2074,7 +2074,7 @@ def clean_project(args):
         for cleanable_dir in cleanable_hashes:
             print("Removing extra files from {}...".format(cleanable_dir))
             cleanable_files = [i for i in os.listdir(cleanable_dir) if i not in ['meta'] and not(re.search('command', i))]
-            for i in cleanable_files:
+            for cleanable_file in cleanable_files:
                 try:
                     shutil.rmtree(cleanable_file)
                 except:
@@ -2120,21 +2120,10 @@ def copy_parameters(args):
     source_params = {}
     if args.source_project:
         with open(pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')) as fo:
-            for line in fo.readlines():
-                line = line.rstrip()
-                if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)):
-                    line = line.partition(' = ')
-                    source_params[line[0]] = line[2]
+            source_params = extract_params_from_proj_or_cfg(fo)
     elif args.source_config:
         with open(args.source_config) as fo:
-            for line in fo.readlines():
-                line = line.rstrip()
-                if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)):
-                    line = line.partition(' = ')
-                    source_params[line[0]] = line[2]
-
-    #pprint(source_params)
-
+            source_params = extract_params_from_proj_or_cfg(fo)                                     
 
     with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')) as dfo:
         with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params'), 'w') as tfo:
@@ -2145,9 +2134,28 @@ def copy_parameters(args):
                 else:
                     tfo.write(line)
     print("Done copying parameters.")
-    print("Verify parameters in {} and".format(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params')))
-    print("copy {} to {} to complete.".format(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params'), pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')))
 
+    orig_params = pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')
+    new_params = pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params')
+
+    print("Verify parameters in {} and".format(new_params))
+    print("copy {} to {} to complete.".format(new_params, orig_params))
+
+
+def extract_params_from_proj_or_cfg(fo):
+    """
+    """
+    source_params = {}
+    # line conditions
+    starts_with_params = line.startswith('params.')
+    not_internal_ref_params = not(line.partition(' = ')[2].startswith('params'))a
+    not_proj_id_params = not(re.search('project_identifier', line)) 
+    for line in fo.readlines():
+        line = line.rstrip()
+        if starts_with_params and not_internal_ref_params and not_proj_id_params:
+            line = line.partition(' = ')
+            source_params[line[0]] = line[2]
+    return source_params
 
 def main():
     """
@@ -2195,8 +2203,6 @@ def main():
         load_project(args)
     elif args.command == 'push-project':
         push_project(args)
-    elif args.command == 'pull-project':
-        pull_project(args)
     elif args.command == 'update-modules':
         update_modules(args)
     elif args.command == 'rename-project':
@@ -2209,5 +2215,5 @@ def main():
         copy_parameters(args)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
