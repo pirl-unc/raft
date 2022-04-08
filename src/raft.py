@@ -2148,7 +2148,7 @@ def extract_params_from_proj_or_cfg(fo):
     source_params = {}
     # line conditions
     starts_with_params = line.startswith('params.')
-    not_internal_ref_params = not(line.partition(' = ')[2].startswith('params'))a
+    not_internal_ref_params = not(line.partition(' = ')[2].startswith('params'))
     not_proj_id_params = not(re.search('project_identifier', line)) 
     for line in fo.readlines():
         line = line.rstrip()
