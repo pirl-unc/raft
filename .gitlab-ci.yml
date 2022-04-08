@@ -24,7 +24,7 @@ reqs:
     - pip install -r requirements.txt
 
 install
-  stage: .pre:
+  stage: .pre
   script:
     - pip install dist/*whl
   artifacts:
