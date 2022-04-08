@@ -1980,7 +1980,8 @@ def update_modules(args):
         if os.path.basename(os.path.dirname(mod)) in args.modules.split(',') or not args.modules:
             repo = Repo(mod)
             ori = repo.remotes.origin
-            print("Pulling latest for module {} (branch {})".format(os.path.basename(os.path.dirname(mod)), repo.active_branch.name))
+            mod_dir = os.path.basename(os.path.dirname(mod))
+            print(f"Pulling latest for module {mod_dir} (branch {repo.active_branch.name})")
             ori.pull()
 
 
@@ -2079,17 +2080,21 @@ def touch(path):
 def copy_parameters(args):
     """
     """
+    src_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')
+    orig_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')
+    new_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params')
+
     raft_cfg = load_raft_cfg()
     source_params = {}
     if args.source_project:
-        with open(pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')) as fo:
+        with open(src_proj_main) as fo:
             source_params = extract_params_from_proj_or_cfg(fo)
     elif args.source_config:
         with open(args.source_config) as fo:
             source_params = extract_params_from_proj_or_cfg(fo)
 
-    with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')) as dfo:
-        with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params'), 'w') as tfo:
+    with open(orig_proj_main) as dfo:
+        with open(new_proj_main, 'w') as tfo:
             for line in dfo.readlines():
                 parted_line = line.rstrip().partition(' = ')
                 if parted_line[0] in source_params.keys() and source_params[parted_line[0]] != parted_line[2]:
@@ -2098,11 +2103,9 @@ def copy_parameters(args):
                     tfo.write(line)
     print("Done copying parameters.")
 
-    orig_params = pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')
-    new_params = pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params')
 
-    print("Verify parameters in {} and".format(new_params))
-    print("copy {} to {} to complete.".format(new_params, orig_params))
+    print("Verify parameters in {} and".format(new_proj_main))
+    print("copy {} to {} to complete.".format(new_proj_main, orig_proj_main))
 
 
 def extract_params_from_proj_or_cfg(fo):
@@ -2112,7 +2115,9 @@ def extract_params_from_proj_or_cfg(fo):
     # line conditions
     for line in fo.readlines():
         line = line.rstrip()
-        if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)):
+        if (line.startswith('params.') and 
+            not(line.partition(' = ')[2].startswith('params')) and 
+            not(re.search('project_identifier', line))):
             line = line.partition(' = ')
             source_params[line[0]] = line[2]
     return source_params
