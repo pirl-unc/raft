@@ -35,9 +35,7 @@ def get_args():
                                                      and
                                                     Tools""")
 
-
     subparsers = parser.add_subparsers(dest='command')
-
 
     # Subparser for initial RAFT setup.
     parser_setup = subparsers.add_parser('setup',
@@ -46,7 +44,6 @@ def get_args():
                               help="Use default paths for setup.",
                               action='store_true',
                               default=False)
-
 
     # Subparser for initializing a project.
     parser_init_project = subparsers.add_parser('init-project',
@@ -61,7 +58,6 @@ def get_args():
                                      help="Git repo url for remote pushing/pulling.",
                                      default='')
 
-
     # Subparser for loading a manifest into a project.
     parser_load_manifest = subparsers.add_parser('load-manifest',
                                                  help="Load manifest into a project.")
@@ -71,7 +67,6 @@ def get_args():
     parser_load_manifest.add_argument('-p', '--project-id',
                                       help="Project identifier",
                                       required=True)
-
 
     # Subparser for loading reference files/dirs into a project.
     parser_load_reference = subparsers.add_parser('load-reference',
@@ -89,7 +84,6 @@ def get_args():
                                        help="Mode (copy or symlink). Default: symlink",
                                        default='symlink')
 
-
     # Subparser for loading metadata into a project.
     parser_load_metadata = subparsers.add_parser('load-metadata',
                                                  help="Loads metadata into a project.")
@@ -104,7 +98,6 @@ def get_args():
     parser_load_metadata.add_argument('-m', '--mode',
                                       help="Mode (copy or symlink). Default: copy",
                                       default='symlink')
-
 
     # Subparser for loading a complete dataset into a project.
     parser_load_dataset = subparsers.add_parser('load-dataset',
@@ -124,7 +117,6 @@ def get_args():
     parser_load_dataset.add_argument('-m', '--mode',
                                      help="Mode (copy or symlink). Default: copy",
                                      default='symlink')
-
 
     # Subparser for loading component into a project.
     parser_load_module = subparsers.add_parser('load-module',
@@ -149,7 +141,6 @@ def get_args():
                                     help="Delay (in seconds) before git pulls. (Default = 15s).",
                                     default=15)
 
-
     # Subparser for listing module steps.
     parser_list_steps = subparsers.add_parser('list-steps',
                                               help="List module's processes and workflows.")
@@ -161,7 +152,6 @@ def get_args():
     parser_list_steps.add_argument('-s', '--step',
                                    help="Step")
 
-
     # Subparser for updating project-specific mounts.config file.
     parser_update_mounts = subparsers.add_parser('update-mounts',
                                                  help="""Updates project-specific mounts.config
@@ -172,7 +162,6 @@ def get_args():
     parser_update_mounts.add_argument('-d', '--dir',
                                       help="Directory containing symlinks for mounts.config.",
                                       required=True)
-
 
     # Subparser for adding a step into workflow step of a project.
     parser_add_step = subparsers.add_parser('add-step',
@@ -193,7 +182,6 @@ def get_args():
     parser_add_step.add_argument('-a', '--alias',
                                  help="Assign an alias to step.",
                                  default='')
-
 
     # Subparser for running workflow.
     parser_run_workflow = subparsers.add_parser('run-workflow',
@@ -217,7 +205,6 @@ def get_args():
                                      help="Do not create report files.",
                                      action='store_true')
 
-
     # Subparser for packaging project (to generate sharable rftpkg tar file)
     parser_package_project = subparsers.add_parser('package-project',
                                                    help="Package project (see documentation).")
@@ -235,7 +222,6 @@ def get_args():
                                         default=False,
                                         action='store_true')
 
-
     # Subparser for loading package (after receiving rftpkg tar file)
     parser_load_project = subparsers.add_parser('load-project',
                                                 help="Load project (see documentation).")
@@ -243,7 +229,6 @@ def get_args():
     parser_load_project.add_argument('-r', '--rftpkg', help="rftpkg file")
     parser_load_project.add_argument('--repo-url', help="Git repo url.")
     parser_load_project.add_argument('--branch', help="Git repo branch.", default='master')
-
 
     # Subparser for pushing package
     parser_push_project = subparsers.add_parser('push-project',
@@ -254,13 +239,11 @@ def get_args():
     parser_push_project.add_argument('-c', '--comment', help="Commit comment.")
     parser_push_project.add_argument('-b', '--branch', help="Git branch.")
 
-
     # Subparser for pulling package from repo
     parser_pull_project = subparsers.add_parser('pull-project',
                                                 help="Pull project from repo (see documentation).")
     parser_pull_project.add_argument('-p', '--project-id', help="Project identifier")
     parser_pull_project.add_argument('-r', '--rftpkg', help="rftpkg file")
-
 
     parser_update_modules = subparsers.add_parser('update-modules',
                                                   help="Pull the latest commits for each module.")
@@ -274,8 +257,6 @@ def get_args():
     parser_rename_project.add_argument('-p', '--project-id', help="Project identifier")
     parser_rename_project.add_argument('-n', '--new-id', help="New project identifier")
 
-
-
     # Subparser for cleaning work directories associated with a project.
     parser_clean_project = subparsers.add_parser('clean-project',
                                                  help="Remove unneeded (failed/aborted) work directories for a project.")
@@ -287,7 +268,6 @@ def get_args():
                                       help="Provide latest/completed/cleanable work directory counts but do NOT delete.",
                                       action='store_true', default=False)
 
- 
     # Subparser for copying parameters between projects or from a config file.
     parser_copy_params = subparsers.add_parser('copy-parameters',
                                                help="copy parameters between projects.")
@@ -923,7 +903,7 @@ def load_files(args, out_dir):
 
     full_base = raft_cfg['filesystem'][base]
 
-    globbed_files =  glob(pjoin(full_base, '**', args.file), recursive = True)
+    globbed_files =  glob(pjoin(full_base, '**', args.file), recursive=True)
     if len(globbed_files) == 0:
         sys.exit("Cannot find {} in {}/**".format(args.file, full_base))
         # Put list of available references here.
@@ -1120,7 +1100,7 @@ def run_workflow(args):
 
 
     if not args.keep_previous_outputs:
-        #Check for directory instead of try/except.
+        # Check for directory instead of try/except.
         try:
             shutil.rmtree(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs'))
         except:
@@ -1130,7 +1110,6 @@ def run_workflow(args):
     nf_cmd = get_base_nf_cmd(args)
 
     # Appending work directory
-#    work_dir = raft_cfg['filesystem']['work']
     work_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'work')
     nf_cmd = add_nf_work_dir(work_dir, nf_cmd)
 
@@ -1384,16 +1363,16 @@ def snapshot_postproc(inf, outf):
             new_contents = []
             contents = ifo.readlines()
             for line_idx, line in enumerate(contents):
-               if not(re.search("run-workflow", line)):
-                   new_contents.append(line)
-               elif line_idx == len(contents) - 1:
-                   line = line.strip().replace('n=', 'n="')
-                   #print(line)
-                   if re.search('-profile', line):
-                       spl = line.split(' ')
-                       ind =  [i for i, word in enumerate(spl) if re.search('-profile', word)]
-                       spl[ind[0] + 1] = "RAFT_PROFILE_PLACEHOLDER"
-                       line = ' '.join(spl)
+                if not(re.search("run-workflow", line)):
+                    new_contents.append(line)
+                elif line_idx == len(contents) - 1:
+                    line = line.strip().replace('n=', 'n="')
+                    #print(line)
+                    if re.search('-profile', line):
+                        spl = line.split(' ')
+                        ind =  [i for i, word in enumerate(spl) if re.search('-profile', word)]
+                        spl[ind[0] + 1] = "RAFT_PROFILE_PLACEHOLDER"
+                        line = ' '.join(spl)
                    new_contents.append(line + '"\n')
             for line in new_contents:
                 ofo.write(line)
@@ -1426,14 +1405,14 @@ def package_project(args):
     # probably do other directories produced by workflow as well.
     dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices', 'workflow']
     if not(args.no_checksums):
-      hashes = {}
-      with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as fo:
-          hashes = {}
-          for dir in dirs:
-              files = glob(pjoin('projects', args.project_id, dir, '**'), recursive=True)
-              sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
-              hashes.update(sub_hashes)
-          json.dump(hashes, fo, indent=4)
+        hashes = {}
+        with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as fo:
+            hashes = {}
+            for dir in dirs:
+                files = glob(pjoin('projects', args.project_id, dir, '**'), recursive=True)
+                sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
+                hashes.update(sub_hashes)
+            json.dump(hashes, fo, indent=4)
 
     # Get Nextflow configs, etc.
     os.mkdir(pjoin(proj_tmp_dir, 'workflow'))
@@ -1615,7 +1594,7 @@ def get_wf_mod_map(args):
     """
     raft_cfg = load_raft_cfg()
     wf_mod_map = {}
-    nf_scripts =  glob(pjoin(raft_cfg['filesystem']['projects'],
+    nf_scripts = glob(pjoin(raft_cfg['filesystem']['projects'],
                             args.project_id,
                             'workflow',
                             '*/*.nf'))
@@ -1829,7 +1808,6 @@ def find_step_module(contents, step):
         Str containing parent component for step.
     """
     mod = []
-    #mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0].split('/')[1]
     try:
         mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0].split('/')[1]
     except:
@@ -1852,7 +1830,6 @@ def find_step_actual_and_alias(contents, step):
     """
     mod = []
 
-    foo = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)]
     mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0]
     if not(re.findall(' as ', mod)):
         actual = step
@@ -1899,7 +1876,7 @@ def extract_params_from_contents(contents, discard_requires):
               re.findall("params.*,|params.*\)", i) and i != 'params.']
     flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '').replace('/', '').replace('\\', '') for
             j in params for i in j]
-    ### THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
+    # THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
     if discard_requires:
         flat = [i for i in flat if i not in require_params]
     else:
@@ -1942,8 +1919,8 @@ def get_workflow_str(wf_slice):
 
     Note: This seems like a pretty fragile system for extracting strings.
     """
-    #Can just strip contents before processing to not have to deal with a lot
-    #of the newlines and space considerations.
+    # Can just strip contents before processing to not have to deal with a lot
+    # of the newlines and space considerations.
     wf_list = []
     if '// require:' in wf_slice:
         require_idx = wf_slice.index('// require:')
@@ -2077,7 +2054,7 @@ def clean_project(args):
             for cleanable_file in cleanable_files:
                 try:
                     shutil.rmtree(cleanable_file)
-                except:
+                except FileNotFoundError:
                     pass
     else:
         print("Skipping deletion due to -n/--no-exec.")
@@ -2123,7 +2100,7 @@ def copy_parameters(args):
             source_params = extract_params_from_proj_or_cfg(fo)
     elif args.source_config:
         with open(args.source_config) as fo:
-            source_params = extract_params_from_proj_or_cfg(fo)                                     
+            source_params = extract_params_from_proj_or_cfg(fo)
 
     with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf')) as dfo:
         with open(pjoin(raft_cfg['filesystem']['projects'], args.destination_project, 'workflow', 'main.nf.copy_params'), 'w') as tfo:
@@ -2147,12 +2124,9 @@ def extract_params_from_proj_or_cfg(fo):
     """
     source_params = {}
     # line conditions
-    starts_with_params = line.startswith('params.')
-    not_internal_ref_params = not(line.partition(' = ')[2].startswith('params'))
-    not_proj_id_params = not(re.search('project_identifier', line)) 
     for line in fo.readlines():
         line = line.rstrip()
-        if starts_with_params and not_internal_ref_params and not_proj_id_params:
+        if line.startswith('params.') and not(line.partition(' = ')[2].startswith('params')) and not(re.search('project_identifier', line)) :
             line = line.partition(' = ')
             source_params[line[0]] = line[2]
     return source_params
