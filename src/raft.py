@@ -2117,7 +2117,7 @@ def extract_params_from_proj_or_cfg(fo):
         line = line.rstrip()
         if (line.startswith('params.') and
             not line.partition(' = ')[2].startswith('params') and
-            not (re.search('project_identifier', line)):
+            not re.search('project_identifier', line)):
             line = line.partition(' = ')
             source_params[line[0]] = line[2]
     return source_params
