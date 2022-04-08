@@ -31,15 +31,15 @@ install:
     paths:
       - dist/*.whl
 
-#flake8:
-#  stage: Static Analysis
-#  script:
-#  - flake8 --max-line-length=120 --max-complexity 8 src/*.py
+flake8:
+  stage: Static Analysis
+  script:
+  - flake8 --max-line-length=120 --max-complexity 8 src/raft.py
 
-#pylint:
-#  stage: Static Analysis
-#  script:
-#  - pylint -d C0301 -d R0902 src/*.py
+pylint:
+  stage: Static Analysis
+  script:
+  - pylint -d C0301 -d R0902 src/raft.py
 
 pytest:
   stage: Test
