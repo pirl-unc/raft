@@ -1373,7 +1373,7 @@ def snapshot_postproc(inf, outf):
                         ind =  [i for i, word in enumerate(spl) if re.search('-profile', word)]
                         spl[ind[0] + 1] = "RAFT_PROFILE_PLACEHOLDER"
                         line = ' '.join(spl)
-                   new_contents.append(line + '"\n')
+                new_contents.append(line + '"\n')
             for line in new_contents:
                 ofo.write(line)
 
