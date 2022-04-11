@@ -334,7 +334,7 @@ def setup(args):
                 "rftpkgs": "",
                 "raft": ""}
 
-    with open(pjoin(getcwd(), '.init.cfg'), 'w') as init_cfg_fo:
+    with open(pjoin(getcwd(), '.init.cfg'), 'w', encoding='utf8') as init_cfg_fo:
         json.dump(init_cfg, init_cfg_fo)
 
     with open(pjoin(getcwd(), '.init.wf'), 'w') as init_wf_fo:
@@ -366,7 +366,7 @@ def setup(args):
         init_wf_fo.write('workflow {\n')
         init_wf_fo.write('}\n')
 
-    with open(pjoin(getcwd(), '.nextflow.config'), 'w') as nc_cfg_fo:
+    with open(pjoin(getcwd(), '.nextflow.config'), 'w') as nf_cfg_fo:
         nf_cfg_fo.write("manifest.mainScript = 'main.nf'\n")
         nf_cfg_fo.write("\n")
         nf_cfg_fo.write("process {\n")
@@ -633,7 +633,7 @@ def mk_proj_dir(proj_id):
     return proj_dir
 
 
-def fill_dir(args, dir, init_cfg):
+def fill_dir(args, directory, init_cfg):
     """
     Part of the init-project mode.
 
@@ -663,11 +663,11 @@ def fill_dir(args, dir, init_cfg):
         # within the project directory. This should include some sanity
         # checking to ensure the sub_dir directory even exists.
         if sdir:
-            os.symlink(sdir, pjoin(dir, name))
+            os.symlink(sdir, pjoin(directory, name))
         # Else if the desired directory doesn't have an included path, simply
         # make a directory by that name within the project directory.
         elif not sdir:
-            os.mkdir(pjoin(dir, name))
+            os.mkdir(pjoin(directory, name))
     bind_dirs.append(pjoin(raft_cfg['filesystem']['projects'], args.project_id))
     bind_dirs.append(raft_cfg['filesystem']['work'])
     bind_dirs.append(getcwd())
@@ -691,7 +691,6 @@ def mk_mounts_cfg(directory, bind_dirs):
         directory (str): Project path.
         bind_dirs (list): Directories to be included in mounts.config file.
     """
-    raft_cfg = load_raft_cfg()
     out = []
     out.append(f'{bind_dirs}\n')
 
@@ -954,7 +953,7 @@ def recurs_load_modules(args):
         new_deps = 0
         mods = glob(pjoin(wf_dir, '**', '*.nf'), recursive=True)
         for mod in mods:
-            base = mod.strip('.nf')
+#            base = mod.strip('.nf')
             deps = []
             with open(mod) as mfo:
                 for line in mfo:
@@ -1162,11 +1161,11 @@ def get_size(start_path = '.'):
     """
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(start_path):
-        for f in filenames:
-            fp = os.path.join(dirpath, f)
+        for filename in filenames:
+            filename_path = os.path.join(dirpath, filename)
             # skip if it is symbolic link
-            if not os.path.islink(fp):
-                total_size += os.path.getsize(fp)
+            if not os.path.islink(filename_path):
+                total_size += os.path.getsize(filename_path)
 
     return total_size
 
@@ -1384,8 +1383,8 @@ def package_project(args):
     """
     raft_cfg = load_raft_cfg()
     proj_dir = os.path.join(raft_cfg['filesystem']['projects'], args.project_id)
-    foo = rndm_str_gen()
-    proj_tmp_dir = os.path.join(raft_cfg['filesystem']['projects'], args.project_id, 'tmp', foo)
+    rndm_str = rndm_str_gen()
+    proj_tmp_dir = os.path.join(raft_cfg['filesystem']['projects'], args.project_id, 'tmp', rndm_str)
 
     os.mkdir(proj_tmp_dir)
 
@@ -2048,7 +2047,7 @@ def rename_project(args):
     Given an original project identifier and a new project identifier,
     exhaustively rename the project and associated files.
 
-    This function is limited to the files explicitly listed in the function 
+    This function is limited to the files explicitly listed in the function.
 
     Args:
         args (namespace object): User-provided arguments
@@ -2056,14 +2055,14 @@ def rename_project(args):
     raft_cfg = load_raft_cfg()
     proj_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id)
 
-    renamable_contents = [pjoin('workflow', 'mounts.config'), 
-                          pjoin('workflow', 'nextflow.config'), 
+    renamable_contents = [pjoin('workflow', 'mounts.config'),
+                          pjoin('workflow', 'nextflow.config'),
                           pjoin('.raft', 'auto.raft')]
 
-    for renamable_contents_file in renamable_contents: 
+    for renamable_contents_file in renamable_contents:
         # Creating a backup prior to modifying file. Serves as template for renaming.
-        shutil.move(pjoin(proj_dir, renameable_contents_file), 
-                    pjoin(proj_dir, renameable_contents_file + '.rename.bak'))
+        shutil.move(pjoin(proj_dir, renamable_contents_file),
+                    pjoin(proj_dir, renamable_contents_file + '.rename.bak'))
 
         with open(pjoin(proj_dir, f), 'w') as f_fo:
             with open(pjoin(proj_dir, f + '.rename.bak')) as f_io:
