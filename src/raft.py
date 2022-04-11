@@ -1049,7 +1049,7 @@ def load_module(args):
                                 branch=branch)
                 time.sleep(args.delay)
                 found = 1
-            except:
+            except GitCommandError:
                 pass
         if not found:
             sys.exit("ERROR: Could not find module {args.module} in any subgroups specified in RAFT config")
@@ -1106,7 +1106,7 @@ def run_workflow(args):
         # Check for directory instead of try/except.
         try:
             shutil.rmtree(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs'))
-        except:
+        except FileNotFoundError:
             pass
 
     # Getting base command
@@ -2029,6 +2029,7 @@ def chk_proj_id_exists(project_id):
     Returns:
         True
     """
+    raft_cfg = load_raft_cfg()
     projects_dir = raft_cfg['filesystem']['projects']
     error_message = f"Project {project_id} cannot be found in {projects_dir}"
 
