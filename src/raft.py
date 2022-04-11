@@ -463,8 +463,7 @@ def get_user_nf_repos(nf_repos, nf_subs):
 
     # This should be in its own function.
     for nf_sub, default in nf_subs.items():
-        user_spec_subs = input("\nProvide a comma separated list for Nextflow Module subgroups \n(Default: {}):"
-                               .format(default))
+        user_spec_subs = input(f"\nProvide a comma separated list for Nextflow Module subgroups \n(Default: {default}):")
         if user_spec_subs:
             nf_subs[nf_sub] = user_spec_subs
 
@@ -499,13 +498,13 @@ def setup_run_once(master_cfg):
     """
     for dir in master_cfg['filesystem'].values():
         if os.path.isdir(dir): # Need to ensure dir isn't already in RAFT dir.
-            print("Symlinking {} to {}...".format(dir, getcwd()))
+            print(f"Symlinking {dir} to {getcwd()}...")
             try:
                 os.symlink(dir, pjoin(getcwd(), os.path.basename(dir)))
             except:
-                print("{} already exists.".format(dir))
+                print(f"{dir} already exists.")
         else:
-            print("Making {}...".format(dir))
+            print(f"Making {dir}...")
             os.mkdir(dir)
 
 
@@ -561,7 +560,7 @@ def mk_main_wf_and_cfg(args):
         with open(pjoin(proj_wf_path, 'main.nf'), 'w') as outfo:
             for line in origfo.readlines():
                 if line == "params.project_dir = ''\n":
-                    line = "params.project_identifier = '{}'\nparams.project_dir = ''\n".format(args.project_id)
+                    line = f"params.project_identifier = '{args.project_id}'\nparams.project_dir = ''\n"
                 outfo.write(line)
 
     shutil.copyfile(tmplt_cfg_file, pjoin(proj_wf_path, 'nextflow.config'))
@@ -570,7 +569,7 @@ def mk_main_wf_and_cfg(args):
     imgs_dir = raft_cfg['filesystem']['imgs']
     cfg_out = ["manifest.mainScript = 'main.nf'\n\n"]
     cfg_out.append('singularity {\n')
-    cfg_out.append('  cacheDir = "{}"\n'.format(imgs_dir))
+    cfg_out.append(f'  cacheDir = "{imgs_die}"\n')
     cfg_out.append("  autoMount = 'true'\n")
     cfg_out.append('}\n')
 
@@ -578,7 +577,7 @@ def mk_main_wf_and_cfg(args):
         cfg_out.extend(fo.readlines()[1:])
     proc_idx = cfg_out.index("process {\n")
     mounts_cfg_path = pjoin(proj_wf_path, 'mounts.config')
-    cfg_out.insert(proc_idx + 1, "containerOptions = '-B `cat {}`'\n".format(mounts_cfg_path))
+    cfg_out.insert(proc_idx + 1, f"containerOptions = '-B `cat {mounts_cfg_path}`'\n")
 
     with open(pjoin(proj_wf_path, 'nextflow.config'), 'w') as fo:
         for row in cfg_out:
@@ -602,7 +601,7 @@ def mk_auto_raft(args):
                            'auto.raft')
 
     with open(auto_raft_file, 'w') as fo:
-        fo.write("{}\n".format(' '.join(sys.argv)))
+        fo.write(f"{sys.argv}\n")
 
 
 def mk_proj_dir(proj_id):
@@ -690,7 +689,7 @@ def mk_mounts_cfg(dir, bind_dirs):
     """
     raft_cfg = load_raft_cfg()
     out = []
-    out.append('{}\n'.format(','.join(bind_dirs)))
+    out.append(f'{bind_dirs}\n')
 
     with open(pjoin(dir, 'workflow', 'mounts.config'), 'w') as fo:
         for row in out:
@@ -774,7 +773,7 @@ def load_manifest(args):
         args (Namespace object): User-provided arguments.
     """
     raft_cfg = load_raft_cfg()
-    print("Loading manifest into project {}...".format(args.project_id))
+    print(f"Loading manifest into project {args.project_id}...")
     overall_mani = pjoin(raft_cfg['filesystem']['projects'],
                          args.project_id,
                          'metadata',
@@ -823,17 +822,17 @@ def load_manifest(args):
                         reconfiged_row.append('NA')
                 reconfiged_mani.append(','.join(reconfiged_row))
 
-                print("Checking for FASTQ prefix {} in global /fastqs...".format(prefix))
+                print(f"Checking for FASTQ prefix {prefix} in global /fastqs...")
                 hits = glob(pjoin(global_fastqs_dir, prefix + '*'), recursive=True)
                 #Check here to ensure that these FASTQs actually belong to the same sample.
                 if hits:
-                    print("Found FASTQs for prefix {} in /fastqs!\n".format(prefix))
+                    print(f"Found FASTQs for prefix {prefix} in /fastqs!\n")
                     for hit in hits:
                         os.symlink(os.path.realpath(hit), pjoin(local_fastqs_dir, os.path.basename(hit)))
                         #Just adding each file individually for now...
                         bind_dirs.append(os.path.dirname(os.path.realpath(hit)))
                 else:
-                    print("Unable to find FASTQs for prefix {} in /fastqs. Check your metadata!\n".format(prefix))
+                    print(f"Unable to find FASTQs for prefix {prefix} in /fastqs. Check your metadata!\n")
 
     bind_dirs = list(set(bind_dirs))
 
@@ -902,10 +901,10 @@ def load_files(args, out_dir):
 
     globbed_files =  glob(pjoin(full_base, '**', args.file), recursive=True)
     if len(globbed_files) == 0:
-        sys.exit("Cannot find {} in {}/**".format(args.file, full_base))
+        sys.exit(f"Cannot find {args.file} in {full_base}/**")
         # Put list of available references here.
     if len(globbed_files) > 1:
-        sys.exit("File name {} is not specific enough. Please provide a directory prefix.".format(args.file))
+        sys.exit(f"File name {args.file} is not specific enough. Please provide a directory prefix.")
         # Put list of conflicting files here.
     globbed_file = globbed_files[0]
 
@@ -916,7 +915,7 @@ def load_files(args, out_dir):
     result_file = pjoin(abs_out_dir, args.sub_dir, os.path.basename(globbed_file))
 
     if os.path.exists(result_file):
-        print("{} already exists within the project. Ignoring load request.".format(result_file))
+        print(f"{result_file} already exists within the project. Ignoring load request.")
     elif args.mode == 'symlink':
         os.symlink(os.path.realpath(globbed_file),
                    result_file)
@@ -988,9 +987,9 @@ def list_steps(args):
         with open(pjoin(mod, mod.split('/')[-2] + '.nf')) as fo:
             for line in fo:
                 if re.search('^workflow', line):
-                    comment = "module: {}\ntype: workflow\nstep: {}\n".format(mod.split('/')[-2], line.split(' ')[1])
+                    comment = f"module: {mod.split('/')[-2]}\ntype: workflow\nstep: {line.split(' ')[1]}\n"
                 elif re.search('^process', line):
-                    comment = "module: {}\ntype: process\nstep: {}\n".format(mod.split('/')[-2], line.split(' ')[1])
+                    comment = f"module: {mod.split('/')[-2]}\ntype: process\nstep: {line.split(' ')[1]}\n"
 
 
 def get_module_branch(args):
@@ -1029,7 +1028,7 @@ def load_module(args):
 
     branch = get_module_branch(args)
 
-    print("Loading module {} (branch {}) into project {}".format(args.module, branch, args.project_id))
+    print(f"Loading module {args.module} (branch {branch}) into project {args.project_id}")
 
     if not glob(pjoin(workflow_dir, args.module)):
         found = 0
@@ -1043,7 +1042,7 @@ def load_module(args):
             except:
                 pass
         if not found:
-            sys.exit("/ ! \\ ERROR: Could not find module {} in any subgroups specified in RAFT config / ! \\".format(args.module))
+            sys.exit("ERROR: Could not find module {args.module} in any subgroups specified in RAFT config")
         nf_cfg = pjoin(raft_cfg['filesystem']['projects'],
                        args.project_id,
                        'workflow',
@@ -1056,7 +1055,7 @@ def load_module(args):
         if os.path.isfile(mod_cfg):
             update_nf_cfg(nf_cfg, mod_cfg)
     else:
-        print("Module {} is already loaded into project {}. Skipping...".format(args.module, args.project_id))
+        print(f"Module {args.module} is already loaded into project {args.project_id}. Skipping...")
     recurs_load_modules(args)
 
 
@@ -1115,12 +1114,15 @@ def run_workflow(args):
 
 
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
-    print("Running:\n{}".format(nf_cmd))
+    print(f"Running:\n{nf_cmd}")
     nf_exit_code = subprocess.run(nf_cmd, shell=True, check=False)
+
+    reports_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports')
+
     if not nf_exit_code.returncode:
         print("Workflow completed!\n")
         if not args.no_reports:
-            print("Moving reports to {}\n".format(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports')))
+            print("Moving reports to {reports_dir}\n")
             reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
             os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
             for report in reports:
@@ -1146,7 +1148,7 @@ def get_work_dirs(args):
                     project_uuid = line[5]
                     break
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
-    work_dirs = [x for x in subprocess.run('nextflow log {}'.format(project_uuid), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
+    work_dirs = [x for x in subprocess.run(f'nextflow log {project_uuid}', shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
     return work_dirs
 
 
@@ -1179,7 +1181,7 @@ def add_global_fq_dir(samp_nf_cmd):
     """
     raft_cfg = load_raft_cfg()
     global_fq_dir = raft_cfg['filesystem']['fastqs']
-    return ' '.join([samp_nf_cmd, '--global_fq_dir {}'.format(global_fq_dir)])
+    return ' '.join([samp_nf_cmd, f'--global_fq_dir {global_fq_dir}'])
 
 
 def add_global_shared_dir(samp_nf_cmd):
@@ -1196,7 +1198,7 @@ def add_global_shared_dir(samp_nf_cmd):
     """
     raft_cfg = load_raft_cfg()
     shared_dir = raft_cfg['filesystem']['shared']
-    return ' '.join([samp_nf_cmd, '--shared_dir {}'.format(shared_dir)])
+    return ' '.join([samp_nf_cmd, f'--shared_dir {shared_dir}'])
 
 
 def add_nf_work_dir(work_dir, nf_cmd):
@@ -1212,7 +1214,7 @@ def add_nf_work_dir(work_dir, nf_cmd):
     Returns:
         Str containing the modified Nextflow command with a working directory.
     """
-    return ' '.join([nf_cmd, '-w {}'.format(work_dir)])
+    return ' '.join([nf_cmd, f'-w {work_dir}'])
 
 
 def get_base_nf_cmd(args):
@@ -1252,7 +1254,7 @@ def get_base_nf_cmd(args):
     proj_dir_str = ''
     if not re.search('--project_dir', args.nf_params):
         proj_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id)
-        proj_dir_str = "--project_dir {}".format(proj_dir)
+        proj_dir_str = f"--project_dir {proj_dir}"
 
     # Adding all components to make base command.
     resume = ''
@@ -1343,7 +1345,7 @@ def dump_to_auto_raft(args):
         if args.command in ['add-step']:
             comment_out = '#'
         with open(auto_raft_path, 'a') as fo:
-            fo.write("{}{}\n".format(comment_out, ' '.join(sys.argv)))
+            fo.write(f"{comment_out}{' '.join(sys.argv)}\n")
 
 
 def snapshot_postproc(inf, outf):
@@ -1532,8 +1534,8 @@ def replace_proj_id(fle, old_proj_id, new_proj_id):
         with open(fle) as fo:
             contents = fo.readlines()
             for line in contents:
-                line = line.replace('-p {}'.format(old_proj_id), '-p {}'.format(new_proj_id))
-                line = line.replace('projects/{}'.format(old_proj_id), 'projects/{}'.format(new_proj_id))
+                line = line.replace(f'-p {old_proj_id}', f'-p {new_proj_id}')
+                line = line.replace(f'projects/{old_proj_id}', f'projects/{new_proj_id}')
                 tfo.write(line)
 
     shutil.move(pjoin(raft_cfg['filesystem']['projects'], new_proj_id, 'tmp', 'tmp_file'), fle)
@@ -1653,9 +1655,9 @@ def add_step(args):
 
     # Step's inclusion statement for main.nf
     if args.alias:
-        inclusion_str = "include {{ {step} as {alias} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module, alias=args.alias)
+        inclusion_str = f"include {{ {args.step} as {args.alias} }} from './{args.module}/{args.module}.nf'\n"
     else:
-        inclusion_str = "include {{ {step} }} from './{mod}/{mod}.nf'\n".format(step=args.step, mod=args.module)
+        inclusion_str = f"include {{ {args.step} }} from './{args.module}/{args.module}.nf'\n"
 
     # Need to load main.nf params here to check against when getting step-specific params.
     # Seems odd to emit the undefined and defined separately.
@@ -1667,12 +1669,12 @@ def add_step(args):
     step_str = ''
     step_slice = extract_step_slice_from_nfscript(mod_nf, args.step)
     if not step_slice:
-        sys.exit("ERROR: Step {} could not be found in module {}.".format(args.step, args.module))
+        sys.exit(f"ERROR: Step {args.step} could not be found in module {args.module}.")
     step_str = get_workflow_str(step_slice)
     if args.alias:
         params = step_str.partition('(')[2]
         step_str = ''.join([args.alias, '(', params])
-    print("Adding the following step to main.nf: {}".format(step_str.rstrip()))
+    print(f"Adding the following step to main.nf: {step_str.rstrip()}")
 
     # Parameterization
     wf_mod_map = get_wf_mod_map(args)
@@ -1729,8 +1731,7 @@ def add_step(args):
         with open(main_nf, 'w') as ofo:
             ofo.write(''.join(main_contents))
     else:
-        print("/ ! \\ ERROR! / ! \\")
-        print("Step {} has already been added to Project {}.".format(step_str.split('(')[0], args.project_id))
+        print("Step {step_str.split('(')[0]} has already been added to Project {args.project_id}")
         print("Please use step aliasing (-a/--alias) if you intend to use this step multiple times.")
         sys.exit(1)
 
@@ -1813,7 +1814,7 @@ def find_step_module(contents, step):
     """
     mod = []
     try:
-        mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0].split('/')[1]
+        mod = [re.findall(f'include .*{step}.*', i) for i in contents if re.findall(f'include .*{step}.*', i)][0][0].split('/')[1]
     except FileNotFoundError:
         pass
     return mod
@@ -1835,7 +1836,7 @@ def find_step_actual_and_alias(contents, step):
     """
     mod = []
 
-    mod = [re.findall('include .*{}.*'.format(step), i) for i in contents if re.findall('include .*{}.*'.format(step), i)][0][0]
+    mod = [re.findall(f'include .*{step}.*', i) for i in contents if re.findall(f'include .*{step}.*', i)][0][0]
     if not re.findall(' as ', mod):
         actual = step
         alias = ''
@@ -1913,13 +1914,12 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
         contents = [i.strip() for i in fo.readlines()]
     # Need the ability to error out if step doesn't exist. Should list steps
     # from module in that case.
-    if 'workflow {} {{'.format(step) in contents:
-        step_start = contents.index('workflow {} {{'.format(step))
+    if f'workflow {step} {{' in contents:
+        step_start = contents.index('workflow {step} {{')
         step_end = contents.index("}", step_start)
         step_slice = contents[step_start:step_end]
     else:
-#        sys.exit(f"Cannot find step {step} in module {nfscript_path}")
-        sys.exit("Cannot find step {} in module {}.format(step, nfscript_path)")
+        sys.exit(f"Cannot find step {step} in module {nfscript_path}")
     return step_slice
 
 
@@ -1997,7 +1997,7 @@ def push_project(args):
                     pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'repo', args.rftpkg + '.rftpkg'))
     repo = Repo(local_repo)
     repo.index.add(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'repo', args.rftpkg + '.rftpkg'))
-    repo.index.commit("rftpkg commit {}".format(time.time()))
+    repo.index.commit(f"rftpkg commit {time.time()}")
     repo.git.push('origin', repo.head.ref)
 
 
@@ -2086,21 +2086,21 @@ def clean_project(args):
                     successful_run = line[2]
                     project_uuid = line[5]
                     break
-    print("Project UUID is: {}".format(project_uuid))
-    print("Last successful run is: {}".format(successful_run))
+    print(f"Project UUID is: {project_uuid}")
+    print(f"Last successful run is: {successful_run}")
     os.chdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'logs'))
-    all_work_hashes = [x for x in subprocess.run('nextflow log {}'.format(project_uuid), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
-    successful_work_hashes = [x for x in subprocess.run("nextflow log -f 'workdir, status' {} | grep -E 'COMPLETED|CACHED' | cut -f 1 -d '	'".format(successful_run), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if x in all_work_hashes]
-    completed_work_hashes = [x for x in subprocess.run("nextflow log -f 'workdir, status' {} | grep -E 'COMPLETED|CACHED' | cut -f 1 -d '	'".format(project_uuid), shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if x in all_work_hashes]
-    print("All run work hashes count: {}".format(len(all_work_hashes)))
-    print("Successful run work hashes count: {} ".format(len(successful_work_hashes)))
-    print("Completed run work hashes count: {} ".format(len(completed_work_hashes)))
+    all_work_hashes = [x for x in subprocess.run(f'nextflow log {project_uuid}', shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
+    successful_work_hashes = [x for x in subprocess.run(f"nextflow log -f 'workdir, status' {successful_run} | grep -E 'COMPLETED|CACHED' | cut -f 1 -d '	'", shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if x in all_work_hashes]
+    completed_work_hashes = [x for x in subprocess.run(f"nextflow log -f 'workdir, status' {project_uuid} | grep -E 'COMPLETED|CACHED' | cut -f 1 -d '	'", shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if x in all_work_hashes]
+    print(f"All run work hashes count: {len(all_work_hases)}")
+    print(f"Successful run work hashes count: {len(successful_work_hashes)}")
+    print(f"Completed run work hashes count: {len(completed_work_hashes)}")
     cleanable_hashes = []
     if args.keep_latest and input("This will only keep work directories from the latest successful run!\nAre you sure? ") in ['YES', 'yes', 'Yes', 'Y', 'y']:
         cleanable_hashes = [x for x in all_work_hashes if x not in successful_work_hashes]
     else:
         cleanable_hashes = [x for x in all_work_hashes if x not in completed_work_hashes]
-    print("Cleanable run work hashes count: {}".format(len(cleanable_hashes)))
+    print(f"Cleanable run work hashes count: {len(cleanable_hashes)}")
     if not args.no_exec:
         for cleanable_dir in cleanable_hashes:
             print(f"Removing extra files from {cleanable_dir}...")
@@ -2131,11 +2131,11 @@ def load_dataset(args):
     args.sub_dir = args.dataset_id
     for metadata_file in metadata_files:
         args.file = metadata_file
-        print("Loading dataset metadata file {}...".format(args.file))
+        print(f"Loading dataset metadata file {args.file}...")
         load_metadata(args)
     args.module = args.dataset_id
     args.step = 'prep_dataset'
-    args.alias = 'prep_{}'.format(args.dataset_id)
+    args.alias = f'prep_{dataset_id}'
     add_step(args)
 
 
@@ -2167,39 +2167,39 @@ def copy_parameters(args):
 
     source_params = {}
     if args.source_project:
-        with open(src_proj_main) as fo:
-            source_params = extract_params_from_proj_or_cfg(fo)
+        with open(src_proj_main, encoding='utf8') as f_obj:
+            source_params = extract_params_from_proj_or_cfg(f_obj)
     elif args.source_config:
-        with open(args.source_config) as fo:
-            source_params = extract_params_from_proj_or_cfg(fo)
+        with open(args.source_config, encoding='utf8') as f_obj:
+            source_params = extract_params_from_proj_or_cfg(f_obj)
 
-    with open(orig_proj_main) as dfo:
+    with open(orig_proj_main, encoding='utf8') as dfo:
         with open(new_proj_main, 'w') as tfo:
             for line in dfo.readlines():
                 parted_line = line.rstrip().partition(' = ')
                 if parted_line[0] in source_params.keys() and source_params[parted_line[0]] != parted_line[2]:
-                    tfo.write("{} = {}\n".format(parted_line[0], source_params[parted_line[0]]))
+                    tfo.write(f"{parted_line[0]} = {source_params[parted_line[0]]}\n")
                 else:
                     tfo.write(line)
     print("Done copying parameters.")
 
 
-    print("Verify parameters in {} and".format(new_proj_main))
-    print("copy {} to {} to complete.".format(new_proj_main, orig_proj_main))
+    print("Verify parameters in {new_proj_main} and")
+    print("copy {new_proj_main} to {orig_proj_main} to complete.")
 
 
-def extract_params_from_proj_or_cfg(fo):
+def extract_params_from_proj_or_cfg(f_obj):
     """
     Extracts parameter strings from a file object.
 
     Args:
-      fo (file object): File containing parameters for extraction.
+      f_obj (file object): File containing parameters for extraction.
 
     Returns:
-      source_params (dict): Dictionary containing defined parameters from fo. 
+      source_params (dict): Dictionary containing defined parameters from f_obj. 
     """
     source_params = {}
-    for line in fo.readlines():
+    for line in f_obj.readlines():
         line = line.rstrip()
         if (line.startswith('params.') and
             not line.partition(' = ')[2].startswith('params') and
