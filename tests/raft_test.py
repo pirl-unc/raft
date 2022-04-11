@@ -27,9 +27,6 @@ def setup_defaults(self, test_name):
     os.makedirs(tmp_dir)
     os.chdir(tmp_dir)
     raft.setup(args)
-    shutil.copyfile(os.path.join(Path(SCRIPTS_DIR).parent, '.init.cfg'), os.path.join(tmp_dir, '.init.cfg')) 
-    shutil.copyfile(os.path.join(Path(SCRIPTS_DIR).parent, '.init.wf'), os.path.join(tmp_dir, '.init.wf')) 
-    shutil.copyfile(os.path.join(Path(SCRIPTS_DIR).parent, '.nextflow.config'), os.path.join(tmp_dir, '.nextflow.config')) 
 
 
 def teardown_instance(self, test_name):
@@ -110,7 +107,7 @@ class TestSetup:
                 cfg_md5.update(fo.read())
         cfg_md5 = cfg_md5.hexdigest()
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        assert cfg_md5 == '97be96fef060dd987ddfc07150908a32'
+        assert cfg_md5 == '6b3069f3151a33cfd53773ace7a17744'
 
 class TestInitProject:
 
