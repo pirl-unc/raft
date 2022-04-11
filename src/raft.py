@@ -334,43 +334,43 @@ def setup(args):
                 "rftpkgs": "",
                 "raft": ""}
 
-    with open(pjoin(getcwd(), '.init.cfg'), 'w') as fo:
-        json.dump(init_cfg, fo)
+    with open(pjoin(getcwd(), '.init.cfg'), 'w') as init_cfg_fo:
+        json.dump(init_cfg, init_cfg_fo)
 
-    with open(pjoin(getcwd(), '.init.wf'), 'w') as fo:
-        fo.write('#!/usr/bin/env nextflow\n')
-        fo.write('nextflow.enable.dsl=2\n')
-        fo.write('\n')
-        fo.write('/*General Parameters*/\n')
-        fo.write("params.project_dir = ''\n")
-        fo.write('params.fq_dir = "${params.project_dir}/fastqs"\n')
-        fo.write("params.global_fq_dir = ''\n")
-        fo.write("params.shared_dir = ''\n")
-        fo.write('params.metadata_dir = "${params.project_dir}/metadata"\n')
-        fo.write('params.indices_out_dir = "${params.project_dir}/indices"\n')
-        fo.write('params.ref_dir = "${params.project_dir}/references"\n')
-        fo.write('params.output_dir = "${params.project_dir}/outputs"\n')
-        fo.write('params.dsp_output_dir = "${params.output_dir}/dataset_prep"\n')
-        fo.write('params.analyses_dir = "${params.output_dir}/analyses"\n')
-        fo.write('params.batch_dir = "${params.output_dir}/batch"\n')
-        fo.write('params.gene_sigs_dir = "${params.batch_dir}/gene_signatures"\n')
-        fo.write('params.samps_out_dir = "${params.output_dir}/samples"\n')
-        fo.write('params.qc_out_dir = "${params.output_dir}/qc"\n')
-        fo.write('\n')
-        fo.write('/*Fine-tuned Parameters*/\n')
-        fo.write('\n')
-        fo.write('/*Inclusions*/\n')
-        fo.write('\n')
-        fo.write('/*Workflows*/\n')
-        fo.write('\n')
-        fo.write('workflow {\n')
-        fo.write('}\n')
+    with open(pjoin(getcwd(), '.init.wf'), 'w') as init_wf_fo:
+        init_wf_fo.write('#!/usr/bin/env nextflow\n')
+        init_wf_fo.write('nextflow.enable.dsl=2\n')
+        init_wf_fo.write('\n')
+        init_wf_fo.write('/*General Parameters*/\n')
+        init_wf_fo.write("params.project_dir = ''\n")
+        init_wf_fo.write('params.fq_dir = "${params.project_dir}/fastqs"\n')
+        init_wf_fo.write("params.global_fq_dir = ''\n")
+        init_wf_fo.write("params.shared_dir = ''\n")
+        init_wf_fo.write('params.metadata_dir = "${params.project_dir}/metadata"\n')
+        init_wf_fo.write('params.indices_out_dir = "${params.project_dir}/indices"\n')
+        init_wf_fo.write('params.ref_dir = "${params.project_dir}/references"\n')
+        init_wf_fo.write('params.output_dir = "${params.project_dir}/outputs"\n')
+        init_wf_fo.write('params.dsp_output_dir = "${params.output_dir}/dataset_prep"\n')
+        init_wf_fo.write('params.analyses_dir = "${params.output_dir}/analyses"\n')
+        init_wf_fo.write('params.batch_dir = "${params.output_dir}/batch"\n')
+        init_wf_fo.write('params.gene_sigs_dir = "${params.batch_dir}/gene_signatures"\n')
+        init_wf_fo.write('params.samps_out_dir = "${params.output_dir}/samples"\n')
+        init_wf_fo.write('params.qc_out_dir = "${params.output_dir}/qc"\n')
+        init_wf_fo.write('\n')
+        init_wf_fo.write('/*Fine-tuned Parameters*/\n')
+        init_wf_fo.write('\n')
+        init_wf_fo.write('/*Inclusions*/\n')
+        init_wf_fo.write('\n')
+        init_wf_fo.write('/*Workflows*/\n')
+        init_wf_fo.write('\n')
+        init_wf_fo.write('workflow {\n')
+        init_wf_fo.write('}\n')
 
-    with open(pjoin(getcwd(), '.nextflow.config'), 'w') as fo:
-        fo.write("manifest.mainScript = 'main.nf'\n")
-        fo.write("\n")
-        fo.write("process {\n")
-        fo.write("}\n")
+    with open(pjoin(getcwd(), '.nextflow.config'), 'w') as nc_cfg_fo:
+        nf_cfg_fo.write("manifest.mainScript = 'main.nf'\n")
+        nf_cfg_fo.write("\n")
+        nf_cfg_fo.write("process {\n")
+        nf_cfg_fo.write("}\n")
 
     git_prefix = 'https://gitlab.com/bgv-lens/nextflow'
     # nextflow-components is a subgroup, not a repo.
@@ -482,8 +482,8 @@ def dump_cfg(cfg_path, master_cfg):
         cfg_path (str): Path for writing output file.
         master_cfg (dict): Dictionary containing configuration information.
     """
-    with open(cfg_path, 'w') as fo:
-        json.dump(master_cfg, fo, indent=4)
+    with open(cfg_path, 'w') as cfg_fo:
+        json.dump(master_cfg, cfg_fo, indent=4)
 
 
 def setup_run_once(master_cfg):
@@ -496,16 +496,16 @@ def setup_run_once(master_cfg):
     Args:
         master_cfg (dict): Dictionary with configuration information.
     """
-    for dir in master_cfg['filesystem'].values():
-        if os.path.isdir(dir): # Need to ensure dir isn't already in RAFT dir.
-            print(f"Symlinking {dir} to {getcwd()}...")
+    for directory in master_cfg['filesystem'].values():
+        if os.path.isdir(directory): # Need to ensure directory isn't already in RAFT directory.
+            print(f"Symlinking {directory} to {getcwd()}...")
             try:
-                os.symlink(dir, pjoin(getcwd(), os.path.basename(dir)))
+                os.symlink(directory, pjoin(getcwd(), os.path.basename(directory)))
             except:
-                print(f"{dir} already exists.")
+                print(f"{directory} already exists.")
         else:
-            print(f"Making {dir}...")
-            os.mkdir(dir)
+            print(f"Making {directory}...")
+            os.mkdir(directory)
 
 
 def init_project(args):
@@ -535,6 +535,10 @@ def init_project(args):
 
 def mk_repo(args):
     """
+    Initialize a local Git repo for storing rftpkg files.
+
+    Args:
+        args (namespace object): User-defined arugments
     """
     raft_cfg = load_raft_cfg()
     local_repo = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'rftpkgs')
@@ -556,7 +560,7 @@ def mk_main_wf_and_cfg(args):
     tmplt_wf_file = os.path.join(os.getcwd(), '.init.wf')
     tmplt_cfg_file = os.path.join(os.getcwd(), '.nextflow.config')
     proj_wf_path = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
-    with open(tmplt_wf_file) as origfo:
+    with open(tmplt_wf_file, encoding='utf8') as origfo:
         with open(pjoin(proj_wf_path, 'main.nf'), 'w') as outfo:
             for line in origfo.readlines():
                 if line == "params.project_dir = ''\n":
@@ -569,19 +573,19 @@ def mk_main_wf_and_cfg(args):
     imgs_dir = raft_cfg['filesystem']['imgs']
     cfg_out = ["manifest.mainScript = 'main.nf'\n\n"]
     cfg_out.append('singularity {\n')
-    cfg_out.append(f'  cacheDir = "{imgs_die}"\n')
+    cfg_out.append(f'  cacheDir = "{imgs_dir}"\n')
     cfg_out.append("  autoMount = 'true'\n")
     cfg_out.append('}\n')
 
-    with open(pjoin(proj_wf_path, 'nextflow.config')) as fo:
-        cfg_out.extend(fo.readlines()[1:])
+    with open(pjoin(proj_wf_path, 'nextflow.config')) as nf_cfg_fo:
+        cfg_out.extend(nf_cfg_fo.readlines()[1:])
     proc_idx = cfg_out.index("process {\n")
     mounts_cfg_path = pjoin(proj_wf_path, 'mounts.config')
     cfg_out.insert(proc_idx + 1, f"containerOptions = '-B `cat {mounts_cfg_path}`'\n")
 
-    with open(pjoin(proj_wf_path, 'nextflow.config'), 'w') as fo:
+    with open(pjoin(proj_wf_path, 'nextflow.config'), 'w') as nf_cfg_fo:
         for row in cfg_out:
-            fo.write(row)
+            nf_cfg_fo.write(row)
 
 
 def mk_auto_raft(args):
@@ -600,8 +604,8 @@ def mk_auto_raft(args):
                            '.raft',
                            'auto.raft')
 
-    with open(auto_raft_file, 'w') as fo:
-        fo.write(f"{sys.argv}\n")
+    with open(auto_raft_file, 'w') as auto_raft_fo:
+        auto_raft_fo.write(f"{sys.argv}\n")
 
 
 def mk_proj_dir(proj_id):
@@ -652,8 +656,8 @@ def fill_dir(args, dir, init_cfg):
     bind_dirs = []
     raft_cfg = load_raft_cfg()
     req_sub_dirs = {}
-    with open(init_cfg) as fo:
-        req_sub_dirs = json.load(fo)
+    with open(init_cfg) as init_cfg_fo:
+        req_sub_dirs = json.load(init_cfg_fo)
     for name, sdir in req_sub_dirs.items():
         # If the desired directory has an included path, link that path to
         # within the project directory. This should include some sanity
@@ -674,7 +678,7 @@ def fill_dir(args, dir, init_cfg):
     return bind_dirs
 
 
-def mk_mounts_cfg(dir, bind_dirs):
+def mk_mounts_cfg(directory, bind_dirs):
     """
     Part of the init-project mode.
 
@@ -684,16 +688,16 @@ def mk_mounts_cfg(dir, bind_dirs):
     Singularity now.
 
     Args:
-        dir (str): Analysis path.
+        directory (str): Project path.
         bind_dirs (list): Directories to be included in mounts.config file.
     """
     raft_cfg = load_raft_cfg()
     out = []
     out.append(f'{bind_dirs}\n')
 
-    with open(pjoin(dir, 'workflow', 'mounts.config'), 'w') as fo:
+    with open(pjoin(directory, 'workflow', 'mounts.config'), 'w') as mnt_cfg_fo:
         for row in out:
-            fo.write(row)
+            mnt_cfg_fo.write(row)
 
 
 def update_mounts_cfg(mounts_cfg, bind_dirs):
@@ -725,9 +729,9 @@ def update_mounts_cfg(mounts_cfg, bind_dirs):
         paths = ','.join(paths) + '\n'
         out.append(paths)
 
-    with open(mounts_cfg, 'w') as fo:
+    with open(mounts_cfg, 'w') as mnt_cfg_fo:
         for row in out:
-            fo.write(row)
+            mnt_cfg_fo.write(row)
 
 
 def update_mounts(args):
@@ -799,14 +803,14 @@ def load_manifest(args):
     bind_dirs = [] #Stores directories containing absolute path to FASTQs.
 
     print("Checking contents of manifest csv...")
-    with open(global_csv) as fo:
-        hdr = fo.readline()
+    with open(global_csv) as global_csv_fo:
+        hdr = global_csv_fo.readline()
         hdr = hdr.strip('\n').split(',')
         # Will certainly need a better way to do this, but this will work for now.
         cols_to_check = [i for i in range(len(hdr)) if hdr[i] in ['File_Prefix']]
         col_idx_map = {i: j for j, i in enumerate(hdr)}
 
-        for row in fo:
+        for row in global_csv_fo:
             row = row.strip('\n').split(',')
 
             #Mention adding manifest to project-level manifest.
@@ -815,9 +819,9 @@ def load_manifest(args):
                 if prefix == 'NA':
                     continue
                 reconfiged_row = []
-                for col in hdrl:
-                    if col in col_idx_map.keys():
-                        reconfiged_row.append(row[col_idx_map[col]])
+                for hdr_col in hdrl:
+                    if hdr_col in col_idx_map.keys():
+                        reconfiged_row.append(row[col_idx_map[hdr_col]])
                     else:
                         reconfiged_row.append('NA')
                 reconfiged_mani.append(','.join(reconfiged_row))
@@ -937,7 +941,7 @@ def recurs_load_modules(args):
     that each time a dependencies is loaded/cloned, another iteration is initated. This
     continues until an instance in which no new dependencies are loaded/cloned. There's
     probably a more intelligent way of doing this, but this should be able to
-    handle the multiple layers of dependencies we're working with. 
+    handle the multiple layers of dependencies we're working with.
 
     Args:
         args (Namespace object): User-provided arguments.
@@ -984,8 +988,8 @@ def list_steps(args):
 
     globbed_mods = glob(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', glob_term))
     for mod in globbed_mods:
-        with open(pjoin(mod, mod.split('/')[-2] + '.nf')) as fo:
-            for line in fo:
+        with open(pjoin(mod, mod.split('/')[-2] + '.nf')) as mod_fo:
+            for line in mod_fo:
                 if re.search('^workflow', line):
                     comment = f"module: {mod.split('/')[-2]}\ntype: workflow\nstep: {line.split(' ')[1]}\n"
                 elif re.search('^process', line):
@@ -1070,7 +1074,7 @@ def load_module(args):
 #    the metadata directory, so they won't need to be loaded a second time.
 #    Perhaps this should be part of load-metadata?
 #    """
-#    raft_cfg = load_raft_cfg() 
+#    raft_cfg = load_raft_cfg()
 #    auto_raft = pjoin(raft_cfg['filesystem']['projects'],
 
 
@@ -1133,15 +1137,15 @@ def run_workflow(args):
 
 def get_work_dirs(args):
     """
-    Get all work dirs associated with the latest run of the project."
+    Get all work dirs associated with the latest run of the project.
     """
     raft_cfg = load_raft_cfg()
     work_dirs = []
     log_dir = pjoin(raft_cfg['filesystem']['projects'],
                     args.project_id, 'logs')
     project_uuid = ''
-    with open(pjoin(log_dir, '.nextflow', 'history')) as fo:
-        for line in reversed(fo.read().split('\n')):
+    with open(pjoin(log_dir, '.nextflow', 'history')) as nf_hist_fo:
+        for line in reversed(nf_hist_fo.read().split('\n')):
             if line:
                 line = line.split('\t')
                 if line[3] == 'OK':
@@ -1318,8 +1322,8 @@ def load_raft_cfg():
     """
     cfg = {}
     cfg_path = pjoin(getcwd(), '.raft.cfg')
-    with open(cfg_path) as fo:
-        cfg = json.load(fo)
+    with open(cfg_path) as cfg_fo:
+        cfg = json.load(cfg_fo)
     return cfg
 
 
@@ -1344,8 +1348,8 @@ def dump_to_auto_raft(args):
         comment_out = ''
         if args.command in ['add-step']:
             comment_out = '#'
-        with open(auto_raft_path, 'a') as fo:
-            fo.write(f"{comment_out}{' '.join(sys.argv)}\n")
+        with open(auto_raft_path, 'a') as auto_raft_fo:
+            auto_raft_fo.write(f"{comment_out}{' '.join(sys.argv)}\n")
 
 
 def snapshot_postproc(inf, outf):
@@ -1402,13 +1406,13 @@ def package_project(args):
     dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices', 'workflow']
     if not args.no_checksums:
         hashes = {}
-        with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as fo:
+        with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as checksums_fo:
             hashes = {}
-            for dir in dirs:
-                files = glob(pjoin('projects', args.project_id, dir, '**'), recursive=True)
+            for directory in dirs:
+                files = glob(pjoin('projects', args.project_id, directory, '**'), recursive=True)
                 sub_hashes = {file: md5(file) for file in files if os.path.isfile(file)}
                 hashes.update(sub_hashes)
-            json.dump(hashes, fo, indent=4)
+            json.dump(hashes, checksums_fo, indent=4)
 
     # Get Nextflow configs, etc.
     os.mkdir(pjoin(proj_tmp_dir, 'workflow'))
@@ -1416,14 +1420,14 @@ def package_project(args):
     igpat = ''
     if args.no_git:
         igpat = '.*'
-    for dir in wf_dirs:
-        if os.path.isdir(dir):
-            shutil.copytree(dir,
-                            pjoin(proj_tmp_dir, 'workflow', os.path.basename(dir)),
+    for wf_dir in wf_dirs:
+        if os.path.isdir(wf_dir):
+            shutil.copytree(wf_dir,
+                            pjoin(proj_tmp_dir, 'workflow', os.path.basename(wf_dir)),
                             ignore=shutil.ignore_patterns(igpat))
         else:
             shutil.copyfile(dir,
-                            pjoin(proj_tmp_dir, 'workflow', os.path.basename(dir)))
+                            pjoin(proj_tmp_dir, 'workflow', os.path.basename(wf_dir)))
 
     # Get auto.raft
     shutil.copyfile(pjoin(proj_dir, '.raft', 'auto.raft'),
@@ -1531,8 +1535,8 @@ def replace_proj_id(fle, old_proj_id, new_proj_id):
     """
     raft_cfg = load_raft_cfg()
     with open(pjoin(raft_cfg['filesystem']['projects'], new_proj_id, 'tmp', 'tmp_file'), 'w') as tfo:
-        with open(fle) as fo:
-            contents = fo.readlines()
+        with open(fle) as ffo:
+            contents = ffo.readlines()
             for line in contents:
                 line = line.replace(f'-p {old_proj_id}', f'-p {new_proj_id}')
                 line = line.replace(f'projects/{old_proj_id}', f'projects/{new_proj_id}')
@@ -1544,7 +1548,7 @@ def replace_proj_id(fle, old_proj_id, new_proj_id):
 def get_orig_prod_id(fle):
     """
     """
-    with open(fle) as fo:
+    with open(fle) as ffo:
         contents = fo.readlines()
         first = contents[0].strip()
         ind = ''
@@ -1860,7 +1864,7 @@ def extract_steps_from_contents(contents):
     """
     wfs = [re.findall('^[\w_]+\(.*', i) for i in contents if re.findall('^[\w_]+\(.*', i)]
     flat = [i.partition('(')[0] for j in wfs for i in j]
-    return(flat)
+    return flat
 
 
 def extract_params_from_contents(contents, discard_requires):
@@ -1891,7 +1895,7 @@ def extract_params_from_contents(contents, discard_requires):
         flat = [i for i in flat if i not in require_params]
     else:
         flat = flat + require_params
-    return(flat)
+    return flat
 
 
 def extract_step_slice_from_nfscript(nfscript_path, step):
@@ -1910,8 +1914,8 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
     """
     step_slice = []
     contents = []
-    with open(nfscript_path) as fo:
-        contents = [i.strip() for i in fo.readlines()]
+    with open(nfscript_path) as nf_script_fo:
+        contents = [i.strip() for i in nf_script_fo.readlines()]
     # Need the ability to error out if step doesn't exist. Should list steps
     # from module in that case.
     if f'workflow {step} {{' in contents:
@@ -2009,11 +2013,11 @@ def chk_proj_id_exists(project_id):
         project_id (str): Project identifier
 
     Returns:
-        True 
+        True
     """
     projects_dir = raft_cfg['filesystem']['projects']
     error_message = f"Project {project_id} cannot be found in {projects_dir}"
-    
+
     raft_cfg = load_raft_cfg()
     if not os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], project_id)):
         sys.exit(error_message)
@@ -2044,7 +2048,7 @@ def rename_project(args):
     Given an original project identifier and a new project identifier,
     exhaustively rename the project and associated files.
 
-    This function is limited to the files explicitly listed in the function. 
+    This function is limited to the files explicitly listed in the function 
 
     Args:
         args (namespace object): User-provided arguments
@@ -2052,8 +2056,8 @@ def rename_project(args):
     raft_cfg = load_raft_cfg()
     proj_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id)
 
-    renamable_contents = [pjoin('workflow', 'mounts.config'),                                                   
-                          pjoin('workflow', 'nextflow.config'),                                                 
+    renamable_contents = [pjoin('workflow', 'mounts.config'), 
+                          pjoin('workflow', 'nextflow.config'), 
                           pjoin('.raft', 'auto.raft')]
 
     for renamable_contents_file in renamable_contents: 
@@ -2061,10 +2065,10 @@ def rename_project(args):
         shutil.move(pjoin(proj_dir, renameable_contents_file), 
                     pjoin(proj_dir, renameable_contents_file + '.rename.bak'))
 
-        with open(pjoin(proj_dir, f), 'w') as fo:
-            with open(pjoin(proj_dir, f + '.rename.bak')) as io:
-                for line in io.readlines():
-                    fo.write(line.replace(args.project_id, args.new_id))
+        with open(pjoin(proj_dir, f), 'w') as f_fo:
+            with open(pjoin(proj_dir, f + '.rename.bak')) as f_io:
+                for line in f_io.readlines():
+                    f_fo.write(line.replace(args.project_id, args.new_id))
 
     shutil.move(proj_dir,
                 pjoin(raft_cfg['filesystem']['projects'], args.new_id))
@@ -2078,8 +2082,8 @@ def clean_project(args):
                     args.project_id, 'logs')
     successful_run = ''
     project_uuid = ''
-    with open(pjoin(log_dir, '.nextflow', 'history')) as fo:
-        for line in reversed(fo.read().split('\n')):
+    with open(pjoin(log_dir, '.nextflow', 'history')) as nf_hist_fo:
+        for line in reversed(nf_hist_fo.read().split('\n')):
             if line:
                 line = line.split('\t')
                 if line[3] == 'OK':
@@ -2157,7 +2161,7 @@ def copy_parameters(args):
 
     Args:
         args (namespace object): User-defined arguments
-    
+
     """
     raft_cfg = load_raft_cfg()
 
@@ -2196,7 +2200,7 @@ def extract_params_from_proj_or_cfg(f_obj):
       f_obj (file object): File containing parameters for extraction.
 
     Returns:
-      source_params (dict): Dictionary containing defined parameters from f_obj. 
+      source_params (dict): Dictionary containing defined parameters from f_obj.
     """
     source_params = {}
     for line in f_obj.readlines():
