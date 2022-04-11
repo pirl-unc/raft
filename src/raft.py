@@ -337,7 +337,7 @@ def setup(args):
     with open(pjoin(getcwd(), '.init.cfg'), 'w', encoding='utf8') as init_cfg_fo:
         json.dump(init_cfg, init_cfg_fo)
 
-    with open(pjoin(getcwd(), '.init.wf', encoding='utf8'), 'w') as init_wf_fo:
+    with open(pjoin(getcwd(), '.init.wf'), 'w', encoding='utf8') as init_wf_fo:
         init_wf_fo.write('#!/usr/bin/env nextflow\n')
         init_wf_fo.write('nextflow.enable.dsl=2\n')
         init_wf_fo.write('\n')
@@ -847,10 +847,7 @@ def load_manifest(args):
 
     with open(overall_mani, 'w', encoding='utf8') as mfo:
         contents = ''
-        try:
-            contents = mfo.readlines()
-        except:
-            pass
+        contents = mfo.readlines()
         if proj_hdr not in contents:
             mfo.write(proj_hdr)
         mfo.write('\n'.join([row for row in reconfiged_mani if row not in contents]))
@@ -997,6 +994,16 @@ def list_steps(args):
 
 def get_module_branch(args):
     """
+    Given the --branches parameter and a module, return the branch requested
+    for that module. This function parses the user-provided string, maps
+    modules to branches, finds the desired module, and emits it. Defaults to
+    'main' branch.
+
+    Args:
+        args (namespace object): User-provided arguments
+
+    Return:
+        branch (str): Branch requested for module.
     """
     branch = 'main'
     if re.search(':', args.branches):
@@ -2072,8 +2079,8 @@ def rename_project(args):
         shutil.move(pjoin(proj_dir, renamable_contents_file),
                     pjoin(proj_dir, renamable_contents_file + '.rename.bak'))
 
-        with open(pjoin(proj_dir, f), 'w', encoding='utf8') as f_fo:
-            with open(pjoin(proj_dir, f + '.rename.bak'), encoding='utf8') as f_io:
+        with open(pjoin(proj_dir, renamable_contents_file), 'w', encoding='utf8') as f_fo:
+            with open(pjoin(proj_dir, renamable_contents_file + '.rename.bak'), encoding='utf8') as f_io:
                 for line in f_io.readlines():
                     f_fo.write(line.replace(args.project_id, args.new_id))
 
@@ -2103,7 +2110,7 @@ def clean_project(args):
     all_work_hashes = [x for x in subprocess.run(f'nextflow log {project_uuid}', shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if os.path.isdir(x)]
     successful_work_hashes = [x for x in subprocess.run(f"nextflow log -f 'workdir, status' {successful_run} | grep -E 'COMPLETED|CACHED' | cut -f 1 -d '	'", shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if x in all_work_hashes]
     completed_work_hashes = [x for x in subprocess.run(f"nextflow log -f 'workdir, status' {project_uuid} | grep -E 'COMPLETED|CACHED' | cut -f 1 -d '	'", shell=True, check=False, capture_output=True).stdout.decode("utf-8").split('\n') if x in all_work_hashes]
-    print(f"All run work hashes count: {len(all_work_hases)}")
+    print(f"All run work hashes count: {len(all_work_hashes)}")
     print(f"Successful run work hashes count: {len(successful_work_hashes)}")
     print(f"Completed run work hashes count: {len(completed_work_hashes)}")
     cleanable_hashes = []
@@ -2146,7 +2153,7 @@ def load_dataset(args):
         load_metadata(args)
     args.module = args.dataset_id
     args.step = 'prep_dataset'
-    args.alias = f'prep_{dataset_id}'
+    args.alias = f'prep_{args.dataset_id}'
     add_step(args)
 
 
