@@ -16,11 +16,12 @@ import sys
 import tarfile
 import time
 
-from git import Repo
-
 # These are repeatedly called, so trying to make life easier.
 from os.path import join as pjoin
 from os import getcwd
+
+from git import Repo
+
 
 
 def get_args():
@@ -1582,6 +1583,13 @@ def get_section_insert_idx(contents, section, stop='\n'):
 
 def get_wf_mod_map(args):
     """
+    Create a dictionary mapping workflows to modules.
+
+    Args
+        args (namespace object): User-defined arguments
+
+    Returns:
+        wf_mod_map (dict): Keys are workflow and values are module containing workflow.
     """
     raft_cfg = load_raft_cfg()
     wf_mod_map = {}
@@ -1599,6 +1607,13 @@ def get_wf_mod_map(args):
 
 def extract_wfs_from_script(script_path):
     """
+    Extract all workflows from a nextflow module.
+
+    Args:
+        script_path (str): Nextflow module path.
+
+    Returns:
+        wfs (list): Workflows contained in Nextflow module.
     """
     wfs = []
     with open(script_path) as spo:
@@ -1616,6 +1631,7 @@ def add_step(args):
         args (Namespace object): User-provided arguments.
     """
     raft_cfg = load_raft_cfg()
+
     # Relevant files
     main_nf = pjoin(raft_cfg['filesystem']['projects'],
                     args.project_id,
@@ -1807,14 +1823,15 @@ def find_step_actual_and_alias(contents, step):
     """
     Part of add-step mode.
 
-    Find a step's module based on the contents of the module in which it's being called. This is effectively parsing 'include' statements.
+    Find a step's module based on the contents of the module in which it's
+    being called. This is effectively parsing 'include' statements.
 
     Args:
         contents (list): List containing rows from a Nextflow module/component.
         step (str): Step that requires parent component.
 
     Returns:
-        Str containing parent component for step.
+        Tuple containing parent component for step.
     """
     mod = []
 
@@ -1849,11 +1866,15 @@ def extract_params_from_contents(contents, discard_requires):
     """
     Part of add-step mode.
 
-    Get list of params being used from contents.
-    NOTE: Contents in this case means a single step's contents.
+    Get list of parameters defined for a process or workflow.
 
     Args:
-        contents (list): List containing the rows from a workflow's entry in a component.
+        contents (list): process/workflow line-by-line contents.
+
+
+    Returns:
+        flat (list): Parameters either list in require:// block or passed as
+                     parameter options within process/workflow definition.
     """
     require_params = []
     if [re.findall("// require:", i) for i in contents if re.findall("// require:", i) for i in contents]:
@@ -1881,7 +1902,10 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
 
     Args:
         contents (list): List containing the contents of a module file.
-        step (str): Step of interest.
+        step (str): User-specificied step (process/workflow).
+
+    Returns:
+        step_slice (list): step contents extracted from module.
     """
     step_slice = []
     contents = []
@@ -1889,12 +1913,13 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
         contents = [i.strip() for i in fo.readlines()]
     # Need the ability to error out if step doesn't exist. Should list steps
     # from module in that case.
-    try:
-        step_start = contents.index("workflow {} {{".format(step))
+    if 'workflow {} {{'.format(step) in contents:
+        step_start = contents.index('workflow {} {{'.format(step))
         step_end = contents.index("}", step_start)
         step_slice = contents[step_start:step_end]
-    except:
-        pass
+    else:
+#        sys.exit(f"Cannot find step {step} in module {nfscript_path}")
+        sys.exit("Cannot find step {} in module {}.format(step, nfscript_path)")
     return step_slice
 
 
@@ -1903,9 +1928,15 @@ def get_workflow_str(wf_slice):
     """
     Part of add-step mode.
 
-    Get the string containing a workflow and its parameters for the main.nf workflow.
+    Get the string containing a workflow and its parameters for the main.nf
+    workflow.
 
-    Note: This seems like a pretty fragile system for extracting strings.
+    Args:
+        wf_slice (list): Contains entirety of workflow definition.
+
+    Returns:
+        wf_str (str): String representation for calling workflow within main.nf
+
     """
     # Can just strip contents before processing to not have to deal with a lot
     # of the newlines and space considerations.
@@ -1925,7 +1956,11 @@ def get_process_str(proc_slice):
     """
     Part of add-step mode.
 
-    Get the string containing a process and its parameters for the main.nf workflow.
+    Get the string containing a process and its parameters for the main.nf
+    workflow.
+
+    Args:
+        proc_slice (list): Process slice.
     """
     stop_idx = ''
     start_idx = proc_slice.index('input:')
@@ -1949,6 +1984,12 @@ def get_process_str(proc_slice):
 
 def push_project(args):
     """
+    Push a project's .rftpkg to a Git repository.
+
+    This needs further testing and documentation.
+
+    Args:
+        args (namespace object): User-defined arguments
     """
     raft_cfg = load_raft_cfg()
     local_repo = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'repo')
@@ -1962,43 +2003,69 @@ def push_project(args):
 
 def chk_proj_id_exists(project_id):
     """
+    Checks that a user-specific project exists within RAFT's project directory.a
+
+    Args:
+        project_id (str): Project identifier
+
+    Returns:
+        True 
     """
+    projects_dir = raft_cfg['filesystem']['projects']
+    error_message = f"Project {project_id} cannot be found in {projects_dir}"
+    
     raft_cfg = load_raft_cfg()
     if not os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], project_id)):
-        sys.exit("Check your project identifier (-p/--project-id). Project {} cannot be found in {}"
-                 .format(project_id, raft_cfg['filesystem']['projects']))
+        sys.exit(error_message)
+
+    return True
 
 
 def update_modules(args):
     """
+    Pulls the latest versions of either all modules or user-specific modules for a project.
+
+    Args:
+        args (namespace object): User-specified arguments
     """
     raft_cfg = load_raft_cfg()
-    main_nf = pjoin(raft_cfg['filesystem']['projects'],
-                    args.project_id,
-                    'workflow')
-    for mod in glob(pjoin(main_nf, '*', '')):
-        if os.path.basename(os.path.dirname(mod)) in args.modules.split(',') or not args.modules:
-            repo = Repo(mod)
+    main_nf = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
+    for module in glob(pjoin(main_nf, '*', '')):
+        if os.path.basename(os.path.dirname(module)) in args.modules.split(',') or not args.modules:
+            repo = Repo(module)
             ori = repo.remotes.origin
-            mod_dir = os.path.basename(os.path.dirname(mod))
-            print(f"Pulling latest for module {mod_dir} (branch {repo.active_branch.name})")
-            ori.pull()
+            module_dir = os.path.basename(os.path.dirname(module))
+            print(f"Pulling latest for module {module_dir} (branch {repo.active_branch.name})")
+            ori.pull() # Need some exception handling here.
 
 
 def rename_project(args):
     """
+    Given an original project identifier and a new project identifier,
+    exhaustively rename the project and associated files.
+
+    This function is limited to the files explicitly listed in the function. 
+
+    Args:
+        args (namespace object): User-provided arguments
     """
     raft_cfg = load_raft_cfg()
-    proj_dir = pjoin(raft_cfg['filesystem']['projects'],
-                     args.project_id)
-    for f in [pjoin('workflow', 'mounts.config'),
-              pjoin('workflow', 'nextflow.config'),
-              pjoin('.raft', 'auto.raft')]:
-        shutil.move(pjoin(proj_dir, f), pjoin(proj_dir, f + '.rename.bak'))
+    proj_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id)
+
+    renamable_contents = [pjoin('workflow', 'mounts.config'),                                                   
+                          pjoin('workflow', 'nextflow.config'),                                                 
+                          pjoin('.raft', 'auto.raft')]
+
+    for renamable_contents_file in renamable_contents: 
+        # Creating a backup prior to modifying file. Serves as template for renaming.
+        shutil.move(pjoin(proj_dir, renameable_contents_file), 
+                    pjoin(proj_dir, renameable_contents_file + '.rename.bak'))
+
         with open(pjoin(proj_dir, f), 'w') as fo:
             with open(pjoin(proj_dir, f + '.rename.bak')) as io:
                 for line in io.readlines():
                     fo.write(line.replace(args.project_id, args.new_id))
+
     shutil.move(proj_dir,
                 pjoin(raft_cfg['filesystem']['projects'], args.new_id))
 
@@ -2050,18 +2117,21 @@ def clean_project(args):
 def load_dataset(args):
     """
     Steps:
-      - load all files from metadata/<args.dataset_id> into projects/<args.project_id>/metadata/<args.dataset_id>
-      - add step t projects/<args.project_id>/workflow/main.nf with alias for prep_dataset as prep_<args.dataset_id>
+      - load all files from metadata/<args.dataset_id> into
+        projects/<args.project_id>/metadata/<args.dataset_id>
+      - add step to projects/<args.project_id>/workflow/main.nf with alias for
+        prep_dataset as prep_<args.dataset_id>
     """
     raft_cfg = load_raft_cfg()
     args.module = args.dataset_id
     args.delay = 0
     load_module(args)
-    dataset_files = [x.split('/')[-1] for x in glob(pjoin(raft_cfg['filesystem']['metadata'], args.dataset_id, '*'))]
+    metadata_paths = glob(pjoin(raft_cfg['filesystem']['metadata'], args.dataset_id, '*'))
+    metadata_files = [x.split('/')[-1] for x in metadata_paths]
     args.sub_dir = args.dataset_id
-    for dataset_file in dataset_files:
-        args.file = dataset_file
-        print("Loading dataset file {}...".format(args.file))
+    for metadata_file in metadata_files:
+        args.file = metadata_file
+        print("Loading dataset metadata file {}...".format(args.file))
         load_metadata(args)
     args.module = args.dataset_id
     args.step = 'prep_dataset'
@@ -2071,6 +2141,7 @@ def load_dataset(args):
 
 def touch(path):
     """
+    Touches a path.
     https://stackoverflow.com/a/12654798
     """
     with open(path, 'a'):
@@ -2079,6 +2150,14 @@ def touch(path):
 
 def copy_parameters(args):
     """
+    Copy parameters from either a source project or previously defined configuration file.
+
+    Currently, generates a .main.nf.copy_params file to allow users to review
+    parameters prior to applying the parameters to their project.
+
+    Args:
+        args (namespace object): User-defined arguments
+    
     """
     raft_cfg = load_raft_cfg()
 
@@ -2111,9 +2190,15 @@ def copy_parameters(args):
 
 def extract_params_from_proj_or_cfg(fo):
     """
+    Extracts parameter strings from a file object.
+
+    Args:
+      fo (file object): File containing parameters for extraction.
+
+    Returns:
+      source_params (dict): Dictionary containing defined parameters from fo. 
     """
     source_params = {}
-    # line conditions
     for line in fo.readlines():
         line = line.rstrip()
         if (line.startswith('params.') and
@@ -2126,6 +2211,7 @@ def extract_params_from_proj_or_cfg(fo):
 
 def main():
     """
+    Main function
     """
 
     args = get_args()
@@ -2150,9 +2236,8 @@ def main():
         load_reference(args)
     elif args.command == 'load-module':
         raft_cfg = load_raft_cfg()
-        print("NOTE: Module Nextflow configuration modifications must be performed in {}"
-              .format(pjoin(raft_cfg['filesystem']['projects'], args.project_id,
-                            'workflow', 'nextflow.config')))
+        nf_config_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id,'workflow', 'nextflow.config')
+        print(f"NOTE: Module Nextflow configuration modifications must be performed in {nf_config_dir}")
         load_module(args)
     elif args.command == 'list-steps':
         list_steps(args)
