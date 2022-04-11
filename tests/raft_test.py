@@ -126,8 +126,9 @@ class TestInitProject:
         raft.init_project(args)
         os.chdir('..')
         dirs = [os.path.basename(x) for x in glob(os.path.join(tmp_dir, '*'))]
+        print(dirs)
         teardown_instance(self, test_name)
-        assert dirs == ['work', 'projects', 'references', 'fastqs', 'imgs', 'metadata', 'shared']
+        assert sorted(dirs) == ['fastqs', 'imgs', 'metadata', 'projects', 'references', 'shared', 'work']
         
     def test_init_project_duplicate_project_id(self):
         """
