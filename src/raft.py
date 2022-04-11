@@ -337,7 +337,7 @@ def setup(args):
     with open(pjoin(getcwd(), '.init.cfg'), 'w', encoding='utf8') as init_cfg_fo:
         json.dump(init_cfg, init_cfg_fo)
 
-    with open(pjoin(getcwd(), '.init.wf'), 'w') as init_wf_fo:
+    with open(pjoin(getcwd(), '.init.wf', encoding='utf8'), 'w') as init_wf_fo:
         init_wf_fo.write('#!/usr/bin/env nextflow\n')
         init_wf_fo.write('nextflow.enable.dsl=2\n')
         init_wf_fo.write('\n')
@@ -366,7 +366,7 @@ def setup(args):
         init_wf_fo.write('workflow {\n')
         init_wf_fo.write('}\n')
 
-    with open(pjoin(getcwd(), '.nextflow.config'), 'w') as nf_cfg_fo:
+    with open(pjoin(getcwd(), '.nextflow.config'), 'w', encoding='utf8') as nf_cfg_fo:
         nf_cfg_fo.write("manifest.mainScript = 'main.nf'\n")
         nf_cfg_fo.write("\n")
         nf_cfg_fo.write("process {\n")
@@ -482,7 +482,7 @@ def dump_cfg(cfg_path, master_cfg):
         cfg_path (str): Path for writing output file.
         master_cfg (dict): Dictionary containing configuration information.
     """
-    with open(cfg_path, 'w') as cfg_fo:
+    with open(cfg_path, 'w', encoding='utf8') as cfg_fo:
         json.dump(master_cfg, cfg_fo, indent=4)
 
 
@@ -501,7 +501,7 @@ def setup_run_once(master_cfg):
             print(f"Symlinking {directory} to {getcwd()}...")
             try:
                 os.symlink(directory, pjoin(getcwd(), os.path.basename(directory)))
-            except:
+            except FileExistsError:
                 print(f"{directory} already exists.")
         else:
             print(f"Making {directory}...")
@@ -561,7 +561,7 @@ def mk_main_wf_and_cfg(args):
     tmplt_cfg_file = os.path.join(os.getcwd(), '.nextflow.config')
     proj_wf_path = pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow')
     with open(tmplt_wf_file, encoding='utf8') as origfo:
-        with open(pjoin(proj_wf_path, 'main.nf'), 'w') as outfo:
+        with open(pjoin(proj_wf_path, 'main.nf'), 'w', encoding='utf8') as outfo:
             for line in origfo.readlines():
                 if line == "params.project_dir = ''\n":
                     line = f"params.project_identifier = '{args.project_id}'\nparams.project_dir = ''\n"
@@ -577,13 +577,13 @@ def mk_main_wf_and_cfg(args):
     cfg_out.append("  autoMount = 'true'\n")
     cfg_out.append('}\n')
 
-    with open(pjoin(proj_wf_path, 'nextflow.config')) as nf_cfg_fo:
+    with open(pjoin(proj_wf_path, 'nextflow.config'), encoding='utf8') as nf_cfg_fo:
         cfg_out.extend(nf_cfg_fo.readlines()[1:])
     proc_idx = cfg_out.index("process {\n")
     mounts_cfg_path = pjoin(proj_wf_path, 'mounts.config')
     cfg_out.insert(proc_idx + 1, f"containerOptions = '-B `cat {mounts_cfg_path}`'\n")
 
-    with open(pjoin(proj_wf_path, 'nextflow.config'), 'w') as nf_cfg_fo:
+    with open(pjoin(proj_wf_path, 'nextflow.config'), 'w', encoding='utf8') as nf_cfg_fo:
         for row in cfg_out:
             nf_cfg_fo.write(row)
 
@@ -604,7 +604,7 @@ def mk_auto_raft(args):
                            '.raft',
                            'auto.raft')
 
-    with open(auto_raft_file, 'w') as auto_raft_fo:
+    with open(auto_raft_file, 'w', encoding='utf8') as auto_raft_fo:
         auto_raft_fo.write(f"{sys.argv}\n")
 
 
@@ -656,7 +656,7 @@ def fill_dir(args, directory, init_cfg):
     bind_dirs = []
     raft_cfg = load_raft_cfg()
     req_sub_dirs = {}
-    with open(init_cfg) as init_cfg_fo:
+    with open(init_cfg, encoding='utf8') as init_cfg_fo:
         req_sub_dirs = json.load(init_cfg_fo)
     for name, sdir in req_sub_dirs.items():
         # If the desired directory has an included path, link that path to
@@ -694,7 +694,7 @@ def mk_mounts_cfg(directory, bind_dirs):
     out = []
     out.append(f'{bind_dirs}\n')
 
-    with open(pjoin(directory, 'workflow', 'mounts.config'), 'w') as mnt_cfg_fo:
+    with open(pjoin(directory, 'workflow', 'mounts.config'), 'w', encoding='utf8') as mnt_cfg_fo:
         for row in out:
             mnt_cfg_fo.write(row)
 
@@ -713,7 +713,7 @@ def update_mounts_cfg(mounts_cfg, bind_dirs):
         bind_dirs (list): Directories to be included in mounts.config file.
     """
     out = []
-    with open(mounts_cfg, 'r') as ifo:
+    with open(mounts_cfg, 'r', encoding='utf8') as ifo:
         line = ifo.readline()
         line = line.strip('\n')
         paths = line.split(',')
@@ -728,7 +728,7 @@ def update_mounts_cfg(mounts_cfg, bind_dirs):
         paths = ','.join(paths) + '\n'
         out.append(paths)
 
-    with open(mounts_cfg, 'w') as mnt_cfg_fo:
+    with open(mounts_cfg, 'w', encoding='utf8') as mnt_cfg_fo:
         for row in out:
             mnt_cfg_fo.write(row)
 
@@ -802,7 +802,7 @@ def load_manifest(args):
     bind_dirs = [] #Stores directories containing absolute path to FASTQs.
 
     print("Checking contents of manifest csv...")
-    with open(global_csv) as global_csv_fo:
+    with open(global_csv, encoding='utf8') as global_csv_fo:
         hdr = global_csv_fo.readline()
         hdr = hdr.strip('\n').split(',')
         # Will certainly need a better way to do this, but this will work for now.
@@ -845,7 +845,7 @@ def load_manifest(args):
                             'mounts.config'),
                       bind_dirs)
 
-    with open(overall_mani, 'w') as mfo:
+    with open(overall_mani, 'w', encoding='utf8') as mfo:
         contents = ''
         try:
             contents = mfo.readlines()
@@ -955,7 +955,7 @@ def recurs_load_modules(args):
         for mod in mods:
 #            base = mod.strip('.nf')
             deps = []
-            with open(mod) as mfo:
+            with open(mod, encoding='utf8') as mfo:
                 for line in mfo:
                     if re.search('^include.*nf.*', line):
                         dep = line.split()[-1].replace("'", '').split('/')[1]
@@ -987,7 +987,7 @@ def list_steps(args):
 
     globbed_mods = glob(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'workflow', glob_term))
     for mod in globbed_mods:
-        with open(pjoin(mod, mod.split('/')[-2] + '.nf')) as mod_fo:
+        with open(pjoin(mod, mod.split('/')[-2] + '.nf'), encoding='utf8') as mod_fo:
             for line in mod_fo:
                 if re.search('^workflow', line):
                     comment = f"module: {mod.split('/')[-2]}\ntype: workflow\nstep: {line.split(' ')[1]}\n"
@@ -1143,7 +1143,7 @@ def get_work_dirs(args):
     log_dir = pjoin(raft_cfg['filesystem']['projects'],
                     args.project_id, 'logs')
     project_uuid = ''
-    with open(pjoin(log_dir, '.nextflow', 'history')) as nf_hist_fo:
+    with open(pjoin(log_dir, '.nextflow', 'history'), encoding='utf8') as nf_hist_fo:
         for line in reversed(nf_hist_fo.read().split('\n')):
             if line:
                 line = line.split('\t')
@@ -1287,18 +1287,18 @@ def update_nf_cfg(nf_cfg, mod_cfg):
     """
     new_nf_cfg = []
     lines_to_copy = []
-    with open(mod_cfg) as mfo:
+    with open(mod_cfg, encoding='utf8') as mfo:
         for line in mfo:
             if line not in ["process {\n", "}\n"]:
                 lines_to_copy.append(line)
 
-    with open(nf_cfg) as nfo:
+    with open(nf_cfg, encoding='utf8') as nfo:
         for line in nfo:
             new_nf_cfg.append(line)
             if line == "process {\n":
                 new_nf_cfg.extend(lines_to_copy)
 
-    with open(nf_cfg, 'w') as nfo:
+    with open(nf_cfg, 'w', encoding='utf8') as nfo:
         for line in new_nf_cfg:
             nfo.write(line)
 
@@ -1321,7 +1321,7 @@ def load_raft_cfg():
     """
     cfg = {}
     cfg_path = pjoin(getcwd(), '.raft.cfg')
-    with open(cfg_path) as cfg_fo:
+    with open(cfg_path, encoding='utf8') as cfg_fo:
         cfg = json.load(cfg_fo)
     return cfg
 
@@ -1347,7 +1347,7 @@ def dump_to_auto_raft(args):
         comment_out = ''
         if args.command in ['add-step']:
             comment_out = '#'
-        with open(auto_raft_path, 'a') as auto_raft_fo:
+        with open(auto_raft_path, 'a', encoding='utf8') as auto_raft_fo:
             auto_raft_fo.write(f"{comment_out}{' '.join(sys.argv)}\n")
 
 
@@ -1357,8 +1357,8 @@ def snapshot_postproc(inf, outf):
 
     This may be overly aggressive, but can modify it later.
     """
-    with open(outf, 'w') as ofo:
-        with open(inf) as ifo:
+    with open(outf, 'w', encoding='utf8') as ofo:
+        with open(inf, encoding='utf8') as ifo:
             new_contents = []
             contents = ifo.readlines()
             for line_idx, line in enumerate(contents):
@@ -1405,7 +1405,7 @@ def package_project(args):
     dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices', 'workflow']
     if not args.no_checksums:
         hashes = {}
-        with open(pjoin(proj_tmp_dir, 'checksums'), 'w') as checksums_fo:
+        with open(pjoin(proj_tmp_dir, 'checksums'), 'w', encoding='utf8') as checksums_fo:
             hashes = {}
             for directory in dirs:
                 files = glob(pjoin('projects', args.project_id, directory, '**'), recursive=True)
@@ -1444,7 +1444,7 @@ def package_project(args):
         rftpkg = pjoin(proj_dir, 'rftpkgs', args.output + '.rftpkg')
     else:
         rftpkg = pjoin(proj_dir, 'rftpkgs', 'default.rftpkg')
-    with tarfile.open(rftpkg, 'w') as taro:
+    with tarfile.open(rftpkg, 'w', encoding='utf8') as taro:
         for i in os.listdir(proj_tmp_dir):
             #print(i)
             taro.add(os.path.join(proj_tmp_dir, i), arcname = i)
@@ -1453,7 +1453,7 @@ def package_project(args):
 def md5(fname):
 #https://stackoverflow.com/a/3431838
     hash_md5 = hashlib.md5()
-    with open(fname, "rb") as f:
+    with open(fname, "rb", encoding='utf8') as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
@@ -1495,7 +1495,7 @@ def load_project(args):
                     os.path.basename(args.rftpkg))
 
     # Extract and distribute tarball contents
-    tar = tarfile.open(tarball)
+    tar = tarfile.open(tarball, encoding='utf8')
     tar.extractall(os.path.join(raft_cfg['filesystem']['projects'], args.project_id, '.raft'))
     tar.close()
 
@@ -1533,8 +1533,8 @@ def replace_proj_id(fle, old_proj_id, new_proj_id):
     """
     """
     raft_cfg = load_raft_cfg()
-    with open(pjoin(raft_cfg['filesystem']['projects'], new_proj_id, 'tmp', 'tmp_file'), 'w') as tfo:
-        with open(fle) as ffo:
+    with open(pjoin(raft_cfg['filesystem']['projects'], new_proj_id, 'tmp', 'tmp_file'), 'w', encoding='utf8') as tfo:
+        with open(fle, encoding='utf8') as ffo:
             contents = ffo.readlines()
             for line in contents:
                 line = line.replace(f'-p {old_proj_id}', f'-p {new_proj_id}')
@@ -1547,8 +1547,8 @@ def replace_proj_id(fle, old_proj_id, new_proj_id):
 def get_orig_prod_id(fle):
     """
     """
-    with open(fle) as ffo:
-        contents = fo.readlines()
+    with open(fle, encoding='utf8') as ffo:
+        contents = ffo.readlines()
         first = contents[0].strip()
         ind = ''
         ind = first.split(' ').index('-p')
@@ -1559,9 +1559,17 @@ def get_orig_prod_id(fle):
 
 def get_params_from_module(module_path):
     """
+    Extracta parameters from a module.
+
+    Args:
+      module_path (str): Module path.
+
+    Returns:
+      undef_params (list): Parameters not defined within module.
+      defined_params (list): Parameters defined within module.
     """
     undef_params, defined_params = ([], [])
-    with open(module_path) as mfo:
+    with open(module_path, encoding='utf8') as mfo:
         for line in mfo.readlines():
             line = line.rstrip()
             if re.search("^params.*", line):
@@ -1603,9 +1611,9 @@ def get_wf_mod_map(args):
                             'workflow',
                             '*/*.nf'))
     for nf_script in nf_scripts:
-        wfs = extract_wfs_from_script(nf_script)
-        for wf in wfs:
-            wf_mod_map[wf] = nf_script
+        workflows = extract_wfs_from_script(nf_script)
+        for workflow in workflows:
+            wf_mod_map[workflow] = nf_script
 
     return wf_mod_map
 
@@ -1621,7 +1629,7 @@ def extract_wfs_from_script(script_path):
         wfs (list): Workflows contained in Nextflow module.
     """
     wfs = []
-    with open(script_path) as spo:
+    with open(script_path, encoding='utf8') as spo:
         for line in spo:
             if re.search('^workflow', line):
                 wfs.append(line.replace('workflow ', '').split('{')[0].strip())
@@ -1650,7 +1658,7 @@ def add_step(args):
 
     # Load main.nf contents
     main_contents = []
-    with open(main_nf) as mfo:
+    with open(main_nf, encoding='utf8') as mfo:
         main_contents = mfo.readlines()
 
     print("Making backup of project's main.nf...")
@@ -1731,7 +1739,7 @@ def add_step(args):
         main_contents.insert(wf_idx, step_str.replace('(', '(\n  ').replace(', ', ',\n  '))
 
 
-        with open(main_nf, 'w') as ofo:
+        with open(main_nf, 'w', encoding='utf8') as ofo:
             ofo.write(''.join(main_contents))
     else:
         print("Step {step_str.split('(')[0]} has already been added to Project {args.project_id}")
@@ -1913,7 +1921,7 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
     """
     step_slice = []
     contents = []
-    with open(nfscript_path) as nf_script_fo:
+    with open(nfscript_path, encoding='utf8') as nf_script_fo:
         contents = [i.strip() for i in nf_script_fo.readlines()]
     # Need the ability to error out if step doesn't exist. Should list steps
     # from module in that case.
@@ -2064,8 +2072,8 @@ def rename_project(args):
         shutil.move(pjoin(proj_dir, renamable_contents_file),
                     pjoin(proj_dir, renamable_contents_file + '.rename.bak'))
 
-        with open(pjoin(proj_dir, f), 'w') as f_fo:
-            with open(pjoin(proj_dir, f + '.rename.bak')) as f_io:
+        with open(pjoin(proj_dir, f), 'w', encoding='utf8') as f_fo:
+            with open(pjoin(proj_dir, f + '.rename.bak'), encoding='utf8') as f_io:
                 for line in f_io.readlines():
                     f_fo.write(line.replace(args.project_id, args.new_id))
 
@@ -2081,7 +2089,7 @@ def clean_project(args):
                     args.project_id, 'logs')
     successful_run = ''
     project_uuid = ''
-    with open(pjoin(log_dir, '.nextflow', 'history')) as nf_hist_fo:
+    with open(pjoin(log_dir, '.nextflow', 'history'), encoding='utf8') as nf_hist_fo:
         for line in reversed(nf_hist_fo.read().split('\n')):
             if line:
                 line = line.split('\t')
@@ -2147,7 +2155,7 @@ def touch(path):
     Touches a path.
     https://stackoverflow.com/a/12654798
     """
-    with open(path, 'a'):
+    with open(path, 'a', encoding='utf8'):
         os.utime(path, None)
 
 
@@ -2177,7 +2185,7 @@ def copy_parameters(args):
             source_params = extract_params_from_proj_or_cfg(f_obj)
 
     with open(orig_proj_main, encoding='utf8') as dfo:
-        with open(new_proj_main, 'w') as tfo:
+        with open(new_proj_main, 'w', encoding='utf8') as tfo:
             for line in dfo.readlines():
                 parted_line = line.rstrip().partition(' = ')
                 if parted_line[0] in source_params.keys() and source_params[parted_line[0]] != parted_line[2]:
