@@ -432,7 +432,7 @@ def get_user_raft_paths(raft_paths):
     """
     print("WARNING: The work directory will be large. Choose accordingly.")
     for raft_path, default in raft_paths.items():
-        user_spec_path = input("Provide a global (among projects) directory for {raft_path} (Default: {default}): ")
+        user_spec_path = input(f"Provide a global (among projects) directory for {raft_path} (Default: {default}): ")
         # Should be doing some sanity checking here to ensure the path can exist.
         if user_spec_path:
             if re.search('~', user_spec_path):
@@ -457,7 +457,7 @@ def get_user_nf_repos(nf_repos, nf_subs):
     """
     # Allow users to specify their own Nextflow workflows and modules repos.
     for nf_repo, default in nf_repos.items():
-        user_spec_repo = input("\nProvide a repository for Nextflow {nf_repo}\n(Default: {default}):")
+        user_spec_repo = input(f"\nProvide a repository for Nextflow {nf_repo}\n(Default: {default}):")
         if user_spec_repo:
             nf_repos[nf_repo] = user_spec_repo
 
