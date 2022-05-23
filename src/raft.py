@@ -332,7 +332,7 @@ def setup(args):
                 "metadata": "",
                 "logs": "",
                 "rftpkgs": "",
-                "raft": ""}
+                ".raft": ""}
 
     with open(pjoin(getcwd(), '.init.cfg'), 'w', encoding='utf8') as init_cfg_fo:
         json.dump(init_cfg, init_cfg_fo)
@@ -372,9 +372,9 @@ def setup(args):
         nf_cfg_fo.write("process {\n")
         nf_cfg_fo.write("}\n")
 
-    git_prefix = 'https://gitlab.com/bgv-lens/nextflow'
+    git_prefix = 'git@gitlab.com:bgv-lens/nextflow'
     # nextflow-components is a subgroup, not a repo.
-    nf_repos = {'nextflow_modules': pjoin(git_prefix, 'Modules')}
+    nf_repos = {'nextflow_modules': pjoin(git_prefix, 'modules')}
     nf_subs = {'nextflow_module_subgroups': ['Tools', 'Projects', 'Datasets']}
 
     raft_repos = {}
@@ -669,7 +669,7 @@ def fill_dir(args, directory, init_cfg):
         elif not sdir:
             os.mkdir(pjoin(directory, name))
     bind_dirs.append(pjoin(raft_cfg['filesystem']['projects'], args.project_id))
-    bind_dirs.append(raft_cfg['filesystem']['work'])
+#    bind_dirs.append(raft_cfg['filesystem']['work'])
     bind_dirs.append(getcwd())
 
     # Bindable directories are returned so they can be used to generate
@@ -895,6 +895,9 @@ def load_files(args, out_dir):
     """
     raft_cfg = load_raft_cfg()
 
+    if not(os.path.isdir(pjoin(raft_cfg['filesystem']['projects'], args.project_id))):
+        sys.exit("Cannot not find Project {} directory.".format(args.project_id))
+
     base = out_dir # output dir is input dir
 
     full_base = raft_cfg['filesystem'][base]
@@ -915,7 +918,7 @@ def load_files(args, out_dir):
     result_file = pjoin(abs_out_dir, args.sub_dir, os.path.basename(globbed_file))
 
     if os.path.exists(result_file):
-        print(f"{result_file} already exists within the project. Ignoring load request.")
+        sys.exit(f"{result_file} already exists within the project. Ignoring load request.")
     elif args.mode == 'symlink':
         os.symlink(os.path.realpath(globbed_file),
                    result_file)
@@ -1049,7 +1052,7 @@ def load_module(args):
                                 branch=branch)
                 time.sleep(args.delay)
                 found = 1
-            except GitCommandError:
+            except:
                 pass
         if not found:
             sys.exit("ERROR: Could not find module {args.module} in any subgroups specified in RAFT config")
@@ -1066,7 +1069,8 @@ def load_module(args):
             update_nf_cfg(nf_cfg, mod_cfg)
     else:
         print(f"Module {args.module} is already loaded into project {args.project_id}. Skipping...")
-    recurs_load_modules(args)
+    if not(args.no_deps):
+        recurs_load_modules(args)
 
 
 #def run_auto(args):
@@ -1749,7 +1753,7 @@ def add_step(args):
         with open(main_nf, 'w', encoding='utf8') as ofo:
             ofo.write(''.join(main_contents))
     else:
-        print("Step {step_str.split('(')[0]} has already been added to Project {args.project_id}")
+        print(f"Step {step_str.split('(')[0]} has already been added to Project {args.project_id}")
         print("Please use step aliasing (-a/--alias) if you intend to use this step multiple times.")
         sys.exit(1)
 
@@ -1933,7 +1937,7 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
     # Need the ability to error out if step doesn't exist. Should list steps
     # from module in that case.
     if f'workflow {step} {{' in contents:
-        step_start = contents.index('workflow {step} {{')
+        step_start = contents.index(f'workflow {step} {{')
         step_end = contents.index("}", step_start)
         step_slice = contents[step_start:step_end]
     else:
