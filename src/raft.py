@@ -113,7 +113,7 @@ def get_args():
                                      default='')
     parser_load_dataset.add_argument('-b', '--branch',
                                      help="Branch to load for module",
-                                     default='master')
+                                     default='main')
     parser_load_dataset.add_argument('-m', '--mode',
                                      help="Mode (copy or symlink). Default: copy",
                                      default='symlink')
@@ -228,7 +228,7 @@ def get_args():
     parser_load_project.add_argument('-p', '--project-id', help="Project identifier")
     parser_load_project.add_argument('-r', '--rftpkg', help="rftpkg file")
     parser_load_project.add_argument('--repo-url', help="Git repo url.")
-    parser_load_project.add_argument('--branch', help="Git repo branch.", default='master')
+    parser_load_project.add_argument('--branch', help="Git repo branch.", default='main')
 
     # Subparser for pushing package
     parser_push_project = subparsers.add_parser('push-project',
@@ -251,6 +251,9 @@ def get_args():
     parser_update_modules.add_argument('-m', '--modules',
                                        help="List of modules to update (Default = all)",
                                        default='')
+    parser_update_modules.add_argument('-d', '--delay',
+                                       help="Delay (in seconds) before git pulls. (Default = 15s).",
+                                       default=15)
 
     parser_rename_project = subparsers.add_parser('rename-project',
                                                   help="Rename a project exhaustively.")
@@ -372,7 +375,7 @@ def setup(args):
         nf_cfg_fo.write("process {\n")
         nf_cfg_fo.write("}\n")
 
-    git_prefix = 'git@gitlab.com:bgv-lens/nextflow'
+    git_prefix = 'https://gitlab.com/bgv-lens/nextflow'
     # nextflow-components is a subgroup, not a repo.
     nf_repos = {'nextflow_modules': pjoin(git_prefix, 'modules')}
     nf_subs = {'nextflow_module_subgroups': ['Tools', 'Projects', 'Datasets']}
@@ -1055,7 +1058,7 @@ def load_module(args):
             except:
                 pass
         if not found:
-            sys.exit("ERROR: Could not find module {args.module} in any subgroups specified in RAFT config")
+            sys.exit(f"ERROR: Could not find module {args.module} in any subgroups specified in RAFT config")
         nf_cfg = pjoin(raft_cfg['filesystem']['projects'],
                        args.project_id,
                        'workflow',
@@ -1332,8 +1335,11 @@ def load_raft_cfg():
     """
     cfg = {}
     cfg_path = pjoin(getcwd(), '.raft.cfg')
-    with open(cfg_path, encoding='utf8') as cfg_fo:
-        cfg = json.load(cfg_fo)
+    if os.path.isfile(cfg_path):
+        with open(cfg_path, encoding='utf8') as cfg_fo:
+            cfg = json.load(cfg_fo)
+    else:
+        sys.exit("Cannot find RAFT configuration file.\nPlease run raft.py in your RAFT installation directory.")
     return cfg
 
 
@@ -2060,6 +2066,7 @@ def update_modules(args):
             module_dir = os.path.basename(os.path.dirname(module))
             print(f"Pulling latest for module {module_dir} (branch {repo.active_branch.name})")
             ori.pull() # Need some exception handling here.
+            time.sleep(args.delay)
 
 
 def rename_project(args):
