@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+el#!/usr/bin/env python3
 
 # Run this *in* the RAFT directory, or bad things will happen (or nothing at all).
 
@@ -1912,7 +1912,7 @@ def extract_params_from_contents(contents, discard_requires):
         require_params = [i.replace('//   ','').split(',')[0] for i in contents[start:end] if re.search('^//   params', i)]
     params = [re.findall("(params.*?,|params.*?\)|params.*\?})", i) for i in contents if
               re.findall("params.*,|params.*\)", i) and i != 'params.']
-    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '').replace('/', '').replace('\\', '') for
+    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '').replace('/', '').replace('\\', '').replace(' =~ ', '').replace(' != ', '') for
             j in params for i in j]
     # THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
     if discard_requires:
@@ -2191,9 +2191,14 @@ def copy_parameters(args):
     """
     raft_cfg = load_raft_cfg()
 
-    src_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')
-    orig_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.dest_project, 'workflow', 'main.nf')
-    new_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.dest_project, 'workflow', 'main.nf.copy_params')
+    if args.source_project:
+        src_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.source_project, 'workflow', 'main.nf')
+        orig_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.dest_project, 'workflow', 'main.nf')
+        new_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.dest_project, 'workflow', 'main.nf.copy_params')
+    elif args.source_config:
+        src_proj_main = args.source_config
+        orig_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.dest_project, 'workflow', 'main.nf')
+        new_proj_main = pjoin(raft_cfg['filesystem']['projects'], args.dest_project, 'workflow', 'main.nf.copy_params')
 
     source_params = {}
     if args.source_project:
@@ -2214,8 +2219,8 @@ def copy_parameters(args):
     print("Done copying parameters.")
 
 
-    print("Verify parameters in {new_proj_main} and")
-    print("copy {new_proj_main} to {orig_proj_main} to complete.")
+    print(f"Verify parameters in {new_proj_main} and")
+    print(f"copy {new_proj_main} to {orig_proj_main} to complete.")
 
 
 def extract_params_from_proj_or_cfg(f_obj):
