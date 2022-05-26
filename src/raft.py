@@ -608,7 +608,7 @@ def mk_auto_raft(args):
                            'auto.raft')
 
     with open(auto_raft_file, 'w', encoding='utf8') as auto_raft_fo:
-        auto_raft_fo.write(f"{sys.argv}\n")
+        auto_raft_fo.write(f"{' '.join(sys.argv)}\n")
 
 
 def mk_proj_dir(proj_id):
@@ -1442,7 +1442,7 @@ def package_project(args):
                             pjoin(proj_tmp_dir, 'workflow', os.path.basename(wf_dir)),
                             ignore=shutil.ignore_patterns(igpat))
         else:
-            shutil.copyfile(dir,
+            shutil.copyfile(wf_dir,
                             pjoin(proj_tmp_dir, 'workflow', os.path.basename(wf_dir)))
 
     # Get auto.raft
@@ -2254,8 +2254,6 @@ def main():
     if 'project_id' in args and args.command not in ['init-project', 'load-project', 'copy-parameters']:
         chk_proj_id_exists(args.project_id)
 
-    # Only dump to auto.raft if RAFT successfully completes.
-    dump_to_auto_raft(args)
 
     # I'm pretty sure .setdefaults within subparsers should handle running
     # functions, but this will work for now.
@@ -2300,6 +2298,9 @@ def main():
         load_dataset(args)
     elif args.command == 'copy-parameters':
         copy_parameters(args)
+
+    # Only dump to auto.raft if RAFT successfully completes.
+    dump_to_auto_raft(args)
 
 
 if __name__ == '__main__':
