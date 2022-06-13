@@ -1796,6 +1796,7 @@ def expand_params(params):
     """
     expanded_params = {}
     for param in params:
+        param = param.strip()
         param = param.partition('.')[2]
         param = param.split('$')
         expanded_params['params.' + '$'.join(param)] = "''"
@@ -2236,7 +2237,7 @@ def extract_params_from_proj_or_cfg(f_obj):
     for line in f_obj.readlines():
         line = line.rstrip()
         if (line.startswith('params.') and
-            not line.partition(' = ')[2].startswith('params') and
+#            not line.partition(' = ')[2].startswith('params') and
             not re.search('project_identifier', line)):
             line = line.partition(' = ')
             source_params[line[0]] = line[2]
