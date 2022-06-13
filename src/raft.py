@@ -1269,9 +1269,8 @@ def get_base_nf_cmd(args):
 
     # Adding project directory
     proj_dir_str = ''
-    if not re.search('--project_dir', args.nf_params):
-        proj_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id)
-        proj_dir_str = f"--project_dir {proj_dir}"
+    proj_dir = pjoin(raft_cfg['filesystem']['projects'], args.project_id)
+    proj_dir_str = f"--project_dir {proj_dir}"
 
     # Adding all components to make base command.
     resume = ''
