@@ -956,13 +956,14 @@ def recurs_load_modules(args):
         new_deps = 0
         mods = glob(pjoin(wf_dir, '**', '*.nf'), recursive=True)
         for mod in mods:
-#            base = mod.strip('.nf')
             deps = []
             with open(mod, encoding='utf8') as mfo:
                 for line in mfo:
                     if re.search('^include.*nf.*', line):
                         dep = line.split()[-1].replace("'", '').split('/')[1]
-                        if dep not in deps:
+                        # Adding the negative regex to avoid capturing /tests
+                        # include statements.
+                        if dep not in deps and not(re.search('.nf$', dep)): 
                             deps.append(dep)
         for dep in deps:
             curr_deps = [i.split('/')[-1] for i in glob(pjoin(wf_dir, '*'))]
