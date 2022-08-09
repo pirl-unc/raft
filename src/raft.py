@@ -325,8 +325,7 @@ def setup(args):
                   'metadata': pjoin(getcwd(), 'metadata'),
                   'shared': pjoin(getcwd(), 'shared')}
 
-    init_cfg = {"indicies": "",
-                "references": "",
+    init_cfg = {"references": "",
                 "fastqs": "",
                 "tmp": "",
                 "outputs": "",
@@ -350,7 +349,6 @@ def setup(args):
         init_wf_fo.write("params.global_fq_dir = ''\n")
         init_wf_fo.write("params.shared_dir = ''\n")
         init_wf_fo.write('params.metadata_dir = "${params.project_dir}/metadata"\n')
-        init_wf_fo.write('params.indices_out_dir = "${params.project_dir}/indices"\n')
         init_wf_fo.write('params.ref_dir = "${params.project_dir}/references"\n')
         init_wf_fo.write('params.output_dir = "${params.project_dir}/outputs"\n')
         init_wf_fo.write('params.dsp_output_dir = "${params.output_dir}/dataset_prep"\n')
@@ -1419,7 +1417,7 @@ def package_project(args):
 
     # Getting required checksums. Currently only doing /datasets, but should
     # probably do other directories produced by workflow as well.
-    dirs = ['outputs', 'metadata', 'fastqs', 'references', 'indices', 'workflow']
+    dirs = ['outputs', 'metadata', 'fastqs', 'references', 'workflow']
     if not args.no_checksums:
         hashes = {}
         with open(pjoin(proj_tmp_dir, 'checksums'), 'w', encoding='utf8') as checksums_fo:
