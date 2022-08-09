@@ -529,7 +529,7 @@ def init_project(args):
         args (Namespace object): User-provided arguments
     """
     proj_dir = mk_proj_dir(args.project_id)
-    bound_dirs = fill_dir(args, proj_dir, args.init_config,)
+    bound_dirs = fill_dir(args, proj_dir, args.init_config)
     mk_mounts_cfg(proj_dir, bound_dirs)
     mk_auto_raft(args)
     mk_main_wf_and_cfg(args)
@@ -695,11 +695,12 @@ def mk_mounts_cfg(directory, bind_dirs):
         bind_dirs (list): Directories to be included in mounts.config file.
     """
     out = []
-    out.append(f'{bind_dirs}\n')
+    out = bind_dirs
 
     with open(pjoin(directory, 'workflow', 'mounts.config'), 'w', encoding='utf8') as mnt_cfg_fo:
         for row in out:
-            mnt_cfg_fo.write(row)
+            print(row)
+            mnt_cfg_fo.write(f'{row},')
 
 
 def update_mounts_cfg(mounts_cfg, bind_dirs):
