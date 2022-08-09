@@ -433,7 +433,6 @@ def get_user_raft_paths(raft_paths):
     Returns:
         Dictionary containing RAFT paths as keys and user-specified directories as values.
     """
-    print("WARNING: The work directory will be large. Choose accordingly.")
     for raft_path, default in raft_paths.items():
         user_spec_path = input(f"Provide a global (among projects) directory for {raft_path} (Default: {default}): ")
         # Should be doing some sanity checking here to ensure the path can exist.
