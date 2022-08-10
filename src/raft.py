@@ -695,9 +695,7 @@ def mk_mounts_cfg(directory, bind_dirs):
     out = bind_dirs
 
     with open(pjoin(directory, 'workflow', 'mounts.config'), 'w', encoding='utf8') as mnt_cfg_fo:
-        for row in out:
-            #print(row)
-            mnt_cfg_fo.write(f'{row},')
+        mnt_cfg_fo.write(f'{",".join(out)}')
 
 
 def update_mounts_cfg(mounts_cfg, bind_dirs):
