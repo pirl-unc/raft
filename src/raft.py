@@ -1721,20 +1721,20 @@ def add_step(args):
         else:
             all_step_params.extend(extract_params_from_contents(step_slice, True))
 
-    expanded_params = expand_params(all_step_params)
-    filted_expanded_params = {}
-    for k,v in expanded_params.items():
-        if k not in main_params and k != 'params.':
-            filted_expanded_params[k] = v
-
-    expanded_params = filted_expanded_params
-
-    expanded_undef_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
-                            sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
-    expanded_defined_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
-                                                          sorted(expanded_params,
-                                                          key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
-                                                          expanded_params[k] != "''"]) + '\n'
+#    expanded_params = expand_params(all_step_params)
+#    filted_expanded_params = {}
+#    for k,v in expanded_params.items():
+#        if k not in main_params and k != 'params.':
+#            filted_expanded_params[k] = v
+#
+#    expanded_params = filted_expanded_params
+#
+#    expanded_undef_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
+#                            sorted(expanded_params.keys()) if expanded_params[k] == "''"]) + '\n'
+#    expanded_defined_params = '\n'.join(["{} = {}".format(k, expanded_params[k]) for k in
+#                                                          sorted(expanded_params,
+#                                                          key = lambda i: (i.split('$')[-1], len(i.split('$')))) if
+#                                                          expanded_params[k] != "''"]) + '\n'
 
     # Applying changes to main.nf
     if step_str not in main_contents and inclusion_str not in main_contents:
@@ -1743,10 +1743,11 @@ def add_step(args):
         main_contents.insert(inc_idx, inclusion_str)
 
         gen_params_idx = get_section_insert_idx(main_contents, "/*General Parameters*/\n")
-        main_contents.insert(gen_params_idx, expanded_undef_params)
+        main_contents.insert(gen_params_idx, '\n'.join(["{} = ''".format(x) for x in list(dict.fromkeys(all_step_params))]))
+#        main_contents.insert(gen_params_idx, expanded_undef_params)
 
-        fine_params_idx = get_section_insert_idx(main_contents, "/*Fine-tuned Parameters*/\n")
-        main_contents.insert(fine_params_idx, expanded_defined_params)
+#        fine_params_idx = get_section_insert_idx(main_contents, "/*Fine-tuned Parameters*/\n")
+#        main_contents.insert(fine_params_idx, expanded_defined_params)
 
         wf_idx = get_section_insert_idx(main_contents, "workflow {\n", "}\n")
         main_contents.insert(wf_idx, step_str.replace('(', '(\n  ').replace(', ', ',\n  '))
@@ -1902,6 +1903,8 @@ def extract_params_from_contents(contents, discard_requires):
         flat (list): Parameters either list in require:// block or passed as
                      parameter options within process/workflow definition.
     """
+    contents_bfr = [x.strip() for x in contents]
+    contents = contents_bfr
     require_params = []
     if [re.findall("// require:", i) for i in contents if re.findall("// require:", i) for i in contents]:
         start = contents.index("// require:") + 1
@@ -1936,7 +1939,7 @@ def extract_step_slice_from_nfscript(nfscript_path, step):
     step_slice = []
     contents = []
     with open(nfscript_path, encoding='utf8') as nf_script_fo:
-        contents = [i.strip() for i in nf_script_fo.readlines()]
+        contents = [i.rstrip() for i in nf_script_fo.readlines()]
     # Need the ability to error out if step doesn't exist. Should list steps
     # from module in that case.
     if f'workflow {step} {{' in contents:
@@ -1963,6 +1966,8 @@ def get_workflow_str(wf_slice):
         wf_str (str): String representation for calling workflow within main.nf
 
     """
+    wf_slice_bfr = [x.strip() for x in wf_slice]
+    wf_slice = wf_slice_bfr
     # Can just strip contents before processing to not have to deal with a lot
     # of the newlines and space considerations.
     wf_list = []

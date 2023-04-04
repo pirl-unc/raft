@@ -7,3 +7,4 @@ src/raft.egg-info/SOURCES.txt
 src/raft.egg-info/dependency_links.txt
 src/raft.egg-info/requires.txt
 src/raft.egg-info/top_level.txt
+tests/test_raft.py
