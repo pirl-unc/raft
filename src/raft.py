@@ -373,7 +373,7 @@ def setup(args):
         nf_cfg_fo.write("process {\n")
         nf_cfg_fo.write("}\n")
 
-    git_prefix = 'https://gitlab.com/bgv-lens/nextflow'
+    git_prefix = 'https://gitlab.com/landscape-of-effective-neoantigens-software/nextflow'
     # nextflow-components is a subgroup, not a repo.
     nf_repos = {'nextflow_modules': pjoin(git_prefix, 'modules')}
     nf_subs = {'nextflow_module_subgroups': ['Tools', 'Projects', 'Datasets']}
