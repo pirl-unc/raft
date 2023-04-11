@@ -1136,7 +1136,7 @@ def run_workflow(args):
     if not nf_exit_code.returncode:
         print("Workflow completed!\n")
         if not args.no_reports:
-            print("Moving reports to {reports_dir}\n")
+            print(f"Moving reports to {reports_dir}\n")
             reports = ['report.html', 'timeline.html', 'dag.dot', 'trace.txt']
             os.makedirs(pjoin(raft_cfg['filesystem']['projects'], args.project_id, 'outputs', 'reports'))
             for report in reports:
