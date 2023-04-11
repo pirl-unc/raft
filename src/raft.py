@@ -950,7 +950,7 @@ def recurs_load_modules(args):
     new_deps = 1
     while new_deps == 1:
         new_deps = 0
-        mods = glob(pjoin(wf_dir, '**', '*.nf'), recursive=True)
+        mods = glob(pjoin(wf_dir, '**', "{}.nf".format(args.module)), recursive=True)
         for mod in mods:
             deps = []
             with open(mod, encoding='utf8') as mfo:
