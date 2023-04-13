@@ -357,6 +357,7 @@ def setup(args):
         init_wf_fo.write('params.gene_sigs_dir = "${params.batch_dir}/gene_signatures"\n')
         init_wf_fo.write('params.samps_out_dir = "${params.output_dir}/samples"\n')
         init_wf_fo.write('params.qc_out_dir = "${params.output_dir}/qc"\n')
+        init_wf_fo.write('params.dummy_file = ""\n')
         init_wf_fo.write('\n')
         init_wf_fo.write('/*Fine-tuned Parameters*/\n')
         init_wf_fo.write('\n')
