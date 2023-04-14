@@ -133,7 +133,7 @@ def get_args():
     # Need support for commits and tags here as well.
     parser_load_module.add_argument('-b', '--branches',
                                     help="Branches to checkout per module (see documentat). Default='main'.",
-                                    default='main')
+                                    default='prod')
     parser_load_module.add_argument('-n', '--no-deps',
                                     help="Do not automatically load dependencies.",
                                     default=False)
