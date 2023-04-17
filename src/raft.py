@@ -693,10 +693,10 @@ def mk_mounts_cfg(directory, bind_dirs):
         bind_dirs (list): Directories to be included in mounts.config file.
     """
     out = []
-    out = bind_dirs
+    out = ','.join(bind_dirs)
 
     with open(pjoin(directory, 'workflow', 'mounts.config'), 'w', encoding='utf8') as mnt_cfg_fo:
-        mnt_cfg_fo.write(f'{",".join(out)}')
+        mnt_cfg_fo.write(f'{out}')
 
 
 def update_mounts_cfg(mounts_cfg, bind_dirs):
