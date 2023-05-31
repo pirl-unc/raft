@@ -342,7 +342,10 @@ def setup(args):
         nf_cfg_fo.write("manifest.mainScript = 'main.nf'\n")
         nf_cfg_fo.write("\n")
         nf_cfg_fo.write("process {\n")
+        nf_cfg_fo.write("errorStrategy = 'retry'\n")
+        nf_cfg_fo.write("maxRetries = 3\n")
         nf_cfg_fo.write("}\n")
+        
 
     git_prefix = 'https://gitlab.com/landscape-of-effective-neoantigens-software/nextflow'
     nf_repos = {'nextflow_modules': pjoin(git_prefix, 'modules')}
@@ -553,7 +556,7 @@ def mk_main_wf_and_cfg(args):
         cfg_out.extend(nf_cfg_fo.readlines()[1:])
     proc_idx = cfg_out.index("process {\n")
     mounts_cfg_path = pjoin(proj_wf_path, 'mounts.config')
-    cfg_out.insert(proc_idx + 1, f"containerOptions = '-B `cat {mounts_cfg_path}`'\n")
+    cfg_out.insert(proc_idx + 1, f"containerOptions = '-B `cat {mounts_cfg_path}` --no-home'\n")
 
     with open(pjoin(proj_wf_path, 'nextflow.config'), 'w', encoding='utf8') as nf_cfg_fo:
         for row in cfg_out:
@@ -839,13 +842,14 @@ def recurs_load_modules(args):
                         # include statements.
                         if dep not in deps and not(re.search('.nf$', dep)): 
                             deps.append(dep)
-        for dep in deps:
-            curr_deps = [i.split('/')[-1] for i in glob(pjoin(wf_dir, '*'))]
-            if dep not in curr_deps:
-                new_deps = 1
-                spoofed_args = args
-                spoofed_args.module = dep
-                load_module(spoofed_args)
+        if deps:
+            for dep in deps:
+                curr_deps = [i.split('/')[-1] for i in glob(pjoin(wf_dir, '*'))]
+                if dep not in curr_deps:
+                    new_deps = 1
+                    spoofed_args = args
+                    spoofed_args.module = dep
+                    load_module(spoofed_args)
 
 
 def list_steps(args):
@@ -1603,8 +1607,12 @@ def add_step(args):
         step_str = get_process_str(step_slice)
     if args.alias:
         params = step_str.partition('(')[2]
-        step_str = ''.join([args.alias, '(', params])
-    pprint_step = ',\n  '.join([x for x in step_str.rstrip().split(', ')]).replace('(', '(\n  ')
+        step_str = ''.join([args.alias, '(', params]).replace(args.step, args.alias)
+    pprint_step = ''
+    if args.alias:
+        pprint_step = ',\n  '.join([x for x in step_str.rstrip().split(', ')]).replace('(', '(\n  ').replace(args.step, args.alias)
+    else:
+        pprint_step = ',\n  '.join([x for x in step_str.rstrip().split(', ')]).replace('(', '(\n  ')
     print("Adding the following step to main.nf:")
     print(f"{pprint_step}")
 
@@ -1639,7 +1647,11 @@ def add_step(args):
         main_contents.insert(inc_idx, inclusion_str)
 
         params_idx = get_section_insert_idx(main_contents, "/*Parameters*/\n")
-        params_to_add = "{}\n".format('\n'.join(["{} = ''".format(x) for x in list(dict.fromkeys(all_step_params))]))
+        params_to_add = ''
+        if args.alias:
+            params_to_add = "{}\n".format('\n'.join(["{} = ''".format(x) for x in list(dict.fromkeys(all_step_params))]).replace(args.step, args.alias))
+        else:
+            params_to_add = "{}\n".format('\n'.join(["{} = ''".format(x) for x in list(dict.fromkeys(all_step_params))]))
         main_contents.insert(params_idx, params_to_add)
 
         wf_idx = get_section_insert_idx(main_contents, "workflow {\n", "}\n")
