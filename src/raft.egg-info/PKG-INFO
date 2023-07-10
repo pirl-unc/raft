@@ -1,11 +1,11 @@
 Metadata-Version: 2.1
 Name: raft
-Version: 0.9
+Version: 0.9.2
 Summary: Reproducibile Analyses Framework and Tools
-Home-page: https://github.com/pirl-unc/raft
+Home-page: https://gitlab.com/landscape-of-effective-neoantigens-software/raft
 Author: Steven P. Vensko II
 Author-email: steven.vensko@med.unc.edu
-Project-URL: Bug Tracker, https://github.com/pirl-unc/raft/issues
+Project-URL: Bug Tracker, https://gitlab.com/landscape-of-effective-neoantigens-software/raft/-/issues
 Classifier: Programming Language :: Python :: 3
 Classifier: Operating System :: OS Independent
 Requires-Python: >=3.6

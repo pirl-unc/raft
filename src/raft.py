@@ -1770,18 +1770,19 @@ def extract_params_from_contents(contents, discard_requires):
     if [re.findall("// require:", i) for i in contents if re.findall("// require:", i) for i in contents]:
         start = contents.index("// require:") + 1
         end = contents.index("take:")
-        require_params = [i.replace('//   ','').split(',')[0] for i in contents[start:end] if re.search('^//   params', i)]
-#    params = [re.findall("(params.*?,|params.*?\)|params.*\?})", i) for i in contents if
-#              re.findall("params.*,|params.*\)", i) and i != 'params.']
-#    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '').replace('/', '').replace('\\', '').replace(' =~ ', '').replace(' != ', '') for
-#            j in params for i in j]
-#    # THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
-#    if discard_requires:
-#        flat = [i for i in flat if i not in require_params]
-#    else:
-#        flat = flat + require_params
-#    return flat
-    return require_params
+#        require_params = [i.replace('//   ','').split(',')[0] for i in contents[start:end] if re.search('^//   params', i)]
+    params = [re.findall("(params.*?,|params.*?\)|params.*\?})", i) for i in contents if
+              re.findall("params.*,|params.*\)", i) and i != 'params.']
+    params.append([i.replace('//   ','').split(',')[0] for i in contents[start:end] if re.search('^//   params', i)])
+    flat = [i.partition('/')[0].replace(',','').replace(')', '').replace('}', '').replace("'", '').replace('"', '').replace('/', '').replace('\\', '').replace(' =~ ', '').replace(' != ', '') for
+            j in params for i in j]
+    # THIS IS TOO RESTRICTIVE!!! This should only be applied if it's not the initial step being called.
+    if discard_requires:
+        flat = [i for i in flat if i not in require_params]
+    else:
+        flat = flat + require_params
+    return flat
+#    return require_params
 
 
 def extract_step_slice_from_nfscript(nfscript_path, step):
